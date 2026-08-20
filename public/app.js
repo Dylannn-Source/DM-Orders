@@ -347,7 +347,7 @@ function handleResetTap(){
 // ---- views ----
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
-   'orderNameView','addItemView','historyView']
+   'orderNameView','addItemView','backupView','historyView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -372,6 +372,7 @@ function showSettingsHub(){
   const renamed = items.filter(i => orderName(i) !== i.name).length;
   $('orderNameHubCount').textContent = renamed ? `${renamed} renamed` : 'same as shelf';
   $('addItemHubCount').textContent = `${items.length} in ${dept}`;
+  $('backupHubCount').textContent = 'all departments';
   $('routeHubCount').textContent = routes.length ? (notRouted ? `${notRouted} not placed` : 'all set') : 'not set up';
 }
 
@@ -738,6 +739,30 @@ async function addItem(){
   await bootstrap();          // pick up the new row, and the vendor if it was new
   renderAddItem();
   $('addItemMsg').textContent = `Added "${name}". Set its PARs when you are ready.`;
+}
+
+// ---- backup ----
+function showBackup(){
+  hideAll(); $('backupView').style.display = 'block'; $('footerBar').style.display = 'none';
+  $('backupWrap').innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Backup</div>
+      <div class="vs-sub">Every department, not just this one</div>
+    </div>
+    <div class="hint">Saves one file holding every item, PAR, vendor, count, route
+    and past order. Deploying never removes anything, so this is for the times
+    something is being cleared out on purpose &mdash; emptying a department to load
+    a fresh list, most of all. Take one first and nothing is unrecoverable.</div>
+    <button class="addbtn" style="width:100%;" onclick="downloadBackup()">Download a backup</button>
+    <div class="hint" id="backupMsg" style="padding-top:12px;"></div>`;
+}
+function downloadBackup(){
+  $('backupMsg').textContent = 'Saving...';
+  // A plain navigation, so the browser handles it as a download rather than the
+  // page trying to hold the whole database in memory.
+  window.location.href = '/api/export';
+  setTimeout(() => { $('backupMsg').textContent =
+    'Saved. Keep it somewhere off the phone — email it to yourself is fine.'; }, 1200);
 }
 
 // ---- routine / route ----

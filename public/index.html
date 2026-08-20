@@ -62,6 +62,9 @@
   <div class="hubrow" onclick="showAddItem()">
     <div class="hubname">Add an Item</div><span class="chip" id="addItemHubCount"></span>
   </div>
+  <div class="hubrow" onclick="showBackup()">
+    <div class="hubname">Backup</div><span class="chip" id="backupHubCount"></span>
+  </div>
   <div class="hubrow" onclick="showHistory()">
     <div class="hubname">Order History</div>
   </div>
@@ -95,6 +98,11 @@
 <div id="addItemView">
   <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Add an Item</span></div>
   <div id="addItemWrap"></div>
+</div>
+
+<div id="backupView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Backup</span></div>
+  <div id="backupWrap"></div>
 </div>
 
 <div id="historyView">

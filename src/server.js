@@ -233,6 +233,37 @@ app.get('/api/:dept/orders', async (req, res) => {
   }
 });
 
+// Everything in the database as one JSON file. Worth taking before anything
+// destructive — clearing a department to reseed it, most of all, which is the
+// only routine operation here that actually removes rows.
+app.get('/api/export', async (_req, res) => {
+  try {
+    const [items, counts, routes, vendors, orders, session] = await Promise.all([
+      pool.query('SELECT * FROM items ORDER BY dept, sort_order, name'),
+      pool.query('SELECT * FROM counts ORDER BY dept, item_name'),
+      pool.query('SELECT * FROM routes ORDER BY dept, position'),
+      pool.query('SELECT * FROM vendors ORDER BY dept, name'),
+      pool.query('SELECT * FROM order_history ORDER BY created_at'),
+      pool.query('SELECT * FROM session_state')
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="dat-moi-backup-${stamp}.json"`);
+    res.send(JSON.stringify({
+      exported_at: new Date().toISOString(),
+      counts_summary: {
+        items: items.rowCount, counts: counts.rowCount, routes: routes.rowCount,
+        vendors: vendors.rowCount, orders: orders.rowCount
+      },
+      items: items.rows, counts: counts.rows, routes: routes.rows,
+      vendors: vendors.rows, order_history: orders.rows, session_state: session.rows
+    }, null, 1));
+  } catch (e) {
+    console.error('export failed', e);
+    res.status(500).json({ error: 'export failed' });
+  }
+});
+
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
 // SPA fallback

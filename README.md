@@ -200,5 +200,23 @@ DATABASE_URL="postgres://user:pass@localhost:5432/datmoi" npm start
 
 ## Backups
 
-Railway's Postgres plugin supports snapshots from its dashboard. Worth turning on
-once you're relying on this daily.
+**Settings → Backup** saves one file holding every item, PAR, vendor, count,
+route and past order, across all three departments.
+
+Deploying never removes anything — the schema step only creates what is missing
+and adds columns, and seeding only fills a department holding no rows. So a
+backup matters for the one thing that does delete: clearing a department on
+purpose to load a fresh list.
+
+To put one back:
+
+```bash
+DATABASE_URL="postgres://..." node scripts/restore.mjs dat-moi-backup-2026-08-20.json --yes
+```
+
+It replaces everything in the database, so it refuses without `--yes`, and it
+runs as a single transaction — if any row fails, nothing is changed at all.
+
+Railway's Postgres plugin also supports its own scheduled snapshots from the
+dashboard. Worth turning on as well, since it covers losing the database itself
+rather than its contents.
