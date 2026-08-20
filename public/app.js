@@ -202,7 +202,6 @@ function renderList(){
       ? `<span class="chip">${htmlEsc(it.vendor)}</span>`
       : `<span class="chip note">vendor unassigned</span>`;
     meta += `<span class="chip">PAR ${fmt(parFor(it, day))}</span>`;
-    if (it.case_size) meta += `<span class="chip">${fmt(it.case_size)}${it.unit ? ' ' + htmlEsc(it.unit) : ''} / case</span>`;
     if (it.note) meta += `<span class="chip note">${htmlEsc(it.note)}</span>`;
 
     let ctl;
@@ -387,7 +386,7 @@ function showSummary(){
           return `<div class="tline">
             <span class="tname">${htmlEsc(it.name)}${it.note?`<span class="tnote">${htmlEsc(it.note)}</span>`:''}</span>
             <span style="text-align:right;">
-              <span class="tqty">${fmt(it.orderQty)}${it.case_size?` &times; ${fmt(it.case_size)}${it.unit?' '+htmlEsc(it.unit):''}`:''}</span>
+              <span class="tqty">${fmt(it.orderQty)}</span>
               ${frac ? `<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px;">
                 <button class="roundbtn ${ch==='down'?'sel':''}" onclick="setRound('${esc(it.name)}','down')">&darr; ${Math.floor(it.rawQty)}</button>
                 <button class="roundbtn ${(!ch||ch==='exact')?'exact-sel':''}" onclick="setRound('${esc(it.name)}','exact')">${fmt(it.rawQty)}</button>

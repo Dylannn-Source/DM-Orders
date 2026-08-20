@@ -114,6 +114,10 @@ Oxtail: 1 - order as needed
 One ticket per vendor, so the vendor's own name is left out of the message.
 An item only carries a trailing note if one was set on it.
 
+Quantities are shown and sent as plain numbers. Case sizes are still stored on
+the item and used nowhere in the display — re-add them to the ticket line in
+`showSummary` and to `buildText` if a vendor ever needs them spelled out.
+
 ## How ordering is calculated
 
 - **single**: `order = par(today) − counted`, floored at 0.
