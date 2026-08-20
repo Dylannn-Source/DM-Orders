@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EFF3EA">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Dat Moi Ordering</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div id="deptBar">
+  <button data-dept="produce" onclick="switchDept('produce')">PRODUCE</button>
+  <button data-dept="meat" onclick="switchDept('meat')">MEAT</button>
+  <button data-dept="fish" onclick="switchDept('fish')">FISH</button>
+</div>
+
+<header>
+  <div class="eyebrow" id="deptEyebrow">DAT MOI</div>
+  <h1 id="deptTitle">Inventory &amp; Order</h1>
+  <div class="daytoggle" id="dayToggle"></div>
+  <div class="searchrow">
+    <input type="text" id="search" placeholder="Search item..." oninput="renderList()">
+  </div>
+  <div class="progresswrap"><div class="progressbar" id="progressbar" style="width:0%"></div></div>
+  <div class="progresslabel" id="progresslabel">0 of 0 counted</div>
+  <div class="syncline" id="syncline">&nbsp;</div>
+</header>
+
+<main id="listView"></main>
+
+<div id="summaryView">
+  <div class="backrow">
+    <button class="backbtn" onclick="showList()">&larr; back to counting</button>
+    <span class="eyebrow" id="summaryDate"></span>
+  </div>
+  <div id="ticketsWrap"></div>
+</div>
+
+<div id="settingsHub">
+  <div class="backrow">
+    <button class="backbtn" onclick="showList()">&larr; back to counting</button>
+    <span class="eyebrow">Settings</span>
+  </div>
+  <div class="hubrow" onclick="showRouteSettings()">
+    <div class="hubname">My Routine</div><span class="chip" id="routeHubCount"></span>
+  </div>
+  <div class="hubrow" onclick="showParSettings()">
+    <div class="hubname">PARs</div><span class="chip" id="parHubCount"></span>
+  </div>
+  <div class="hubrow" onclick="showSeasonalSettings()">
+    <div class="hubname">Seasonal / Active</div><span class="chip" id="seasonalHubCount"></span>
+  </div>
+  <div class="hubrow" onclick="showVendorSettings()">
+    <div class="hubname">Vendors</div><span class="chip" id="vendorHubCount"></span>
+  </div>
+  <div class="hubrow" onclick="showHistory()">
+    <div class="hubname">Order History</div>
+  </div>
+</div>
+
+<div id="routeView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">My Routine</span></div>
+  <div id="routeWrap"></div>
+</div>
+
+<div id="parView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">PARs</span></div>
+  <div id="parWrap"></div>
+</div>
+
+<div id="seasonalView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Seasonal / Active</span></div>
+  <div id="seasonalWrap"></div>
+</div>
+
+<div id="vendorView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Vendors</span></div>
+  <div id="vendorWrap"></div>
+</div>
+
+<div id="historyView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Order History</span></div>
+  <div id="historyWrap"></div>
+</div>
+
+<div class="footer-bar" id="footerBar">
+  <button class="btn-ghost" id="resetBtn" onclick="handleResetTap()">Reset</button>
+  <button class="btn-ghost" onclick="showSettingsHub()">Settings</button>
+  <button class="btn-primary" id="reviewBtn" onclick="showSummary()">Review Orders</button>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

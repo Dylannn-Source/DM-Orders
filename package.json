@@ -1,0 +1,17 @@
+{
+  "name": "datmoi-ordering",
+  "version": "1.0.0",
+  "description": "Dat Moi inventory and ordering tool (produce, meat, fish)",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}

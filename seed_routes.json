@@ -1,0 +1,61 @@
+{
+ "meat": [
+  {
+   "id": "gmeatside",
+   "name": "Meat Side",
+   "items": [
+    "Beef Brisket",
+    "Beef Short Ribs",
+    "Beef Neck Bone",
+    "Bone-In Pork Loin",
+    "Pork Spare Ribs",
+    "Pork Butt",
+    "Beef Top Round",
+    "Beef Eye Round",
+    "Beef Hind Shank",
+    "Cow Foot",
+    "Chicken Breast",
+    "Pork Leg"
+   ]
+  },
+  {
+   "id": "gfishside",
+   "name": "Fish Side",
+   "items": [
+    "Roaster Wings",
+    "Roaster Legs",
+    "Chicken Gizzard",
+    "Beef Honeycomb Tripe",
+    "Beef Tendon",
+    "Beef Omasum Tripe",
+    "Beef Liver",
+    "Pork Liver",
+    "Chicken Hearts"
+   ]
+  },
+  {
+   "id": "gbackfreezer",
+   "name": "Back Freezer",
+   "items": [
+    "Baking Hen",
+    "Chicken Feet",
+    "Stewing Hen",
+    "Pork Feet",
+    "Pork Neck Bone",
+    "Pork Hock",
+    "Pork Belly",
+    "Skin-On Goat Mutton",
+    "Turkey Wings",
+    "Smoked Turkey Wings",
+    "Smoked Drum",
+    "Turkey Drums",
+    "Turkey Neck Bone",
+    "Turkey Gizzard",
+    "Cooking Oil",
+    "Oxtail"
+   ]
+  }
+ ],
+ "produce": [],
+ "fish": []
+}
