@@ -79,7 +79,7 @@ main{padding:10px 12px 4px;}
 .stepper button:active{background:var(--line);}
 .stepper input{width:52px;text-align:center;border:none;background:transparent;
   font-family:var(--mono);font-size:14px;color:var(--ink);padding:0;}
-.stepper.mini input{width:40px;font-size:13px;}
+.stepper.mini input{width:50px;font-size:13px;}  /* fits 0.25 and 12.75 without clipping */
 .stepper input:focus{outline:none;}
 .fetoggle{display:flex;gap:5px;}
 .fetoggle button{border:1px solid var(--line);background:var(--card);border-radius:8px;
@@ -87,8 +87,11 @@ main{padding:10px 12px 4px;}
 .fetoggle button.sel-full{background:var(--good-soft);border-color:var(--good);color:var(--good);}
 .fetoggle button.sel-half{background:#F3E9C9;border-color:#B98900;color:#8a6d00;}
 .fetoggle button.sel-empty{background:var(--accent-soft);border-color:var(--accent);color:#8a4413;}
+/* Always its own full-width line at a fixed height, so a row is exactly as tall
+   empty as it is showing ORDER 12.25. Anything that reflows here shifts every
+   row below it out from under the finger doing the counting. */
 .order-badge{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;
-  min-width:34px;text-align:right;}
+  flex:0 0 100%;text-align:right;height:14px;line-height:14px;}
 
 .footer-bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);
   border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));

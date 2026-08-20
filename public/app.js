@@ -24,6 +24,7 @@ let vendors = [];
 let counts = {};        // name -> {shelf, cooler, qty}
 let day = 'mon';
 let roundChoices = {};
+let visibleItems = [];   // the items currently rendered, for the progress counter
 let resetArmed = false, resetArmTimer = null;
 let armedDeleteGroup = null, armedDeleteTimer = null;
 
@@ -191,7 +192,8 @@ function renderList(){
   const q = $('search').value.trim().toLowerCase();
   const wrap = $('listView');
   wrap.innerHTML = '';
-  let counted = 0, total = 0, lastGroup;
+  let total = 0, lastGroup;
+  const shown = [];
 
   orderedItems().forEach(({ item: it, group }) => {
     if (q && !it.name.toLowerCase().includes(q) && !(it.invdesc || '').toLowerCase().includes(q)) return;
@@ -203,9 +205,8 @@ function renderList(){
       wrap.appendChild(l);
       lastGroup = group;
     }
-    const e = counts[it.name] || {};
+    shown.push(it);
     const order = computeOrder(it);
-    if (isDone(it)) counted++;
 
     const row = document.createElement('div');
     row.className = 'row' + (order && order > 0 ? ' hasorder' : '');
@@ -216,6 +217,34 @@ function renderList(){
     meta += `<span class="chip">PAR ${fmt(parFor(it, day))}</span>`;
     if (it.note) meta += `<span class="chip note">${htmlEsc(it.note)}</span>`;
 
+    const ctl = controlsHtml(it);
+
+    row.innerHTML = `
+      <div class="row-main">
+        <div class="row-name">${htmlEsc(it.name)}</div>
+        ${it.invdesc ? `<div class="row-desc">${htmlEsc(it.invdesc)}</div>` : ''}
+        <div class="row-meta">${meta}</div>
+      </div>
+      <div class="row-ctl">${ctl}</div>`;
+    row.dataset.name = it.name;
+    wrap.appendChild(row);
+  });
+  visibleItems = shown;
+
+  if (total === 0){
+    // An empty list means no search hit, or a department with nothing in it yet.
+    wrap.innerHTML = q
+      ? '<div class="emptystate">No items match your search.</div>'
+      : '<div class="emptystate">No items in this department yet.</div>';
+  }
+  refreshProgress();
+}
+
+// Rebuilding only the row that was touched keeps the rest of the list from
+// shifting under a finger mid-count.
+function controlsHtml(it){
+    const e = counts[it.name] || {};
+    const order = computeOrder(it);
     let ctl;
     if (it.mode === 'shelf_cooler'){
       const s = e.shelf;
@@ -247,23 +276,25 @@ function renderList(){
         </div>`;
     }
     ctl += `<span class="order-badge">${order !== null ? (order > 0 ? 'ORDER ' + fmt(order) : 'OK') : ''}</span>`;
+    return ctl;
+}
 
-    row.innerHTML = `
-      <div class="row-main">
-        <div class="row-name">${htmlEsc(it.name)}</div>
-        ${it.invdesc ? `<div class="row-desc">${htmlEsc(it.invdesc)}</div>` : ''}
-        <div class="row-meta">${meta}</div>
-      </div>
-      <div class="row-ctl">${ctl}</div>`;
-    wrap.appendChild(row);
-  });
+function rowEl(name){
+  return [...document.querySelectorAll('#listView .row')].find(r => r.dataset.name === name);
+}
 
-  if (total === 0){
-    // An empty list means no search hit, or a department with nothing in it yet.
-    wrap.innerHTML = q
-      ? '<div class="emptystate">No items match your search.</div>'
-      : '<div class="emptystate">No items in this department yet.</div>';
-  }
+function refreshRow(name){
+  const it = items.find(i => i.name === name);
+  const row = rowEl(name);
+  if (!it || !row) return;
+  const order = computeOrder(it);
+  row.classList.toggle('hasorder', !!(order && order > 0));
+  row.querySelector('.row-ctl').innerHTML = controlsHtml(it);
+}
+
+function refreshProgress(){
+  const total = visibleItems.length;
+  const counted = visibleItems.filter(isDone).length;
   $('progresslabel').textContent = `${counted} of ${total} counted`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
   $('reviewBtn').textContent = `Review Orders (${counted}/${total})`;
@@ -277,7 +308,7 @@ function ensureCount(name){
 async function setCount(name, field, val){
   const c = ensureCount(name);
   c[field] = (val === '' || val === null) ? null : Number(val);
-  renderList();
+  refreshRow(name); refreshProgress();
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
@@ -286,7 +317,7 @@ async function stepCount(name, field, delta){
   const cur = Number(c[field] || 0);
   const next = Math.max(cur + delta, 0);
   c[field] = Math.round(next * 4) / 4;
-  renderList();
+  refreshRow(name); refreshProgress();
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
