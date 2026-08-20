@@ -1,0 +1,5058 @@
+{
+ "produce": [
+  {
+   "dept": "produce",
+   "name": "BABY BOK CHOY",
+   "invdesc": "SHANGHAI",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BABY CARROT",
+   "invdesc": "BABY CARROT",
+   "vendor": "QSI",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BANANA BLOSSOM",
+   "invdesc": "BANANA FLOWER",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BASELLA",
+   "invdesc": "MONG TOI",
+   "vendor": "WING PRODUCE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BE XANH TEXAS",
+   "invdesc": "SHER LI HON",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BEAN SPROUT",
+   "invdesc": "BEAN SPROUT 12x12",
+   "vendor": "CD FARM FRESH",
+   "case_size": 12,
+   "unit": "PC",
+   "note": "5 MINUMUM",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 5,
+    "thu": 7
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BEETS",
+   "invdesc": "BEETS-MEDIUM",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BI CHANH",
+   "invdesc": "MUQUA",
+   "vendor": "WING PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BITTER MELON",
+   "invdesc": "BITTER MELON",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BOK CHOY",
+   "invdesc": "LONG BOK CHOY",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BROCCOLI",
+   "invdesc": "BROCCOLI CROWN",
+   "vendor": "I&T FRESH",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CABBAGE",
+   "invdesc": "CABBAGE MEDIUM",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 45,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CABBAGE RED",
+   "invdesc": "RED CABBAGE",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 45,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CALLALOO",
+   "invdesc": "RED YIN CHOY",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 25,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CARROTS",
+   "invdesc": "CARROTS LOOSE JBO",
+   "vendor": "QSI",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CARROTS (BAG)",
+   "invdesc": "CARROTS CELLO (MED SZ 48/1LB)",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CELERY",
+   "invdesc": "CELERY",
+   "vendor": "QSI",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHAYOTE",
+   "invdesc": "CHAYOTE MEXICO",
+   "vendor": "QSI",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHINESE BROCCOLI",
+   "invdesc": "GAI LAN",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHINESE CELERY",
+   "invdesc": "CHINESE CELERY",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHINESE EGGPLANT",
+   "invdesc": "CHINESE EGGPLANT",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CILANTRO",
+   "invdesc": "CILANTRO sz(60)",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 60,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "COLANTRO",
+   "invdesc": "NGO GAI",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 14,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CUCUMBER",
+   "invdesc": "CUCUMBER",
+   "vendor": "QSI",
+   "case_size": 55,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CUMIN",
+   "invdesc": "NGO OM",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 1,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "DAIKON",
+   "invdesc": "DAIKON",
+   "vendor": "WING PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "DILL",
+   "invdesc": "BABY DILL",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 12,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GARDEN EGGPLANT",
+   "invdesc": "EGGPLANT (THAI)",
+   "vendor": "CD FARM FRESH",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN BEAN",
+   "invdesc": "GREEN BEAN",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 27,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN LEAF LETTUCE",
+   "invdesc": "LETTUCE GREEN LEAF",
+   "vendor": "QSI",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN MUSTARD",
+   "invdesc": "BIG GAI CHOY",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 15,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN ONION",
+   "invdesc": "ONION GREEN MEDIUM",
+   "vendor": "I&T FRESH",
+   "case_size": 48,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ICEBERG LETTUCE",
+   "invdesc": "LETTUCE WR",
+   "vendor": "QSI",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ITALIAN SQUASH",
+   "invdesc": "ITALIAN SQUASH",
+   "vendor": "QSI",
+   "case_size": 22,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "JICAMA",
+   "invdesc": "JICAMA",
+   "vendor": "REYES PRODUCE",
+   "case_size": 36,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "JUTE LEAF",
+   "invdesc": "SKLUK (SALUYOT)",
+   "vendor": "WING PRODUCE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KAFFIR LIME LEAF",
+   "invdesc": "LIME LEAF",
+   "vendor": "CD FARM FRESH",
+   "case_size": 1,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LEMON GRASS",
+   "invdesc": "LEMON GRASS",
+   "vendor": "WING PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "NAPA",
+   "invdesc": "CABBAGE NAPA NAKED",
+   "vendor": "QSI",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "NIRA",
+   "invdesc": "GREEN NIRA",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 3,
+   "unit": "PC",
+   "note": "BUY 3LB AT A TIME",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "OKRA",
+   "invdesc": "OKRA",
+   "vendor": "WING PRODUCE",
+   "case_size": 14,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 10,
+    "thu": 15
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ON CHOY",
+   "invdesc": "ON CHOY",
+   "vendor": "WING PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "OPO",
+   "invdesc": "OPO",
+   "vendor": "WING PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PARSLEY",
+   "invdesc": "PARSLEY",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 60,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PERSIAN PICKLE PACK",
+   "invdesc": "CUCUMBER PERSIAN X FANCY",
+   "vendor": "QSI",
+   "case_size": 22,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "POTATO LEAF",
+   "invdesc": "YAV LY (YAM LEAF)",
+   "vendor": "WING PRODUCE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RADISH PACK",
+   "invdesc": "SACK RADISH",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED LEAF LETTUCE",
+   "invdesc": "LEAF RED LINER PACK",
+   "vendor": "QSI",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ROMAINE LETTUCE",
+   "invdesc": "ROMAINE LETTUCE",
+   "vendor": "QSI",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SNOW PEA",
+   "invdesc": "SNOW PEA",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SPINACH",
+   "invdesc": "SPINACH BUNCHED ROOTLESS",
+   "vendor": "I&T FRESH",
+   "case_size": null,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TARO LEAF",
+   "invdesc": "TARO LEAF",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TARO STEM",
+   "invdesc": "BAC HA",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "THAI BASIL",
+   "invdesc": "BASIL",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 12,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "THYME",
+   "invdesc": "HERB, THYME",
+   "vendor": "COOSEMAN",
+   "case_size": 1,
+   "unit": "LB",
+   "note": "#5LB  EVERYTIME",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TURNIP",
+   "invdesc": "TURNIP MEDIUM",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "WATERCRESS",
+   "invdesc": "WATERCRESS",
+   "vendor": "I&T FRESH",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YU CHOY",
+   "invdesc": "YU CLY SM",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ASSORTED MINTS",
+   "invdesc": "DAP CA",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED ONION",
+   "invdesc": "RED ONION - JUMBO",
+   "vendor": "WESTLAKE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 6
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SHALLOT",
+   "invdesc": "SHALLOT",
+   "vendor": "WESTLAKE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BROWN ONION",
+   "invdesc": "BROWN ONION - MEDIUM",
+   "vendor": "WESTLAKE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED PEARL ONION",
+   "invdesc": "RED PEARL",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 12,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "WHITE ONION",
+   "invdesc": "ONION WHITE MEDIUM",
+   "vendor": "WESTLAKE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN THAI CHILI",
+   "invdesc": "CHILE TAY",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 28,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED THAI CHILI",
+   "invdesc": "RED T CHILI",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "HABANERO PEPPER",
+   "invdesc": "CHILE HABANERO",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "FRESNO PEPPER",
+   "invdesc": "RED FRESNO PEPPER",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YELLOW PEPPER",
+   "invdesc": "YELLOW WAX PEPPER",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SERRANO PEPPER",
+   "invdesc": "SERRANO PEPPER",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "JALAPENO PEPPER",
+   "invdesc": "JALAPENO PEPPER",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN BELL PEPPER",
+   "invdesc": "BELL PEPPER GREEN VOLUME FILL X LARGE",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED BELL PEPPER",
+   "invdesc": "BELL PEPPER RED",
+   "vendor": "QSI",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "OYSTER MUSHROOM",
+   "invdesc": "OYSTER (10x6)",
+   "vendor": "CD FARM FRESH",
+   "case_size": 10,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BUTTON MUSHROOM",
+   "invdesc": "MUSHROOM",
+   "vendor": "UMINA",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ENOKI MUSHROOM",
+   "invdesc": "ENOKI",
+   "vendor": "CD FARM FRESH",
+   "case_size": 25,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KING MUSHROOM",
+   "invdesc": "KING OYSTER",
+   "vendor": "CD FARM FRESH",
+   "case_size": 5,
+   "unit": "KG",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RAW PEANUT W/SHELL",
+   "invdesc": "PEANUT",
+   "vendor": "WING PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YUCA CASSAVA",
+   "invdesc": "YUCA WAX",
+   "vendor": "REYES PRODUCE",
+   "case_size": 33,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YELLOW YAM",
+   "invdesc": "YELLOW YAM",
+   "vendor": "RIVERA",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YAM PURPLE",
+   "invdesc": "YAM (PURPLE)",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YAM WHITE",
+   "invdesc": "NAMI (YAMI)",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 35,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "MALANGA PURPLE",
+   "invdesc": "MALANGA LILA",
+   "vendor": "REYES PRODUCE",
+   "case_size": 33,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "MALANGA WHITE",
+   "invdesc": "MALANGA BLANCA",
+   "vendor": "REYES PRODUCE",
+   "case_size": 33,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SMALL TARO",
+   "invdesc": "SMALL TARO",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 32,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 5,
+    "thu": 5
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PEELED TARO",
+   "invdesc": "PEELED TARO",
+   "vendor": "PANDA PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GHANA YAM",
+   "invdesc": "GHANA YAM",
+   "vendor": "DORA'S AFRICAN PRODUCE",
+   "case_size": 55,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SWEET POTATO JAPANESE",
+   "invdesc": "YAMS ORIENTAL #1",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 40,
+   "unit": "LB",
+   "note": "10 PER WEEK",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 4,
+    "thu": 5
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED SWEET POTATO",
+   "invdesc": "(RED) YAMS GARNET NO.1",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BROWN POTATO",
+   "invdesc": "BROWN POTATO - SIZE A",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RED POTATO",
+   "invdesc": "RED POTATO - SIZE A",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "WHITE POTATO",
+   "invdesc": "WHITE POTATO - SIZE A",
+   "vendor": "TITO'S PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GARLIC PACK",
+   "invdesc": "GARLIC (5 ct)",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 35,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PEELED GARLIC",
+   "invdesc": "PEELED GARLIC",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GINGER",
+   "invdesc": "GINGER",
+   "vendor": "WING PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TURMERIC",
+   "invdesc": "TURMERIC",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GALANGA",
+   "invdesc": "GALANGA",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 1,
+   "unit": "LB",
+   "note": "BUY 3LB AT A TIME",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "APPLE BANANA",
+   "invdesc": "MANZANO (BREAKER)",
+   "vendor": "REYES PRODUCE",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BABY BANANA",
+   "invdesc": "BABY BANANA",
+   "vendor": "PAB PRODUCE",
+   "case_size": 15,
+   "unit": "LB",
+   "note": "BUY ON TUESDAY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BANANA GREEN",
+   "invdesc": "NO GAS DOLE BANANA",
+   "vendor": "PAB PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": "BUY ON TUESDAY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 12,
+    "thu": 15
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BANANA YELLOW",
+   "invdesc": "BANANA (BREAKER)",
+   "vendor": "PAB PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": "BUY ON TUESDAY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN PLANTAIN",
+   "invdesc": "PLANTAIN (NO GAS)",
+   "vendor": "REYES PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 5,
+    "thu": 10
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "HAWAIIAN PLANTAIN",
+   "invdesc": "HOPA",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 32,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YELLOW PLANTAIN",
+   "invdesc": "PLANTAIN (BREAKER)",
+   "vendor": "REYES PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": "FOR WEEKEND, BUY 8 BREAKERS",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 11,
+    "thu": 22
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BABY GREEN MANGO",
+   "invdesc": "BABY MANGO",
+   "vendor": "D.P. PRODUCE",
+   "case_size": 35,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN MANGO",
+   "invdesc": "GREEN MANGO",
+   "vendor": "D.P. PRODUCE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": "CHECK QUALITY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KENT MANGOES",
+   "invdesc": "MANGOES",
+   "vendor": "IBARRA & SON",
+   "case_size": 7,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 10,
+    "thu": 10
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "MANILLA MANGO",
+   "invdesc": "MANGO YELLOW",
+   "vendor": "IBARRA & SON",
+   "case_size": 10,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 10,
+    "thu": 15
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TOMMY MANGOES",
+   "invdesc": "MANGOS",
+   "vendor": "IBARRA & SON",
+   "case_size": 6,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 5,
+    "thu": 5
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KEITT MANGOES",
+   "invdesc": "MANGOS",
+   "vendor": "IBARRA & SON",
+   "case_size": 6,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 10,
+    "thu": 10
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "APPLE FUJI (LOOSE)SZ56",
+   "invdesc": "APPLES FUJI WASHINGTON XFCY PREM SZ56",
+   "vendor": "WESTLAKE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "APPLE FUJI (PACK)SZ125",
+   "invdesc": "APPLES FUJI SZ125",
+   "vendor": "WESTLAKE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "APPLE RED",
+   "invdesc": "APPLE RED DELI WASH XFCY PREM",
+   "vendor": "WESTLAKE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ASIAN PEAR",
+   "invdesc": "ASIAN PEARS 1-LAYER T/P",
+   "vendor": "WESTLAKE",
+   "case_size": 10,
+   "unit": "PC",
+   "note": "case listed as \"10's\"",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KOREAN PEAR",
+   "invdesc": "PEAR KOREAN",
+   "vendor": null,
+   "case_size": 24,
+   "unit": "CT",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "AVOCADO HAAS LOOSE",
+   "invdesc": "AVOCADO 36\"",
+   "vendor": "F. VARGAS PRODUCE",
+   "case_size": 36,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "AVOCADO PACK",
+   "invdesc": "AVOCADO 84\"",
+   "vendor": "F. VARGAS PRODUCE",
+   "case_size": 84,
+   "unit": "PC",
+   "note": "BUY 70s IF 84s ARE NOT AVAILABLE",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "BREADFRUIT",
+   "invdesc": "BREADFRUIT",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHERIMOYA SOURSOP",
+   "invdesc": "CHERIMOYA",
+   "vendor": "IBARRA & SON",
+   "case_size": 35,
+   "unit": "LB",
+   "note": "ONLY BUY FOR CHINESE NEW YEAR",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHERRIES",
+   "invdesc": "CHERRIES",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "CHERRY TOMATO PACK",
+   "invdesc": "TOMATO, MNC DC CHERRY HEIRLOOM",
+   "vendor": "COOSEMAN",
+   "case_size": 12,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "DRY COCONUT",
+   "invdesc": "COCONUT DRY (BROWN)",
+   "vendor": "REYES PRODUCE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "FLORIDA AVOCADO",
+   "invdesc": "AVOCADO DOMINICAN 18",
+   "vendor": "REYES PRODUCE",
+   "case_size": 18,
+   "unit": "PC",
+   "note": "ONCE A WEEK",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "FRESH COCONUT",
+   "invdesc": "THAI COCONUT (9pc) FRESH",
+   "vendor": "PANDA PRODUCE",
+   "case_size": 9,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GALA APPLE PACK",
+   "invdesc": "APPLES GALA 125SZ",
+   "vendor": "WESTLAKE",
+   "case_size": 125,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GRAPES BLACK SEEDLESS",
+   "invdesc": "GRAPE BLACK SEEDLESS",
+   "vendor": "WESTLAKE",
+   "case_size": 19,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GRAPES GREEN SEEDLESS",
+   "invdesc": "GRAPE SUPERIOR BAG",
+   "vendor": "WESTLAKE",
+   "case_size": 18,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GRAPES RED W/ SEED",
+   "invdesc": "GRAPE GLOBE BAG",
+   "vendor": "WESTLAKE",
+   "case_size": 19,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GRAPES RED SEEDLESS",
+   "invdesc": "GRAPE FLAME SEEDLESS BAG",
+   "vendor": "WESTLAKE",
+   "case_size": 19,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN APPLE",
+   "invdesc": "APPLE GRANNY SM WASH XFCY PREM",
+   "vendor": "WESTLAKE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GREEN PAPAYA",
+   "invdesc": "GREEN PAPAYA",
+   "vendor": "WING PRODUCE",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GUAVA",
+   "invdesc": "GUAVA",
+   "vendor": "D.P. PRODUCE",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "GUINEP",
+   "invdesc": "GUINEP",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": "ONCE A WEEK",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 5
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "HAWAIIAN PAPAYA",
+   "invdesc": "HAWAIIAN PAPAYA",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 8,
+   "unit": "CT",
+   "note": "ONLY BUY FOR CHINESE NEW YEAR",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "HONEY CRISP APPLES",
+   "invdesc": "APPLES HONEYCRISP",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 113,
+   "unit": "CT",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "HONEY TANGERINES",
+   "invdesc": "HONEY TANGERINE FL",
+   "vendor": "CD FARM FRESH",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "JUJUBE HONEY",
+   "invdesc": "JUJUBE HONEY",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "JUNE PLUM",
+   "invdesc": "JUNE PLUM",
+   "vendor": "D.P. PRODUCE",
+   "case_size": 20,
+   "unit": "LB",
+   "note": "CHECK QUALITY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KEY LIMES",
+   "invdesc": "K-LIMES",
+   "vendor": "ARSA PRODUCE",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "KIWI",
+   "invdesc": "KIWI VF",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LARGE TOMATO",
+   "invdesc": "TOMATO",
+   "vendor": "LOS AMIGOS",
+   "case_size": 21,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ROMA TOMATO (LOOSE)",
+   "invdesc": "ROMA",
+   "vendor": "LOS AMIGOS",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ROMA TOMATO (PACK)",
+   "invdesc": "ROMA",
+   "vendor": "LOS AMIGOS",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 3,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LEMON (LOOSE)",
+   "invdesc": "LEMON #115",
+   "vendor": "WESTLAKE",
+   "case_size": 115,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LEMON (PACK)",
+   "invdesc": "LEMON #140",
+   "vendor": "WESTLAKE",
+   "case_size": 140,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LIME (LOOSE)",
+   "invdesc": "LIMES #175",
+   "vendor": "WESTLAKE",
+   "case_size": 110,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 3
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "LIME (PACK)",
+   "invdesc": "LIMES # 200",
+   "vendor": "WESTLAKE",
+   "case_size": 200,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "NECTARINE PACK",
+   "invdesc": "W NECTARINE",
+   "vendor": "IBARRA & SON",
+   "case_size": 50,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "ORANGE",
+   "invdesc": "NAVEL ORANGE 56SZ",
+   "vendor": "WESTLAKE",
+   "case_size": 56,
+   "unit": "PC",
+   "note": "SUNTREAT BRAND",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 5,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PERSIMMON",
+   "invdesc": "FUYU PERSIMMON",
+   "vendor": "CD FARM FRESH",
+   "case_size": 40,
+   "unit": "LB",
+   "note": "WAIT FOR SEASON",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PINEAPPLE",
+   "invdesc": "PINEAPPLE",
+   "vendor": "IBARRA & SON",
+   "case_size": 5,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PINK LADY APPLES",
+   "invdesc": "APPLES PINK LADY",
+   "vendor": "DAVALAN FRESH",
+   "case_size": null,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PLUM PACK",
+   "invdesc": "PLUM",
+   "vendor": "IBARRA & SON",
+   "case_size": 8,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PLUMS BLACK",
+   "invdesc": "PLUMS BLACK",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 28,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PLUMS",
+   "invdesc": "PLUMS RED",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 28,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PLUMS GREEN",
+   "invdesc": "PLUMS GREEN",
+   "vendor": null,
+   "case_size": 28,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PLUMS PURPLE",
+   "invdesc": "PLUMS EXPRESS",
+   "vendor": "DAVALAN FRESH",
+   "case_size": 28,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "POMEGRANATE",
+   "invdesc": "POMEGRANATE",
+   "vendor": "IBARRA & SON",
+   "case_size": 24,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "POMELO",
+   "invdesc": "POMELO",
+   "vendor": "CD FARM FRESH",
+   "case_size": 6,
+   "unit": "PC",
+   "note": "ONLY BUY FOR CHINESE NEW YEAR",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PUMPKIN",
+   "invdesc": "KABOCHA (MED)",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 35,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 2,
+    "thu": 4
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "PUMPKIN (PEELED) LARGE",
+   "invdesc": "",
+   "vendor": "GREENFIELD PRODUCE",
+   "case_size": 35,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RAMBUTAN",
+   "invdesc": "RAMBUTAN",
+   "vendor": "CD FARM FRESH",
+   "case_size": 15,
+   "unit": "LB",
+   "note": "CHECK QUALITY",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "RIPE PAPAYA",
+   "invdesc": "PAPAYA",
+   "vendor": "KARLITA PRODUCE",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 1
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "STRAWBERRY",
+   "invdesc": "STRAWBERRIES",
+   "vendor": null,
+   "case_size": 4,
+   "unit": "PK",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SWEET CORN YELLOW",
+   "invdesc": "CORN YELLOW",
+   "vendor": "I&T FRESH",
+   "case_size": 48,
+   "unit": "PC",
+   "note": "DO NOT BUY FROM TITO'S",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 6,
+    "thu": 8
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "SWEET TAMARIND",
+   "invdesc": "SWEET TAMARIND",
+   "vendor": "D.P. PRODUCE",
+   "case_size": 16,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TANGERINES",
+   "invdesc": "TANG",
+   "vendor": "WESTLAKE",
+   "case_size": 22,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "WATERMELON",
+   "invdesc": "WATERMELON",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": "ONLY BUY FOR CHINESE NEW YEAR",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "YOUNG COCONUT",
+   "invdesc": "YOUNG COCONUT (20pc)",
+   "vendor": "WESTLAKE",
+   "case_size": 20,
+   "unit": "PC",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 1,
+    "thu": 2
+   },
+   "mode": "shelf_cooler"
+  }
+ ],
+ "meat": [
+  {
+   "dept": "meat",
+   "name": "Beef Brisket",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 2,
+    "tue": 2,
+    "wed": 2,
+    "thu": 2,
+    "fri": 2,
+    "sat": 2
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Short Ribs",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 1,
+    "tue": 1,
+    "wed": 1,
+    "thu": 2,
+    "fri": 2,
+    "sat": 2
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Neck Bone",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 4,
+    "fri": 4,
+    "sat": 4
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Bone-In Pork Loin",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 1,
+    "tue": 1,
+    "wed": 1,
+    "thu": 1,
+    "fri": 1,
+    "sat": 1
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Spare Ribs",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Butt",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 6,
+    "tue": 6,
+    "wed": 6,
+    "thu": 8,
+    "fri": 8,
+    "sat": 8
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Top Round",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Eye Round",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Hind Shank",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 15,
+    "tue": 15,
+    "wed": 15,
+    "thu": 20,
+    "fri": 20,
+    "sat": 20
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Cow Foot",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Chicken Breast",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 1,
+    "tue": 1,
+    "wed": 1,
+    "thu": 1,
+    "fri": 1,
+    "sat": 1
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Leg",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 6,
+    "tue": 6,
+    "wed": 6,
+    "thu": 8,
+    "fri": 8,
+    "sat": 8
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Roaster Wings",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 4,
+    "tue": 4,
+    "wed": 4,
+    "thu": 4,
+    "fri": 4,
+    "sat": 4
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Roaster Legs",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Chicken Gizzard",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 4,
+    "tue": 4,
+    "wed": 4,
+    "thu": 4,
+    "fri": 4,
+    "sat": 4
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Honeycomb Tripe",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 7,
+    "tue": 7,
+    "wed": 7,
+    "thu": 8,
+    "fri": 8,
+    "sat": 8
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Tendon",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 15,
+    "tue": 15,
+    "wed": 15,
+    "thu": 15,
+    "fri": 15,
+    "sat": 15
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Omasum Tripe",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 2,
+    "tue": 2,
+    "wed": 2,
+    "thu": 2,
+    "fri": 2,
+    "sat": 2
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Beef Liver",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Liver",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 1,
+    "tue": 1,
+    "wed": 1,
+    "thu": 1,
+    "fri": 1,
+    "sat": 1
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Chicken Hearts",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 1,
+    "tue": 1,
+    "wed": 1,
+    "thu": 1,
+    "fri": 1,
+    "sat": 1
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Baking Hen",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 10,
+    "tue": 10,
+    "wed": 10,
+    "thu": 10,
+    "fri": 10,
+    "sat": 10
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Chicken Feet",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Stewing Hen",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": "Order as needed — no fixed PAR",
+   "shelf_target": null,
+   "pars": {
+    "mon": 0,
+    "tue": 0,
+    "wed": 0,
+    "thu": 0,
+    "fri": 0,
+    "sat": 0
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Feet",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Neck Bone",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Hock",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Pork Belly",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 6,
+    "tue": 6,
+    "wed": 6,
+    "thu": 8,
+    "fri": 8,
+    "sat": 8
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Skin-On Goat Mutton",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 15,
+    "tue": 15,
+    "wed": 15,
+    "thu": 15,
+    "fri": 15,
+    "sat": 15
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Turkey Wings",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 10,
+    "tue": 10,
+    "wed": 10,
+    "thu": 10,
+    "fri": 10,
+    "sat": 10
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Smoked Turkey Wings",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 8,
+    "tue": 8,
+    "wed": 8,
+    "thu": 8,
+    "fri": 8,
+    "sat": 8
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Smoked Drum",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 5,
+    "tue": 5,
+    "wed": 5,
+    "thu": 5,
+    "fri": 5,
+    "sat": 5
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Turkey Drums",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 6,
+    "tue": 6,
+    "wed": 6,
+    "thu": 6,
+    "fri": 6,
+    "sat": 6
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Turkey Neck Bone",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Turkey Gizzard",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 3,
+    "tue": 3,
+    "wed": 3,
+    "thu": 3,
+    "fri": 3,
+    "sat": 3
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Cooking Oil",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {
+    "mon": 10,
+    "tue": 10,
+    "wed": 10,
+    "thu": 10,
+    "fri": 10,
+    "sat": 10
+   },
+   "mode": "single"
+  },
+  {
+   "dept": "meat",
+   "name": "Oxtail",
+   "invdesc": "",
+   "vendor": "LAP",
+   "case_size": null,
+   "unit": null,
+   "note": "Order as needed — for Jimmy",
+   "shelf_target": null,
+   "pars": {
+    "mon": 0,
+    "tue": 0,
+    "wed": 0,
+    "thu": 0,
+    "fri": 0,
+    "sat": 0
+   },
+   "mode": "single"
+  }
+ ],
+ "fish": [
+  {
+   "dept": "fish",
+   "name": "Catfish Bone and Meat",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Whiting Fillet",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Yellowtail",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Yellow Croaker",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh Tilapia",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Tuna",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Yellowtail (Steak)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Whiting Fish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Seabass",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Doctor Fish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh Tilapia Fillet",
+   "invdesc": "",
+   "vendor": "SEALAND",
+   "case_size": 22,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Pink Grouper (Whole)",
+   "invdesc": "",
+   "vendor": "SEALAND",
+   "case_size": 100,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Swordfish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Yellowtail (Head)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Halibut (Whole)",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fish Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Headless Snapper",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Halibut (Steak)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "White Bass",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Thresher Shark Steak",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "White Sea Bass (Steak)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "True Red Snapper (U/1)",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Tilapia",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "New Zealand Snapper",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Anchovy",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon (Belly)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Spanish Mackerel",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Chilean Seabass",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "King Mackerel (Whole)",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon (Whole)",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Jack Fish",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Parrot Fish",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Cat Fish Nuggets",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh Branzino",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Red Mullet",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Robalo Snook",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "White Perch",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Belt Fish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smelt Fish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Halibut Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Pargo Fish",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Mullet",
+   "invdesc": "",
+   "vendor": "PACIFIC AMERICAN FISH CO",
+   "case_size": 25,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Buffalo (Head)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Red Tilapia",
+   "invdesc": "",
+   "vendor": "PACIFIC AMERICAN FISH CO",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Strawberry Grouper",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Gaspergoo",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fish Roe",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Sierra",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Striped Bass",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Golden Pompano",
+   "invdesc": "",
+   "vendor": "H&N",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Sea Bream",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh King Mackerel (Steak)",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": 100,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon Fillet W/Skin",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon (Steak)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Yellowtail Snapper",
+   "invdesc": "",
+   "vendor": "ISLAND BOY",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Pink Grouper (Steak)",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Catfish",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Catfish Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Buffalo (Steak)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Norway Saba Mackerel",
+   "invdesc": "",
+   "vendor": "PACIFIC AMERICAN FISH CO",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Doversole Fillet",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Butter Fish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Frozen Red Snapper Fillet",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "King Mackerel Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salmon (Meat & Bone)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "White Sea Bass (Head)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Barracuda",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Grouper Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Snapper Rock Cod Fillet",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Frozen Tilapia Fillet",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Catfish Fillet",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "50/60 Shrimp Head-On",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Black Tiger Shrimp Block",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Shrimp (S)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "70/80 Shrimp Head-On",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "61/70 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "10/20 Shrimp Head-On",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "1/2 Fresh Water Prawn",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh Water EZ Peel Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "30/40 Shrimp Head-On Block",
+   "invdesc": "",
+   "vendor": "H&N",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Shrimp (M)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "16/20 Shrimp Head-On",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "U/15 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Small Cooked Shrimp",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "10/20 Wild Red Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "60/70 Shrimp Head-On",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Head-On Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "13/15 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Peeled & Deveined Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Large Cooked Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Black Tiger Shrimp",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "8/12 Tiger Shrimp 2lbs",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "51/60 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "26/30 Shrimp Headless Block",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "20/30 Shrimp Head-On Block",
+   "invdesc": "",
+   "vendor": "H&N",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "6/8 Fresh Water Prawn",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "4/6 Fresh Water Prawn",
+   "invdesc": "",
+   "vendor": "PACIFIC AMERICAN FISH CO",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "41/50 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "2/4 Fresh Water Prawn",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Shrimp (L)",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "36/40 Shrimp Headless Block",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "40/50 Shrimp Head-On Block",
+   "invdesc": "",
+   "vendor": "H&N",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "31/35 Shrimp Headless",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "21/25 Shrimp Headless Block",
+   "invdesc": "",
+   "vendor": "H&N",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Blood Clams",
+   "invdesc": "",
+   "vendor": "SEALAND",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Brown Rock Crab",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Abalone",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Dungeness Crab Sections",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 30,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Crab Claws",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Kono Mussel Half Shell",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Snow Crab Legs",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Broken Snow Crab Legs",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Crab Meat",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Lobster Tails",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Soft Shell Crabs",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Broken King Crab Legs",
+   "invdesc": "",
+   "vendor": "SAMS CLUB",
+   "case_size": 44,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Shell-Off Blue Crab",
+   "invdesc": "",
+   "vendor": "H&T",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Conch Meat (Belizean)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Blue Crab",
+   "invdesc": "",
+   "vendor": "H&T",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Pacific Oysters 10fl",
+   "invdesc": "",
+   "vendor": "SEALAND SEAFOOD",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Full Case Oysters",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Half Case Oysters",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Single Oyster",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Oyster Jar 10oz",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Soft Cuttlefish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Cleaned Cuttlefish",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Baby Octopus 16-25",
+   "invdesc": "",
+   "vendor": "PAFCO",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Frozen Octopus",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Fresh Squid",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Flat Squid",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Whole Fresh Squid",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Squid Loligo (Yari-Ika)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Tubed Squid",
+   "invdesc": "",
+   "vendor": "H&T",
+   "case_size": 11,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Cooked Octopus",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Jumbo Squid 400/600",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Squid Loligo (Wild Caught)",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smoked Barracuda",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smoked Barracuda Head",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smoked Catfish",
+   "invdesc": "",
+   "vendor": "LA RUCHE",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Stock Fish",
+   "invdesc": "",
+   "vendor": "LA RUCHE",
+   "case_size": 100,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smoked Kini Fish",
+   "invdesc": "",
+   "vendor": "RIVERA",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Smoked Herring",
+   "invdesc": "",
+   "vendor": "RIVERA",
+   "case_size": 18,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Herring Fillet",
+   "invdesc": "",
+   "vendor": "RIVERA",
+   "case_size": 10,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Salted Mackerel",
+   "invdesc": "",
+   "vendor": "ANJO'S IMPORTS",
+   "case_size": 20,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Saltfish No Skin",
+   "invdesc": "",
+   "vendor": "ISLAND BOY",
+   "case_size": 40,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Saltfish W/ Skin",
+   "invdesc": "",
+   "vendor": "ISLAND BOY",
+   "case_size": 50,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Frozen Sardines",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Imitation Crab Meat Sticks",
+   "invdesc": "",
+   "vendor": null,
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Imitation Crab Meat / lb",
+   "invdesc": "",
+   "vendor": "COSTCO",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  },
+  {
+   "dept": "fish",
+   "name": "Seafood Mix",
+   "invdesc": "",
+   "vendor": "NAUTILUS",
+   "case_size": 24,
+   "unit": "LB",
+   "note": null,
+   "shelf_target": null,
+   "pars": {},
+   "mode": "single"
+  }
+ ]
+}
