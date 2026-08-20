@@ -92,6 +92,18 @@ if (!DATABASE_URL) {
     '',
     'Locally, pass it on the command line:',
     '  DATABASE_URL="postgres://user:pass@localhost:5432/datmoi" npm start',
+    '',
+    '--- where this process is actually running ---',
+    `  service:     ${process.env.RAILWAY_SERVICE_NAME || '(not on Railway)'}`,
+    `  environment: ${process.env.RAILWAY_ENVIRONMENT_NAME || '(unknown)'}`,
+    `  deployed:    ${process.env.RAILWAY_DEPLOYMENT_ID || '(unknown)'}`,
+    // Names only, never values — this log may be shared.
+    `  database-ish variables visible here: ${
+      Object.keys(process.env).filter(k => /DATA|POSTGRES|\bPG/i.test(k)).sort().join(', ') || 'none'
+    }`,
+    '',
+    'If "service" above is your database rather than the app, the variable went on',
+    'the wrong box. If "environment" is not the one you edited, switch to it first.',
     ''
   ].join('\n'));
   process.exit(1);
