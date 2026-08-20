@@ -139,6 +139,7 @@ function orderedItems(){
 
 // ---- department switching ----
 async function switchDept(d){
+  $('warehouseView').style.display = 'none';
   dept = d;
   localStorage.setItem('dm_dept', d);
   document.body.dataset.dept = d;
@@ -357,7 +358,7 @@ function handleResetTap(){
 // ---- views ----
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
-   'orderNameView','addItemView','backupView','historyView']
+   'orderNameView','addItemView','backupView','employeesView','historyView','warehouseView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -1014,6 +1015,138 @@ async function setEmployeeRole(id, isManager){
 async function setEmployeeActive(id, active){
   await empCall('PUT', '/api/employees/' + id, { active });
   showEmployees();
+}
+
+// ---- offsite warehouse ------------------------------------------------------
+// Not a counting screen. The other tabs ask "how much is on the shelf right now",
+// answered by whoever is standing in front of it. Nobody is standing in front of
+// this one, so the screen has to say how old each number is and let a stale one
+// look like the guess it is.
+let whStock = [], whMoves = [], whOpen = null;
+
+async function showWarehouse(){
+  hideAll();
+  document.body.dataset.dept = 'warehouse';
+  document.querySelectorAll('#deptBar button').forEach(b =>
+    b.classList.toggle('active', b.dataset.dept === 'warehouse'));
+  $('warehouseView').style.display = 'block';
+  $('footerBar').style.display = 'none';
+  $('whWrap').innerHTML = '<div class="hint">Loading...</div>';
+  const r = await fetch('/api/warehouse').then(x => x.json()).catch(() => null);
+  if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
+  whStock = r.stock; whMoves = r.moves;
+  renderWarehouse();
+}
+
+function ageOf(row){
+  if (row.counted_at === null || row.days_since_count === null) return { band: 'stale', text: 'never counted' };
+  const d = Number(row.days_since_count);
+  const who = row.counted_by ? ` by ${row.counted_by}` : '';
+  const when = d < 1 ? 'today' : d < 2 ? 'yesterday'
+    : d < 14 ? `${Math.round(d)} days ago`
+    : d < 60 ? `${Math.round(d / 7)} weeks ago`
+    : `${Math.round(d / 30)} months ago`;
+  const band = d < 7 ? 'fresh' : d < 30 ? 'aging' : 'stale';
+  return { band, text: `counted ${when}${who}` };
+}
+
+const fmtQty = n => String(Math.round(Number(n) * 100) / 100);
+
+function renderWarehouse(){
+  const q = ($('whSearch').value || '').trim().toLowerCase();
+  const wrap = $('whWrap');
+  const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
+  const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
+  $('whSummary').innerHTML = whStock.length
+    ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
+    : 'Nothing on the list yet.';
+
+  const shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
+  wrap.innerHTML = `
+    <div class="vgroup">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add something</div></div>
+      <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
+        <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
+      </div>
+    </div>
+    <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
+    <div class="hint" id="whMsg"></div>`;
+
+  if (!shown.length && q){
+    wrap.insertAdjacentHTML('beforeend', '<div class="emptystate">Nothing matches that.</div>');
+  }
+
+  shown.forEach(row => {
+    const age = ageOf(row);
+    const div = document.createElement('div');
+    div.className = 'whrow ' + age.band;
+    const open = whOpen === row.item_name;
+    div.innerHTML = `
+      <div class="whtop">
+        <span class="whname">${htmlEsc(row.item_name)}</span>
+        <span class="whqty">${fmtQty(row.qty)}${row.unit ? ` <span class="whunit">${htmlEsc(row.unit)}</span>` : ''}</span>
+      </div>
+      <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
+      ${open ? `
+        <div class="whform">
+          <input type="tel" inputmode="decimal" id="whQty_${row.id || ''}" class="whqtyinput" placeholder="How many?">
+        </div>
+        <div class="whacts">
+          <button onclick="whMove('${esc(row.item_name)}','counted')">I counted it</button>
+          <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
+          <button onclick="whMove('${esc(row.item_name)}','taken')">Took to store</button>
+        </div>`
+      : `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`}`;
+    wrap.appendChild(div);
+  });
+
+  if (whMoves.length){
+    const h = document.createElement('div');
+    h.innerHTML = `<div class="vsummarybar" style="margin-top:20px;">
+      <div class="vs-title">Recent movement</div>
+      <div class="vs-sub">who changed what, most recent first</div></div>`;
+    whMoves.slice(0, 25).forEach(m => {
+      const when = new Date(m.moved_at).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      const what = m.kind === 'counted' ? `counted <b>${htmlEsc(m.item_name)}</b> at ${fmtQty(m.qty_after)}`
+        : m.kind === 'added' ? `dropped off ${fmtQty(Math.abs(m.delta || 0))} <b>${htmlEsc(m.item_name)}</b> (now ${fmtQty(m.qty_after)})`
+        : m.kind === 'taken' ? `took ${fmtQty(Math.abs(m.delta || 0))} <b>${htmlEsc(m.item_name)}</b> to the store (now ${fmtQty(m.qty_after)})`
+        : `removed <b>${htmlEsc(m.item_name)}</b>`;
+      const d = document.createElement('div');
+      d.className = 'whmove';
+      d.innerHTML = `${when} &middot; ${htmlEsc(m.moved_by || 'someone')} ${what}`;
+      h.appendChild(d);
+    });
+    wrap.appendChild(h);
+  }
+}
+
+function whToggle(name){ whOpen = whOpen === name ? null : name; renderWarehouse(); }
+
+async function whAdd(){
+  const name = $('whNewName').value.trim();
+  const unit = $('whNewUnit').value.trim();
+  const qty = $('whNewQty').value.trim();
+  if (!name){ $('whMsg').textContent = 'Give it a name first.'; return; }
+  const res = await fetch('/api/warehouse/item', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, unit, qty })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ $('whMsg').textContent = body.error || 'Could not add that.'; return; }
+  await showWarehouse();
+}
+
+async function whMove(name, kind){
+  const input = document.querySelector('.whqtyinput');
+  const qty = input ? input.value.trim() : '';
+  if (qty === ''){ return; }
+  const res = await fetch('/api/warehouse/move', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ item_name: name, kind, qty })
+  });
+  if (res.ok){ whOpen = null; await showWarehouse(); }
 }
 
 // ---- backup ----

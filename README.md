@@ -128,6 +128,30 @@ Three things about the transcription:
 
 PARs are all at 0 until the real ones are set under **Settings → PARs**.
 
+## The offsite warehouse
+
+The fourth tab is not a counting screen. The other three ask what is on the
+shelf right now, answered by whoever is standing in front of it. Nobody is
+standing in front of the warehouse — a few people go occasionally — so a
+quantity there is only as good as its age.
+
+Every line therefore leads with **when it was last counted and by whom**, and
+carries a stripe for it: green under a week, amber under a month, red beyond
+that or never counted. The summary counts how many have gone unchecked for a
+month, which is the number worth watching.
+
+Three movements, and the difference between them matters:
+
+- **I counted it** — sets the quantity *and* resets its age. The only one that
+  does, because it is the only one where somebody looked.
+- **Dropped off** — adds to the quantity. Stock moved; nobody audited the rest.
+- **Took to store** — subtracts, never below zero.
+
+Each writes a line to the movement log with who and when, so "who took the last
+two cases" has an answer. Stock lives in `warehouse_stock`, separate from
+`counts`, so **Reset never touches it** — the ordering counts are a scratch pad
+wiped each round, and this is a standing record.
+
 ## Adding an item
 
 **Settings → Add an Item** adds one to the department you're in: shelf name, the

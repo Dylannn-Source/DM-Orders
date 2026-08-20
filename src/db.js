@@ -227,6 +227,33 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    -- The offsite warehouse is stock, not a count. A department's counts are a
+    -- scratch pad wiped at the end of each ordering round; this is the standing
+    -- record of what is out there, and Reset must never touch it.
+    CREATE TABLE IF NOT EXISTS warehouse_stock (
+      item_name   TEXT PRIMARY KEY,
+      qty         NUMERIC NOT NULL DEFAULT 0,
+      unit        TEXT,
+      note        TEXT,
+      counted_at  TIMESTAMPTZ,
+      counted_by  TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    -- Every change, so "who took the last two cases" has an answer.
+    CREATE TABLE IF NOT EXISTS warehouse_moves (
+      id         SERIAL PRIMARY KEY,
+      item_name  TEXT NOT NULL,
+      kind       TEXT NOT NULL,          -- counted | added | taken | removed
+      delta      NUMERIC,
+      qty_after  NUMERIC NOT NULL,
+      note       TEXT,
+      moved_by   TEXT,
+      moved_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS warehouse_moves_at ON warehouse_moves (moved_at DESC);
+
     CREATE TABLE IF NOT EXISTS employees (
       id              SERIAL PRIMARY KEY,
       name            TEXT NOT NULL,

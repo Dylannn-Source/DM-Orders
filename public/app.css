@@ -103,7 +103,8 @@ main{padding:10px 12px 4px;}
 .btn-primary{background:var(--ink);color:var(--paper);flex:1.8;}
 .btn-ghost{background:var(--paper-2);color:var(--ink);flex:1;}
 
-#summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView{
+#summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView,
+#orderNameView,#addItemView,#backupView,#employeesView{
   display:none;padding:14px 14px 100px;}
 .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .backbtn{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);
@@ -207,3 +208,44 @@ select.single.unassigned{border-color:var(--accent);background:var(--accent-soft
 .authlogo{display:block;width:100%;max-width:300px;height:auto;margin:0 auto 14px;}
 .headrow{display:flex;align-items:center;gap:11px;}
 .headmark{width:44px;height:44px;flex:none;}
+
+/* ---- offsite warehouse ---- */
+body[data-dept="warehouse"]{
+  --paper:#F0EEE9; --paper-2:#E4E1D9; --ink:#26241F; --ink-soft:#5F5A50;
+  --line:#D6D1C6; --accent:#C43E3F; --accent-soft:#F7DEDE; --good:#5C7A3D; --good-soft:#E1EAD1;
+}
+#warehouseView{display:none;padding:0 0 96px;}
+.whhead{padding:14px 14px 12px;border-bottom:1px solid var(--line);background:var(--paper);}
+.whhead h1{font-family:var(--serif);font-size:23px;font-weight:400;margin:2px 0 10px;}
+.whsummary{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:9px;line-height:1.7;}
+.whsummary b{color:var(--accent);font-weight:700;}
+#whWrap{padding:14px;}
+.whrow{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);
+  border-radius:10px;padding:11px 12px;margin-bottom:8px;}
+.whrow.stale{border-left-color:var(--accent);}
+.whrow.aging{border-left-color:#C9A227;}
+.whrow.fresh{border-left-color:var(--good);}
+.whtop{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.whname{font-weight:700;font-size:15px;line-height:1.25;}
+.whqty{font-family:var(--mono);font-size:19px;font-weight:700;white-space:nowrap;}
+.whunit{font-family:var(--mono);font-size:11px;color:var(--ink-soft);font-weight:400;}
+.whage{font-family:var(--mono);font-size:10.5px;margin-top:4px;letter-spacing:.02em;}
+.whage.stale{color:var(--accent);font-weight:700;}
+.whage.aging{color:#8a6d00;}
+.whage.fresh{color:var(--ink-soft);}
+.whacts{display:flex;gap:7px;margin-top:10px;}
+.whacts button{flex:1;border:1px solid var(--line);background:var(--paper-2);border-radius:8px;
+  padding:9px 0;font-size:12.5px;font-weight:700;color:var(--ink);font-family:var(--sans);}
+.whacts button:active{background:var(--line);}
+.whform{margin-top:10px;display:flex;gap:7px;align-items:center;}
+.whform input{flex:1;border:1px solid var(--line);background:var(--card);border-radius:8px;
+  padding:9px 10px;font-family:var(--mono);font-size:15px;color:var(--ink);width:100%;}
+.whform button{border:none;background:var(--ink);color:var(--paper);border-radius:8px;
+  padding:10px 15px;font-weight:700;font-size:13px;}
+.whmove{font-family:var(--mono);font-size:11px;color:var(--ink-soft);padding:7px 0;
+  border-bottom:1px dotted var(--line);line-height:1.55;}
+.whmove b{color:var(--ink);font-weight:700;}
+
+/* the add row holds two fields side by side and must not push past the card */
+#whWrap .vitem{gap:7px;}
+#whWrap .vitem .textinput{flex:1 1 0;min-width:0;margin-right:0;}

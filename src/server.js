@@ -233,6 +233,104 @@ app.put('/api/employees/:id', async (req, res) => {
   }
 });
 
+// ---- offsite warehouse ------------------------------------------------------
+// Few people go there and not often, so a quantity is only as good as its age.
+// Every response carries how long ago each number was last confirmed, and the
+// screen leans on that rather than on the number alone.
+app.get('/api/warehouse', async (_req, res) => {
+  try {
+    const [stock, moves] = await Promise.all([
+      pool.query(`SELECT *, EXTRACT(EPOCH FROM (NOW() - counted_at))/86400 AS days_since_count
+                    FROM warehouse_stock ORDER BY item_name`),
+      pool.query(`SELECT * FROM warehouse_moves ORDER BY moved_at DESC LIMIT 60`)
+    ]);
+    res.json({ stock: stock.rows, moves: moves.rows });
+  } catch (e) {
+    console.error('warehouse fetch failed', e);
+    res.status(500).json({ error: 'warehouse fetch failed' });
+  }
+});
+
+app.post('/api/warehouse/item', async (req, res) => {
+  const { name, unit, qty } = req.body || {};
+  const clean = String(name || '').trim();
+  if (!clean) return res.status(400).json({ error: 'name required' });
+  const start = Number(qty) || 0;
+  try {
+    const ins = await pool.query(
+      `INSERT INTO warehouse_stock (item_name, unit, qty, counted_at, counted_by)
+       VALUES ($1,$2,$3,NOW(),$4)
+       ON CONFLICT (item_name) DO NOTHING RETURNING item_name`,
+      [clean, String(unit || '').trim() || null, start, req.employee.name]);
+    if (!ins.rowCount) return res.status(409).json({ error: 'that is already on the list' });
+    await pool.query(
+      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, moved_by)
+       VALUES ($1,'counted',NULL,$2,$3)`, [clean, start, req.employee.name]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('warehouse add failed', e);
+    res.status(500).json({ error: 'warehouse add failed' });
+  }
+});
+
+// One route for all three movements. "counted" sets the number and is the only
+// one that refreshes its age — adding or taking a case tells you the stock moved,
+// not that anyone looked at the shelf.
+app.put('/api/warehouse/move', async (req, res) => {
+  const { item_name, kind, qty, note } = req.body || {};
+  if (!item_name) return res.status(400).json({ error: 'item_name required' });
+  if (!['counted', 'added', 'taken'].includes(kind)) {
+    return res.status(400).json({ error: 'kind must be counted, added or taken' });
+  }
+  const n = Number(qty);
+  if (!isFinite(n) || n < 0) return res.status(400).json({ error: 'quantity must be a number' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT qty FROM warehouse_stock WHERE item_name=$1 FOR UPDATE', [item_name]);
+    if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not on the list' }); }
+    const before = Number(rows[0].qty);
+    const after = kind === 'counted' ? n
+                : kind === 'added'   ? before + n
+                : Math.max(before - n, 0);
+    const delta = kind === 'counted' ? null : after - before;
+    await client.query(
+      kind === 'counted'
+        ? `UPDATE warehouse_stock SET qty=$2, counted_at=NOW(), counted_by=$3, updated_at=NOW() WHERE item_name=$1`
+        : `UPDATE warehouse_stock SET qty=$2, updated_at=NOW() WHERE item_name=$1`,
+      kind === 'counted' ? [item_name, after, req.employee.name] : [item_name, after]);
+    await client.query(
+      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, note, moved_by)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [item_name, kind, delta, after, String(note || '').trim() || null, req.employee.name]);
+    await client.query('COMMIT');
+    res.json({ ok: true, qty: after });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('warehouse move failed', e);
+    res.status(500).json({ error: 'warehouse move failed' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/warehouse/item/:name', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    const { rows } = await pool.query(
+      'DELETE FROM warehouse_stock WHERE item_name=$1 RETURNING qty', [req.params.name]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    await pool.query(
+      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, moved_by)
+       VALUES ($1,'removed',NULL,0,$2)`, [req.params.name, req.employee.name]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('warehouse delete failed', e);
+    res.status(500).json({ error: 'warehouse delete failed' });
+  }
+});
+
 const DEPTS = new Set(['produce', 'meat', 'fish']);
 function checkDept(req, res) {
   const d = req.params.dept;
