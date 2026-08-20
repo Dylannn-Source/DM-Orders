@@ -99,6 +99,21 @@ DELETE FROM vendors WHERE dept = 'fish';
 DELETE FROM items   WHERE dept = 'fish';
 ```
 
+## What gets copied
+
+**Copy text for <vendor>** puts this on the clipboard, ready to paste into a
+text or email:
+
+```
+Dat Moi Order - 8/20
+
+Pork Belly: 3
+Oxtail: 1 - order as needed
+```
+
+One ticket per vendor, so the vendor's own name is left out of the message.
+An item only carries a trailing note if one was set on it.
+
 ## How ordering is calculated
 
 - **single**: `order = par(today) − counted`, floored at 0.

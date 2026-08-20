@@ -344,7 +344,10 @@ function showSummary(){
   });
 
   const dayLabel = DAY_NAMES[day];
-  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // Copied tickets use a plain numeric date: "8/20".
+  const sendDate = now.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
   $('summaryDate').textContent = `${dayLabel} \u00b7 ${dateStr}`;
 
   const wrap = $('ticketsWrap');
@@ -397,7 +400,7 @@ function showSummary(){
       <div class="ticket-foot">
         <button class="copybtn" onclick="copyTicket(${idx}, this)">Copy text for ${htmlEsc(v)}</button>
       </div>`;
-    ticket.dataset.text = buildText(v, list, dayLabel, dateStr);
+    ticket.dataset.text = buildText(list, sendDate);
     ticket.dataset.vendor = v;
     ticket.dataset.dayLabel = dayLabel;
     ticket.dataset.items = JSON.stringify(list.map(it => ({ name: it.name, qty: it.orderQty, note: it.note || null })));
@@ -411,12 +414,14 @@ function effQty(name, raw){
   return raw;
 }
 function setRound(name, mode){ roundChoices[name] = mode; showSummary(); }
-function buildText(vendor, list, dayLabel, dateStr){
-  const lines = [`Dat Moi ${dept} order \u2013 ${vendor} \u2013 ${dayLabel} ${dateStr}`, ''];
+// The message a vendor actually receives. Each ticket already goes to one vendor,
+// so naming them back to themselves adds nothing; keep it to the date and the
+// lines they have to read. A note only appears when the buyer typed one.
+function buildText(list, dateStr){
+  const lines = [`Dat Moi Order - ${dateStr}`, ''];
   list.forEach(it => {
     let l = `${it.name}: ${fmt(it.orderQty)}`;
-    if (it.case_size) l += ` case${it.orderQty == 1 ? '' : 's'} (${fmt(it.case_size)}${it.unit ? ' ' + it.unit : ''})`;
-    if (it.note) l += ` \u2013 ${it.note}`;
+    if (it.note) l += ` - ${it.note}`;
     lines.push(l);
   });
   return lines.join('\n');
