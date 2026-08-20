@@ -6,12 +6,80 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false }
-});
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error([
+    '',
+    'DATABASE_URL is not set, so there is no database to connect to.',
+    '',
+    'On Railway this means no Postgres is linked to this service. Railway does',
+    'not share one service\'s variables with another automatically:',
+    '',
+    '  1. In the project: New -> Database -> Add PostgreSQL',
+    '  2. Open this service -> Variables -> New Variable',
+    '  3. Name: DATABASE_URL   Value: ${{Postgres.DATABASE_URL}}',
+    '     (match "Postgres" to whatever the database service is actually called)',
+    '',
+    'Locally, pass it on the command line:',
+    '  DATABASE_URL="postgres://user:pass@localhost:5432/datmoi" npm start',
+    ''
+  ].join('\n'));
+  process.exit(1);
+}
+
+// Railway's private network (*.railway.internal) speaks plain TCP; its public
+// proxy and most hosted providers require TLS. Guess from the hostname, and if
+// the server disagrees, initDb retries the other way rather than crash-looping.
+// Set DATABASE_SSL=on/off to skip the guessing entirely.
+function prefersSsl(url) {
+  const override = process.env.DATABASE_SSL;
+  if (override) return !/^(0|false|off|disable|disabled|no)$/i.test(override);
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* fall through to no TLS */ }
+  if (!host) return false;
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+  if (host.endsWith('.railway.internal')) return false;
+  return true;
+}
+
+function isSslMismatch(err) {
+  const m = String(err && err.message || '');
+  return /does not support SSL/i.test(m)           // we offered TLS, server has none
+      || /SSL( connection)? is required/i.test(m)  // server demands TLS, we sent none
+      || /\bno encryption\b/i.test(m)              // pg_hba refused the plaintext attempt
+      || /\bSSL off\b/i.test(m);                   // same, older server wording
+}
+
+async function openPool(ssl) {
+  const p = new Pool({ connectionString: DATABASE_URL, ssl });
+  try {
+    await p.query('SELECT 1');   // prove the connection before we hand it out
+    return p;
+  } catch (err) {
+    await p.end().catch(() => {});
+    throw err;
+  }
+}
+
+// Reassigned by initDb once a working connection is established. Importers read
+// it through an ES module live binding, and every use is behind initDb().
+export let pool;
 
 export async function initDb() {
+  const wantSsl = prefersSsl(DATABASE_URL);
+  const first = wantSsl ? { rejectUnauthorized: false } : false;
+  try {
+    pool = await openPool(first);
+  } catch (err) {
+    if (!isSslMismatch(err)) throw err;
+    console.warn(`Postgres refused the ${wantSsl ? 'TLS' : 'plaintext'} connection ` +
+                 `(${err.message}). Retrying ${wantSsl ? 'without' : 'with'} TLS.`);
+    pool = await openPool(wantSsl ? false : { rejectUnauthorized: false });
+  }
+  console.log(`Connected to Postgres at ${new URL(DATABASE_URL).host}` +
+              `${pool.options.ssl ? ' over TLS' : ''}.`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS items (
       id            SERIAL PRIMARY KEY,

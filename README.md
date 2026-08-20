@@ -20,9 +20,15 @@ counts into one order ticket per vendor that you can copy and send.
 2. **Create the Railway project**
    - New Project → Deploy from GitHub repo → pick the repo.
 
-3. **Add the database**
+3. **Add the database and link it**
    - In the same project: New → Database → **Add PostgreSQL**.
-   - Railway automatically provides `DATABASE_URL` to the app. Nothing to configure.
+   - Then open the **app** service → **Variables** → **New Variable**:
+     name `DATABASE_URL`, value `${{Postgres.DATABASE_URL}}`
+     (swap `Postgres` for whatever the database service is named).
+
+   Railway does **not** hand one service's variables to another on its own — the
+   reference above is what connects them. Without it the app exits on boot and
+   tells you so in the deploy log.
 
 4. **Generate a public URL**
    - Service → Settings → Networking → **Generate Domain**.
@@ -98,6 +104,30 @@ DELETE FROM items   WHERE dept = 'fish';
   each piece floored at 0.
 
 Anything that comes out at 0 stays off the ticket.
+
+## If the deploy crashes
+
+The app prints the reason and exits rather than looping silently. Check the
+**Deploy** logs:
+
+- **`DATABASE_URL is not set`** — the database isn't linked. Do step 3 above.
+- **`Postgres refused the ... connection`** — harmless. Railway's private network
+  (`postgres.railway.internal`) runs without TLS while its public proxy requires
+  it, so the app tries one, falls back to the other, and carries on. Force it
+  either way with a `DATABASE_SSL` variable set to `on` or `off`.
+- **`password authentication failed`** — the `DATABASE_URL` value is stale. Re-point
+  it at `${{Postgres.DATABASE_URL}}` rather than pasting a literal URL, so it keeps
+  working when Railway rotates the credentials.
+
+A successful boot logs three lines:
+
+```
+Connected to Postgres at postgres.railway.internal:5432.
+Empty items table detected — seeding initial data.
+Seed complete.
+```
+
+On later boots the middle line reads `Items table already has N rows — skipping seed.`
 
 ## Local development
 
