@@ -10,6 +10,10 @@ const { Pool } = pg;
 // reference picker offers either, so accept whichever name the variable landed on.
 const URL_VARS = ['DATABASE_URL', 'DATABASE_PRIVATE_URL', 'POSTGRES_URL', 'POSTGRESQL_URL'];
 const URL_VAR = URL_VARS.find(v => (process.env[v] || '').trim());
+// Present but blank is a different problem from absent, and the two used to be
+// reported identically — confusingly so, since the variable is right there in
+// the dashboard looking set.
+const BLANK_VARS = URL_VARS.filter(v => v in process.env && !(process.env[v] || '').trim());
 // Strip stray wrapping quotes — pasting a quoted value into the dashboard is easy
 // to do and otherwise fails far away from the cause.
 const RAW_URL = URL_VAR ? process.env[URL_VAR].trim().replace(/^["']|["']$/g, '') : undefined;
@@ -77,11 +81,20 @@ const DATABASE_URL = RAW_URL;
 if (!DATABASE_URL) {
   console.error([
     '',
-    'No database connection string found, so there is nothing to connect to.',
-    `Checked: ${URL_VARS.join(', ')}.`,
-    '',
-    'On Railway this means no Postgres is linked to this service. Railway does',
-    'not share one service\'s variables with another automatically:',
+    ...(BLANK_VARS.length ? [
+      `${BLANK_VARS.join(' and ')} exists here, but Railway is injecting it empty.`,
+      '',
+      'An empty value means the reference resolved to nothing: it points at a',
+      'database service that does not exist under that name. Either it was never',
+      'created, or it was renamed or deleted after the variable was written. The',
+      'dashboard still shows the variable, which is what makes this so easy to miss.',
+      ''
+    ] : [
+      'No database connection string found, so there is nothing to connect to.',
+      `Checked: ${URL_VARS.join(', ')}.`,
+      ''
+    ]),
+    'To fix it, Railway needs a database for the reference to point at:',
     '',
     '  1. In the project canvas, check a Postgres database exists.',
     '     If not: New -> Database -> Add PostgreSQL',
