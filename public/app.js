@@ -55,9 +55,16 @@ async function api(method, path, body, retries = 3){
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok){
+        const err = new Error('HTTP ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
       return await res.json();
     }catch(e){
+      // A 4xx is the server's final answer — "already exists", "name required" —
+      // so retrying only delays the message the user needs to see.
+      if (e.status >= 400 && e.status < 500) return null;
       if (i === retries - 1){ console.error('api failed', method, path, e); return null; }
       await new Promise(r => setTimeout(r, 400 * (i + 1)));
     }
@@ -308,7 +315,7 @@ function handleResetTap(){
 // ---- views ----
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
-   'orderNameView','historyView']
+   'orderNameView','addItemView','historyView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -332,6 +339,7 @@ function showSettingsHub(){
   $('parHubCount').textContent = `${items.length} items`;
   const renamed = items.filter(i => orderName(i) !== i.name).length;
   $('orderNameHubCount').textContent = renamed ? `${renamed} renamed` : 'same as shelf';
+  $('addItemHubCount').textContent = `${items.length} in ${dept}`;
   $('routeHubCount').textContent = routes.length ? (notRouted ? `${notRouted} not placed` : 'all set') : 'not set up';
 }
 
@@ -654,6 +662,50 @@ async function setOrderName(name, val){
   const sub = document.querySelector('#orderNameWrap .vs-sub');
   if (sub) sub.textContent =
     `${items.filter(i => orderName(i) !== i.name).length} of ${items.length} differ from the shelf name`;
+}
+
+// ---- adding an item ----
+function showAddItem(){
+  hideAll(); $('addItemView').style.display = 'block'; $('footerBar').style.display = 'none';
+  renderAddItem();
+}
+function renderAddItem(){
+  $('addItemWrap').innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Add an Item</div>
+      <div class="vs-sub">${items.length} in ${dept} right now</div>
+    </div>
+    <div class="hint">Adds one item to <b>${htmlEsc(dept)}</b>. It starts with every PAR
+    at 0, so it will not appear on an order until you set one under PARs.</div>
+    <div class="vgroup">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Name on the shelf</div></div>
+      <div class="vitem"><input type="text" class="textinput" id="newItemName" placeholder="e.g. RAU RAM"></div>
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Name the vendor uses</div></div>
+      <div class="vitem"><input type="text" class="textinput" id="newItemOrderName" placeholder="leave blank to use the shelf name"></div>
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Vendor</div></div>
+      <div class="vitem">
+        <select class="single" id="newItemVendor">
+          <option value="">&mdash; none &mdash;</option>
+          ${vendors.map(v=>`<option value="${htmlEsc(v)}">${htmlEsc(v)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <button class="addbtn" style="width:100%;" onclick="addItem()">Add to ${htmlEsc(dept)}</button>
+    <div class="hint" id="addItemMsg" style="padding-top:12px;"></div>`;
+}
+async function addItem(){
+  const name = $('newItemName').value.trim();
+  const msg = $('addItemMsg');
+  if (!name){ msg.textContent = 'Give the item a name first.'; return; }
+  const r = await write('POST', '/item', {
+    name,
+    invdesc: $('newItemOrderName').value.trim(),
+    vendor: $('newItemVendor').value || null
+  });
+  if (!r){ msg.textContent = `Could not add "${name}". It may already be in ${dept}.`; return; }
+  await bootstrap();          // pick up the new row, and the vendor if it was new
+  renderAddItem();
+  $('addItemMsg').textContent = `Added "${name}". Set its PARs when you are ready.`;
 }
 
 // ---- routine / route ----

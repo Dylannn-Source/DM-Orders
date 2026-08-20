@@ -73,7 +73,16 @@ deploy, or insert them into a running database (see below). Optionally group the
 into a walking route in `seed_routes.json` so counting follows the way you move
 through the department.
 
-## Adding or changing items
+## Adding an item
+
+**Settings → Add an Item** adds one to the department you're in: shelf name, the
+vendor's name for it if it differs, and a vendor. It starts with every PAR at 0,
+so it stays off orders until you set one under **PARs**.
+
+Editing `seed_items.json` only affects a database that has never been seeded, so
+use this screen for anything already deployed.
+
+## Adding or changing items in SQL
 
 `mode` is either `single` (one count vs a PAR — meat and fish) or `shelf_cooler`
 (shelf + cooler, like produce).

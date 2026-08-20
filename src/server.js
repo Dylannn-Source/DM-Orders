@@ -111,6 +111,38 @@ app.put('/api/:dept/item', async (req, res) => {
   }
 });
 
+// Create an item. New produce is counted shelf+cooler like the rest of the
+// department; everything else is a single count.
+app.post('/api/:dept/item', async (req, res) => {
+  const dept = checkDept(req, res); if (!dept) return;
+  const { name, invdesc, vendor } = req.body || {};
+  const clean = (name || '').trim();
+  if (!clean) return res.status(400).json({ error: 'name required' });
+  try {
+    const mode = dept === 'produce' ? 'shelf_cooler' : 'single';
+    const shelfTarget = dept === 'produce' ? 1 : null;
+    const { rows } = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM items WHERE dept=$1', [dept]);
+    const ins = await pool.query(
+      `INSERT INTO items (dept, name, invdesc, vendor, mode, shelf_target, pars, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,'{}'::jsonb,$7)
+       ON CONFLICT (dept, name) DO NOTHING
+       RETURNING id`,
+      [dept, clean, (invdesc || '').trim(), vendor || null, mode, shelfTarget, rows[0].n]
+    );
+    if (!ins.rowCount) return res.status(409).json({ error: 'that item already exists' });
+    if (vendor) {
+      await pool.query(
+        `INSERT INTO vendors (dept, name) VALUES ($1,$2) ON CONFLICT (dept, name) DO NOTHING`,
+        [dept, vendor]);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('item create failed', e);
+    res.status(500).json({ error: 'item create failed' });
+  }
+});
+
 // Bulk vendor reassignment (e.g. every old "WESTLAKE" item -> "TITO'S")
 app.put('/api/:dept/items/bulk-vendor', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;

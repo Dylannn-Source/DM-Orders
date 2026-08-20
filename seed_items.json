@@ -482,6 +482,21 @@
   },
   {
    "dept": "produce",
+   "name": "HUNG CAY",
+   "invdesc": "",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
    "name": "ICEBERG LETTUCE",
    "invdesc": "LETTUCE WR",
    "vendor": "QSI",
@@ -557,11 +572,41 @@
   },
   {
    "dept": "produce",
+   "name": "KINH GIOI",
+   "invdesc": "",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
    "name": "LEMON GRASS",
    "invdesc": "LEMON GRASS",
    "vendor": "WING PRODUCE",
    "case_size": 40,
    "unit": "LB",
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "MINT",
+   "invdesc": "",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
    "note": null,
    "shelf_target": 1,
    "pars": {
@@ -707,6 +752,21 @@
   },
   {
    "dept": "produce",
+   "name": "RAU RAM",
+   "invdesc": "",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
    "name": "RED LEAF LETTUCE",
    "invdesc": "LEAF RED LINER PACK",
    "vendor": "QSI",
@@ -818,6 +878,21 @@
    "case_size": 1,
    "unit": "LB",
    "note": "#5LB  EVERYTIME",
+   "shelf_target": 1,
+   "pars": {
+    "mon": 0,
+    "thu": 0
+   },
+   "mode": "shelf_cooler"
+  },
+  {
+   "dept": "produce",
+   "name": "TIA TO",
+   "invdesc": "",
+   "vendor": "WING PRODUCE",
+   "case_size": null,
+   "unit": null,
+   "note": null,
    "shelf_target": 1,
    "pars": {
     "mon": 0,

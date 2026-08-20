@@ -59,6 +59,9 @@
   <div class="hubrow" onclick="showOrderNameSettings()">
     <div class="hubname">Order Names</div><span class="chip" id="orderNameHubCount"></span>
   </div>
+  <div class="hubrow" onclick="showAddItem()">
+    <div class="hubname">Add an Item</div><span class="chip" id="addItemHubCount"></span>
+  </div>
   <div class="hubrow" onclick="showHistory()">
     <div class="hubname">Order History</div>
   </div>
@@ -87,6 +90,11 @@
 <div id="orderNameView">
   <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Order Names</span></div>
   <div id="orderNameWrap"></div>
+</div>
+
+<div id="addItemView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Add an Item</span></div>
+  <div id="addItemWrap"></div>
 </div>
 
 <div id="historyView">
