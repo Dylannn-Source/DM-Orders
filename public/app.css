@@ -5,7 +5,7 @@
   --ink-soft:#4B5C4F;
   --line:#D3DBC7;
   --card:#FFFFFF;
-  --accent:#BD3A3D;
+  --accent:#C43E3F;
   --accent-soft:#F7DEDE;
   --good:#5C7A3D;
   --good-soft:#E1EAD1;
@@ -204,7 +204,6 @@ select.single.unassigned{border-color:var(--accent);background:var(--accent-soft
 .emprole{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
 
 /* ---- the mark ---- */
-.authlogo{display:block;width:100%;max-width:290px;height:auto;margin:0 auto 18px;
-  border-radius:14px;}
+.authlogo{display:block;width:100%;max-width:300px;height:auto;margin:0 auto 14px;}
 .headrow{display:flex;align-items:center;gap:11px;}
-.headmark{width:40px;height:40px;border-radius:9px;flex:none;}
+.headmark{width:44px;height:44px;flex:none;}
