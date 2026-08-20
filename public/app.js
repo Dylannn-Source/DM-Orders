@@ -24,6 +24,8 @@ let counts = {};        // name -> {shelf, cooler, qty}
 let day = 'mon';
 let roundChoices = {};
 let visibleItems = [];   // the items currently rendered, for the progress counter
+let me = null;           // the signed-in employee
+let authNames = [], authPick = null, authPin = '', authMode = 'who';
 let resetArmed = false, resetArmTimer = null;
 let armedDeleteGroup = null, armedDeleteTimer = null;
 
@@ -55,6 +57,14 @@ async function api(method, path, body, retries = 3){
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined
       });
+      if (res.status === 401 || res.status === 403){
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 401) { me = null; showAuth(); }
+        else if (body.must_change_pin) { showAuth('change'); }
+        const err = new Error(body.error || 'HTTP ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
       if (!res.ok){
         const err = new Error('HTTP ' + res.status);
         err.status = res.status;
@@ -373,6 +383,12 @@ function showSettingsHub(){
   $('orderNameHubCount').textContent = renamed ? `${renamed} renamed` : 'same as shelf';
   $('addItemHubCount').textContent = `${items.length} in ${dept}`;
   $('backupHubCount').textContent = 'all departments';
+  const isManager = me?.role === 'manager';
+  $('employeesHubRow').style.display = isManager ? '' : 'none';
+  $('backupHubRow').style.display = isManager ? '' : 'none';
+  $('whoamiLine').innerHTML = me
+    ? `Signed in as ${htmlEsc(me.name)} \u00b7 <button onclick="doLogout()" style="background:none;border:none;color:var(--ink-soft);text-decoration:underline;font-size:11px;padding:0;">sign out</button>`
+    : '';
   $('routeHubCount').textContent = routes.length ? (notRouted ? `${notRouted} not placed` : 'all set') : 'not set up';
 }
 
@@ -741,6 +757,243 @@ async function addItem(){
   $('addItemMsg').textContent = `Added "${name}". Set its PARs when you are ready.`;
 }
 
+// ---- signing in ------------------------------------------------------------
+// The whole app sits behind this. Everything under /api refuses without a
+// session, so the screen below is the only thing a stranger with the URL sees.
+async function boot(){
+  const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => null);
+  if (!r) { authError('Cannot reach the app. Check your connection.'); showAuth('who'); return; }
+  authNames = r.names || [];
+  me = r.employee;
+  if (r.needs_setup) return showAuth('setup');
+  if (!me) return showAuth('who');
+  if (me.must_change_pin) return showAuth('change');
+  startApp();
+}
+
+function startApp(){
+  $('authView').style.display = 'none';
+  switchDept(dept);
+}
+
+function showAuth(mode){
+  authMode = mode || authMode || 'who';
+  authPin = '';
+  hideAll();
+  $('footerBar').style.display = 'none';
+  $('authView').style.display = 'block';
+  renderAuth();
+}
+function authError(msg){
+  const el = $('authErr');
+  el.textContent = msg || '';
+  el.classList.toggle('on', !!msg);
+}
+
+function renderAuth(){
+  const body = $('authBody');
+  authError('');
+  if (authMode === 'setup'){
+    $('authTitle').textContent = 'Set up';
+    body.innerHTML = `
+      <div class="authsub">Nobody has an account yet. Make the first one — it will be
+      a manager, so it can add everyone else and reset PINs.</div>
+      <input type="text" class="textinput" id="setupName" placeholder="Your name" style="width:100%;margin-bottom:9px;">
+      <input type="tel" inputmode="numeric" class="textinput" id="setupPin" placeholder="Choose a 6-digit PIN" maxlength="6" style="width:100%;margin-bottom:14px;">
+      <button class="addbtn" style="width:100%;" onclick="doSetup()">Create manager account</button>`;
+    return;
+  }
+  if (authMode === 'change'){
+    $('authTitle').textContent = 'Choose a PIN';
+    body.innerHTML = `
+      <div class="authsub">${me ? htmlEsc(me.name) + ', this' : 'This'} PIN was set for you,
+      so pick your own. Six digits, and not one anyone could guess from your phone number.</div>
+      <input type="tel" inputmode="numeric" class="textinput" id="oldPin" placeholder="The PIN you just used" maxlength="6" style="width:100%;margin-bottom:9px;">
+      <input type="tel" inputmode="numeric" class="textinput" id="newPin" placeholder="New 6-digit PIN" maxlength="6" style="width:100%;margin-bottom:9px;">
+      <input type="tel" inputmode="numeric" class="textinput" id="newPin2" placeholder="Type it again" maxlength="6" style="width:100%;margin-bottom:14px;">
+      <button class="addbtn" style="width:100%;" onclick="doChangePin()">Save my PIN</button>
+      <div class="authlink"><button onclick="doLogout()">Sign in as someone else</button></div>`;
+    return;
+  }
+  if (authMode === 'pin'){
+    $('authTitle').textContent = authPick ? authPick.name : 'PIN';
+    const dots = [0,1,2,3,4,5].map(i => `<div class="pindot ${i < authPin.length ? 'on' : ''}"></div>`).join('');
+    body.innerHTML = `
+      <div class="authsub">Enter your PIN.</div>
+      <div class="pindots">${dots}</div>
+      <div class="pinpad">
+        ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="pinTap('${n}')">${n}</button>`).join('')}
+        <button class="wide" onclick="showAuth('who')">Back</button>
+        <button onclick="pinTap('0')">0</button>
+        <button class="wide" onclick="pinTap('del')">Delete</button>
+      </div>`;
+    return;
+  }
+  $('authTitle').textContent = 'Who is counting?';
+  body.innerHTML = authNames.length
+    ? authNames.map(n => `<button class="whobtn" onclick="pickWho(${n.id})">${htmlEsc(n.name)}</button>`).join('')
+    : '<div class="authsub">No accounts yet. Ask a manager to add you.</div>';
+}
+
+function pickWho(id){
+  authPick = authNames.find(n => n.id === id);
+  authPin = '';
+  showAuth('pin');
+}
+
+async function pinTap(key){
+  if (key === 'del'){ authPin = authPin.slice(0, -1); return renderAuth(); }
+  if (authPin.length >= 6) return;
+  authPin += key;
+  renderAuth();
+  if (authPin.length >= 4) {
+    // Try at 4 in case a manager set a short temporary PIN, then again at 6.
+    if (authPin.length === 4 || authPin.length === 6) await tryLogin(authPin.length === 6);
+  }
+}
+
+async function tryLogin(showErrors){
+  const res = await fetch('/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employee_id: authPick.id, pin: authPin })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok){
+    me = body.employee;
+    authPin = '';
+    if (me.must_change_pin) return showAuth('change');
+    return startApp();
+  }
+  if (showErrors || res.status === 423 || res.status === 429){
+    authError(body.error || 'That PIN is not right.');
+    authPin = '';
+    renderAuth();
+    authError(body.error || 'That PIN is not right.');
+  }
+}
+
+async function doSetup(){
+  const name = $('setupName').value.trim(), pin = $('setupPin').value.trim();
+  const res = await fetch('/api/auth/setup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, pin })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) return authError(body.error || 'Could not set that up.');
+  me = body.employee;
+  startApp();
+}
+
+async function doChangePin(){
+  const cur = $('oldPin').value.trim(), a = $('newPin').value.trim(), b = $('newPin2').value.trim();
+  if (a !== b) return authError('Those two PINs are not the same.');
+  const res = await fetch('/api/auth/change-pin', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_pin: cur, new_pin: a })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) return authError(body.error || 'Could not change it.');
+  me.must_change_pin = false;
+  startApp();
+}
+
+async function doLogout(){
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  me = null; authPick = null; authPin = '';
+  const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => ({ names: [] }));
+  authNames = r.names || [];
+  showAuth('who');
+}
+
+// ---- employees, for managers ----
+async function showEmployees(){
+  hideAll(); $('employeesView').style.display = 'block'; $('footerBar').style.display = 'none';
+  $('employeesWrap').innerHTML = '<div class="hint">Loading...</div>';
+  const r = await fetch('/api/employees').then(x => x.json()).catch(() => null);
+  if (!r || r.error) { $('employeesWrap').innerHTML = `<div class="hint">${htmlEsc(r?.error || 'Could not load.')}</div>`; return; }
+  renderEmployees(r.employees);
+}
+
+function renderEmployees(list){
+  const wrap = $('employeesWrap');
+  const managers = list.filter(e => e.active && e.role === 'manager').length;
+  wrap.innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Employees</div>
+      <div class="vs-sub">${list.filter(e=>e.active).length} active, ${managers} manager${managers===1?'':'s'}</div>
+    </div>
+    <div class="hint">A new person starts on the PIN you set here — the last four of
+    their phone number is fine — and has to choose their own the first time they
+    sign in. Reset does the same thing again, and clears a lockout.</div>
+    <div class="vgroup">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add someone</div></div>
+      <div class="vitem"><input type="text" class="textinput" id="newEmpName" placeholder="Name"></div>
+      <div class="vitem"><input type="tel" inputmode="numeric" class="textinput" id="newEmpPin" placeholder="Temporary PIN (4-6 digits)" maxlength="6"></div>
+      <div class="vitem"><span class="viname">Can manage people</span>
+        <input type="checkbox" id="newEmpManager" style="width:22px;height:22px;"></div>
+    </div>
+    <button class="addbtn" style="width:100%;" onclick="addEmployee()">Add</button>
+    <div class="hint" id="empMsg" style="padding-top:12px;"></div>`;
+
+  list.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'vgroup' + (e.active ? '' : ' needsattn');
+    const state = !e.active ? 'switched off'
+      : e.locked ? `locked for ${e.locked_minutes} min`
+      : e.must_change_pin ? 'must choose a PIN' : 'ok';
+    div.innerHTML = `
+      <div class="vgroup-head" style="cursor:default;">
+        <div class="oldname">${htmlEsc(e.name)}
+          <span class="chip emprole">${e.role}</span>
+          <span class="chip${e.locked || e.must_change_pin ? ' note' : ''}">${state}</span></div>
+      </div>
+      <div class="vitem">
+        <input type="tel" inputmode="numeric" class="textinput" maxlength="6"
+               id="pin_${e.id}" placeholder="New temporary PIN">
+        <button class="addbtn" style="margin-left:8px;" onclick="resetEmployeePin(${e.id})">Reset</button>
+      </div>
+      <div class="vitem"><span class="viname">Can manage people</span>
+        <input type="checkbox" ${e.role === 'manager' ? 'checked' : ''}
+               ${e.id === me.id ? 'disabled' : ''} style="width:22px;height:22px;"
+               onchange="setEmployeeRole(${e.id}, this.checked)"></div>
+      <div class="vitem"><span class="viname">Active</span>
+        <input type="checkbox" ${e.active ? 'checked' : ''}
+               ${e.id === me.id ? 'disabled' : ''} style="width:22px;height:22px;"
+               onchange="setEmployeeActive(${e.id}, this.checked)"></div>`;
+    wrap.appendChild(div);
+  });
+}
+
+async function empCall(method, path, body){
+  const res = await fetch(path, {
+    method, headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { if ($('empMsg')) $('empMsg').textContent = out.error || 'That did not work.'; return null; }
+  return out;
+}
+async function addEmployee(){
+  const name = $('newEmpName').value.trim();
+  const pin = $('newEmpPin').value.trim();
+  const role = $('newEmpManager').checked ? 'manager' : 'staff';
+  if (!name) { $('empMsg').textContent = 'Give them a name first.'; return; }
+  if (await empCall('POST', '/api/employees', { name, pin, role })) showEmployees();
+}
+async function resetEmployeePin(id){
+  const pin = $('pin_' + id).value.trim();
+  if (!pin) { $('empMsg').textContent = 'Type the temporary PIN to set.'; return; }
+  if (await empCall('PUT', '/api/employees/' + id, { pin })) showEmployees();
+}
+async function setEmployeeRole(id, isManager){
+  await empCall('PUT', '/api/employees/' + id, { role: isManager ? 'manager' : 'staff' });
+  showEmployees();
+}
+async function setEmployeeActive(id, active){
+  await empCall('PUT', '/api/employees/' + id, { active });
+  showEmployees();
+}
+
 // ---- backup ----
 function showBackup(){
   hideAll(); $('backupView').style.display = 'block'; $('footerBar').style.display = 'none';
@@ -896,4 +1149,4 @@ async function showHistory(){
   });
 }
 
-switchDept(dept);
+boot();

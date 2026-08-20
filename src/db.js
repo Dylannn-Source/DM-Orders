@@ -227,6 +227,25 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS employees (
+      id              SERIAL PRIMARY KEY,
+      name            TEXT NOT NULL,
+      pin_hash        TEXT NOT NULL,
+      role            TEXT NOT NULL DEFAULT 'staff',
+      active          BOOLEAN NOT NULL DEFAULT TRUE,
+      must_change_pin BOOLEAN NOT NULL DEFAULT TRUE,
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      locked_until    TIMESTAMPTZ,
+      last_login_at   TIMESTAMPTZ,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (name)
+    );
+
+    CREATE TABLE IF NOT EXISTS app_config (
+      key    TEXT PRIMARY KEY,
+      value  TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS vendors (
       id     SERIAL PRIMARY KEY,
       dept   TEXT NOT NULL,
@@ -238,6 +257,10 @@ export async function initDb() {
   // CREATE TABLE IF NOT EXISTS leaves an existing table alone, so a column added
   // later has to be introduced separately for databases already out there.
   await pool.query('ALTER TABLE items ADD COLUMN IF NOT EXISTS vendor2 TEXT');
+  // Who counted it and who sent the order. Added separately so databases that
+  // predate them pick them up without losing anything already recorded.
+  await pool.query('ALTER TABLE counts ADD COLUMN IF NOT EXISTS counted_by TEXT');
+  await pool.query('ALTER TABLE order_history ADD COLUMN IF NOT EXISTS placed_by TEXT');
 
   await seedEmptyDepartments();
 }

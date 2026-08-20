@@ -46,6 +46,48 @@ Push to GitHub. Railway redeploys. **Your data is untouched** — it lives in
 Postgres, not in the code. The URL doesn't change, so Home Screen icons and
 anyone's bookmarks keep working.
 
+## Signing in
+
+Everything under `/api` refuses without a session, so the sign-in screen is all a
+stranger with the URL can reach.
+
+**First run** asks for a name and a 6-digit PIN and makes that person a manager.
+It only works while no employee exists, which is what stops it being a way in
+later.
+
+**Adding someone** — Settings → Employees, managers only. Give them a temporary
+PIN; the last four of their phone number is the easy choice, since they already
+know it and nothing has to be passed around. They must choose their own 6-digit
+PIN the first time they sign in, so the temporary one stops working immediately.
+
+**Forgotten PINs** — hit Reset next to their name and give them a new temporary
+one. You cannot read a PIN back: they are stored hashed, one way, so a copy of
+the database or a backup file yields no working PINs. Reset also clears a
+lockout, since to whoever is standing there those are the same problem.
+
+**Wrong PINs** lock an account for 15 minutes after 5 tries. The lock lifts by
+itself, so nobody can shut the team out by typing rubbish, and a manager can
+clear it at once. Short PINs are only safe because guessing is throttled — that
+matters more than the number of digits.
+
+**Locked out of everything**, with no manager able to sign in? From the Railway
+console, where `DATABASE_URL` is already set:
+
+```bash
+node scripts/reset-pin.mjs                # who exists
+node scripts/reset-pin.mjs "Dylan" 4821   # give them a temporary PIN
+```
+
+If no active manager is left it promotes that person, so the app cannot be shut
+out of permanently.
+
+**What a manager can do that staff cannot**: add and reset employees, and
+download the backup. Counting, PARs, vendors and placing orders are open to
+everyone signed in.
+
+**Who did what** is recorded on each count and each order — `counts.counted_by`
+and `order_history.placed_by`.
+
 ## First run: set your PARs
 
 A PAR is how much of an item you want on hand for a given day. The order is

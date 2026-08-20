@@ -2,11 +2,236 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { pool, initDb } from './db.js';
+import {
+  hashPin, verifyPin, isValidPin, issueSession, clearSession, currentEmployee,
+  lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
+} from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ---- who is signed in ------------------------------------------------------
+// Everything under /api needs a session except signing in itself, and the
+// first-run setup that exists only while there are no employees at all.
+const OPEN_PATHS = new Set(['/api/auth/whoami', '/api/auth/login', '/api/auth/setup']);
+
+app.use(async (req, res, next) => {
+  if (!req.path.startsWith('/api/') || OPEN_PATHS.has(req.path)) return next();
+  try {
+    const me = await currentEmployee(req);
+    if (!me) return res.status(401).json({ error: 'sign in first' });
+    if (me.must_change_pin && req.path !== '/api/auth/change-pin') {
+      return res.status(403).json({ error: 'choose a new PIN first', must_change_pin: true });
+    }
+    req.employee = me;
+    next();
+  } catch (e) {
+    console.error('auth check failed', e);
+    res.status(500).json({ error: 'auth check failed' });
+  }
+});
+
+function managerOnly(req, res) {
+  if (req.employee?.role !== 'manager') {
+    res.status(403).json({ error: 'managers only' });
+    return false;
+  }
+  return true;
+}
+
+async function employeeCount() {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM employees WHERE active');
+  return rows[0].n;
+}
+
+const publicEmployee = e => ({
+  id: e.id, name: e.name, role: e.role, active: e.active,
+  must_change_pin: e.must_change_pin, locked: lockState(e).locked,
+  locked_minutes: lockState(e).minutes || null, last_login_at: e.last_login_at || null
+});
+
+// Who am I, and if nobody yet, does this app still need setting up?
+app.get('/api/auth/whoami', async (req, res) => {
+  try {
+    const me = await currentEmployee(req);
+    const n = await employeeCount();
+    if (!n) return res.json({ needs_setup: true, employee: null, names: [] });
+    const { rows } = await pool.query(
+      'SELECT id, name FROM employees WHERE active ORDER BY name');
+    res.json({
+      needs_setup: false,
+      employee: me ? publicEmployee(me) : null,
+      names: rows
+    });
+  } catch (e) {
+    console.error('whoami failed', e);
+    res.status(500).json({ error: 'whoami failed' });
+  }
+});
+
+// Creating the first manager. Only possible while no employee exists, which is
+// what stops it being a way in later.
+app.post('/api/auth/setup', async (req, res) => {
+  try {
+    if (await employeeCount()) return res.status(409).json({ error: 'already set up' });
+    const { name, pin } = req.body || {};
+    if (!String(name || '').trim()) return res.status(400).json({ error: 'name required' });
+    const bad = isValidPin(pin);
+    if (bad) return res.status(400).json({ error: bad });
+    const { rows } = await pool.query(
+      `INSERT INTO employees (name, pin_hash, role, must_change_pin)
+       VALUES ($1,$2,'manager',FALSE) RETURNING *`,
+      [String(name).trim(), hashPin(pin)]);
+    await issueSession(res, rows[0]);
+    res.json({ ok: true, employee: publicEmployee(rows[0]) });
+  } catch (e) {
+    console.error('setup failed', e);
+    res.status(500).json({ error: 'setup failed' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    if (ipThrottled(req)) {
+      return res.status(429).json({ error: 'Too many attempts. Wait a minute and try again.' });
+    }
+    const { employee_id, pin } = req.body || {};
+    const { rows } = await pool.query(
+      'SELECT * FROM employees WHERE id=$1 AND active', [employee_id]);
+    const emp = rows[0];
+    // Same reply whether the name or the PIN was wrong, so neither can be probed.
+    const nope = () => res.status(401).json({ error: 'That PIN is not right.' });
+    if (!emp) return nope();
+
+    const lock = lockState(emp);
+    if (lock.locked) {
+      return res.status(423).json({
+        error: `Too many wrong tries. Try again in ${lock.minutes} minute${lock.minutes === 1 ? '' : 's'}, or ask a manager to reset it.`
+      });
+    }
+    if (!verifyPin(pin, emp.pin_hash)) {
+      const after = await noteFailure(emp.id);
+      const left = MAX_FAILURES - after.failed_attempts;
+      if (left <= 0) {
+        return res.status(423).json({
+          error: `Too many wrong tries. Locked for ${LOCK_MINUTES} minutes, or ask a manager to reset it.`
+        });
+      }
+      return res.status(401).json({
+        error: `That PIN is not right. ${left} ${left === 1 ? 'try' : 'tries'} left.`
+      });
+    }
+    await noteSuccess(emp.id);
+    await issueSession(res, emp);
+    const fresh = { ...emp, failed_attempts: 0, locked_until: null };
+    res.json({ ok: true, employee: publicEmployee(fresh) });
+  } catch (e) {
+    console.error('login failed', e);
+    res.status(500).json({ error: 'login failed' });
+  }
+});
+
+app.post('/api/auth/logout', (_req, res) => { clearSession(res); res.json({ ok: true }); });
+
+app.post('/api/auth/change-pin', async (req, res) => {
+  try {
+    const me = await currentEmployee(req);
+    if (!me) return res.status(401).json({ error: 'sign in first' });
+    const { current_pin, new_pin } = req.body || {};
+    const { rows } = await pool.query('SELECT * FROM employees WHERE id=$1', [me.id]);
+    const emp = rows[0];
+    if (!verifyPin(current_pin, emp.pin_hash)) {
+      return res.status(401).json({ error: 'That current PIN is not right.' });
+    }
+    const bad = isValidPin(new_pin);
+    if (bad) return res.status(400).json({ error: bad });
+    if (verifyPin(new_pin, emp.pin_hash)) {
+      return res.status(400).json({ error: 'That is the PIN you already had.' });
+    }
+    await pool.query(
+      'UPDATE employees SET pin_hash=$2, must_change_pin=FALSE, failed_attempts=0, locked_until=NULL WHERE id=$1',
+      [me.id, hashPin(new_pin)]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('change pin failed', e);
+    res.status(500).json({ error: 'change pin failed' });
+  }
+});
+
+// ---- employees, for managers ----------------------------------------------
+app.get('/api/employees', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    const { rows } = await pool.query('SELECT * FROM employees ORDER BY active DESC, name');
+    res.json({ employees: rows.map(publicEmployee) });
+  } catch (e) { res.status(500).json({ error: 'employees fetch failed' }); }
+});
+
+app.post('/api/employees', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const { name, pin, role } = req.body || {};
+  if (!String(name || '').trim()) return res.status(400).json({ error: 'name required' });
+  // A manager-set PIN is temporary and may be short — the last four of a phone
+  // number is the usual choice. It has to be changed at first sign-in.
+  const bad = isValidPin(pin, { allowShort: true });
+  if (bad) return res.status(400).json({ error: bad });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO employees (name, pin_hash, role, must_change_pin)
+       VALUES ($1,$2,$3,TRUE)
+       ON CONFLICT (name) DO NOTHING RETURNING *`,
+      [String(name).trim(), hashPin(pin), role === 'manager' ? 'manager' : 'staff']);
+    if (!rows[0]) return res.status(409).json({ error: 'someone already has that name' });
+    res.json({ ok: true, employee: publicEmployee(rows[0]) });
+  } catch (e) {
+    console.error('employee create failed', e);
+    res.status(500).json({ error: 'employee create failed' });
+  }
+});
+
+app.put('/api/employees/:id', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const id = Number(req.params.id);
+  const { pin, active, role } = req.body || {};
+  try {
+    if (pin !== undefined) {
+      const bad = isValidPin(pin, { allowShort: true });
+      if (bad) return res.status(400).json({ error: bad });
+      // Resetting also clears a lockout: forgetting and being locked out are the
+      // same problem to the person standing there.
+      await pool.query(
+        `UPDATE employees SET pin_hash=$2, must_change_pin=TRUE, failed_attempts=0, locked_until=NULL
+          WHERE id=$1`, [id, hashPin(pin)]);
+    }
+    if (active !== undefined) {
+      if (!active && id === req.employee.id) {
+        return res.status(400).json({ error: 'You cannot switch off your own account.' });
+      }
+      if (!active) {
+        const { rows } = await pool.query(
+          `SELECT COUNT(*)::int AS n FROM employees WHERE active AND role='manager' AND id<>$1`, [id]);
+        const { rows: who } = await pool.query('SELECT role FROM employees WHERE id=$1', [id]);
+        if (who[0]?.role === 'manager' && rows[0].n === 0) {
+          return res.status(400).json({ error: 'That is the last manager — promote someone else first.' });
+        }
+      }
+      await pool.query('UPDATE employees SET active=$2 WHERE id=$1', [id, !!active]);
+    }
+    if (role !== undefined) {
+      if (role !== 'manager' && id === req.employee.id) {
+        return res.status(400).json({ error: 'You cannot remove your own manager rights.' });
+      }
+      await pool.query('UPDATE employees SET role=$2 WHERE id=$1',
+        [id, role === 'manager' ? 'manager' : 'staff']);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('employee update failed', e);
+    res.status(500).json({ error: 'employee update failed' });
+  }
+});
 
 const DEPTS = new Set(['produce', 'meat', 'fish']);
 function checkDept(req, res) {
@@ -46,11 +271,12 @@ app.put('/api/:dept/count', async (req, res) => {
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   try {
     await pool.query(
-      `INSERT INTO counts (dept, item_name, shelf, cooler, qty, updated_at)
-       VALUES ($1,$2,$3,$4,$5,NOW())
+      `INSERT INTO counts (dept, item_name, shelf, cooler, qty, counted_by, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW())
        ON CONFLICT (dept, item_name)
-       DO UPDATE SET shelf=EXCLUDED.shelf, cooler=EXCLUDED.cooler, qty=EXCLUDED.qty, updated_at=NOW()`,
-      [dept, item_name, shelf ?? null, cooler ?? null, qty ?? null]
+       DO UPDATE SET shelf=EXCLUDED.shelf, cooler=EXCLUDED.cooler, qty=EXCLUDED.qty,
+                     counted_by=EXCLUDED.counted_by, updated_at=NOW()`,
+      [dept, item_name, shelf ?? null, cooler ?? null, qty ?? null, req.employee.name]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -211,8 +437,8 @@ app.post('/api/:dept/order', async (req, res) => {
   if (!vendor) return res.status(400).json({ error: 'vendor required' });
   try {
     await pool.query(
-      `INSERT INTO order_history (dept, vendor, day_label, items) VALUES ($1,$2,$3,$4)`,
-      [dept, vendor, day_label || null, JSON.stringify(items || [])]
+      `INSERT INTO order_history (dept, vendor, day_label, items, placed_by) VALUES ($1,$2,$3,$4,$5)`,
+      [dept, vendor, day_label || null, JSON.stringify(items || []), req.employee.name]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -236,7 +462,10 @@ app.get('/api/:dept/orders', async (req, res) => {
 // Everything in the database as one JSON file. Worth taking before anything
 // destructive — clearing a department to reseed it, most of all, which is the
 // only routine operation here that actually removes rows.
-app.get('/api/export', async (_req, res) => {
+app.get('/api/export', async (req, res) => {
+  // The whole database in one file, so it stays with managers rather than
+  // anyone who can sign in on the floor.
+  if (!managerOnly(req, res)) return;
   try {
     const [items, counts, routes, vendors, orders, session] = await Promise.all([
       pool.query('SELECT * FROM items ORDER BY dept, sort_order, name'),

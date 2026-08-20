@@ -11,6 +11,15 @@
 </head>
 <body>
 
+<div id="authView">
+  <div class="authcard">
+    <div class="autheyebrow">DAT MOI</div>
+    <h1 id="authTitle">Inventory &amp; Order</h1>
+    <div id="authBody"></div>
+    <div class="autherr" id="authErr"></div>
+  </div>
+</div>
+
 <div id="deptBar">
   <button data-dept="produce" onclick="switchDept('produce')">PRODUCE</button>
   <button data-dept="meat" onclick="switchDept('meat')">MEAT</button>
@@ -62,12 +71,16 @@
   <div class="hubrow" onclick="showAddItem()">
     <div class="hubname">Add an Item</div><span class="chip" id="addItemHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showBackup()">
+  <div class="hubrow" id="employeesHubRow" onclick="showEmployees()">
+    <div class="hubname">Employees</div><span class="chip" id="employeesHubCount"></span>
+  </div>
+  <div class="hubrow" id="backupHubRow" onclick="showBackup()">
     <div class="hubname">Backup</div><span class="chip" id="backupHubCount"></span>
   </div>
   <div class="hubrow" onclick="showHistory()">
     <div class="hubname">Order History</div>
   </div>
+  <div class="whoami" id="whoamiLine" style="padding:14px 2px 0;"></div>
 </div>
 
 <div id="routeView">
@@ -98,6 +111,11 @@
 <div id="addItemView">
   <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Add an Item</span></div>
   <div id="addItemWrap"></div>
+</div>
+
+<div id="employeesView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Employees</span></div>
+  <div id="employeesWrap"></div>
 </div>
 
 <div id="backupView">

@@ -174,3 +174,31 @@ select.single.unassigned{border-color:var(--accent);background:var(--accent-soft
 .numinput{width:64px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;
   font-family:var(--mono);font-size:13px;background:var(--card);color:var(--ink);}
 .copy-fallback-modal textarea{width:100%;}
+
+/* ---- sign in ---- */
+#authView{display:none;position:fixed;inset:0;z-index:100;background:var(--paper);
+  padding:24px 18px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;}
+.authcard{max-width:360px;margin:8vh auto 0;}
+.autheyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--ink-soft);}
+.authcard h1{font-family:var(--serif);font-size:27px;margin:4px 0 22px;font-weight:400;}
+.authsub{font-size:13.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:16px;}
+.whobtn{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--line);border-radius:10px;padding:15px 16px;margin-bottom:9px;
+  font-size:16px;font-weight:600;color:var(--ink);}
+.whobtn:active{border-left-color:var(--accent);}
+.pindots{display:flex;gap:9px;justify-content:center;margin:6px 0 20px;height:15px;}
+.pindot{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--line);background:transparent;}
+.pindot.on{background:var(--ink);border-color:var(--ink);}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.pinpad button{padding:17px 0;font-size:21px;font-family:var(--mono);border:1px solid var(--line);
+  background:var(--card);border-radius:11px;color:var(--ink);font-weight:600;}
+.pinpad button:active{background:var(--paper-2);}
+.pinpad button.wide{grid-column:span 1;font-size:13px;font-family:var(--sans);font-weight:600;}
+.autherr{margin-top:16px;font-size:13.5px;color:#8a2f13;background:var(--accent-soft);
+  border-radius:8px;padding:10px 12px;display:none;line-height:1.45;}
+.autherr.on{display:block;}
+.authlink{margin-top:18px;text-align:center;}
+.authlink button{background:none;border:none;color:var(--ink-soft);font-size:13px;
+  text-decoration:underline;padding:8px;}
+.whoami{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.04em;}
+.emprole{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
