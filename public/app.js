@@ -267,12 +267,13 @@ function controlsHtml(it){
           </div>
         </div>`;
     } else {
+      // Meat and fish are counted in half units — half a box, half a case.
       ctl = `
         <div class="stepper">
-          <button onclick="stepCount('${esc(it.name)}','qty',-1)">&minus;</button>
-          <input type="number" inputmode="decimal" step="1" value="${e.qty ?? ''}" placeholder="0"
+          <button onclick="stepCount('${esc(it.name)}','qty',-0.5)">&minus;</button>
+          <input type="number" inputmode="decimal" step="0.5" value="${e.qty ?? ''}" placeholder="0"
                  onchange="setCount('${esc(it.name)}','qty',this.value)">
-          <button onclick="stepCount('${esc(it.name)}','qty',1)">+</button>
+          <button onclick="stepCount('${esc(it.name)}','qty',0.5)">+</button>
         </div>`;
     }
     ctl += `<span class="order-badge">${order !== null ? (order > 0 ? 'ORDER ' + fmt(order) : 'OK') : ''}</span>`;

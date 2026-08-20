@@ -150,9 +150,11 @@ the item and used nowhere in the display — re-add them to the ticket line in
 
 ## How ordering is calculated
 
-- **single**: `order = par(today) − counted`, floored at 0.
+- **single**: `order = par(today) − counted`, floored at 0. Meat and fish count
+  in half units, so the steppers move by 0.5.
 - **shelf_cooler**: `order = (shelf_target − shelf) + (cooler_par(today) − cooler)`,
-  each piece floored at 0.
+  each piece floored at 0. Produce counts in quarters — the shelf is empty, half
+  or full, and the cooler stepper moves by 0.25.
 
 Anything that comes out at 0 stays off the ticket.
 
