@@ -90,7 +90,7 @@ app.put('/api/:dept/day', async (req, res) => {
 // ---- Item updates: vendor, pars, shelf target, active flag ----
 app.put('/api/:dept/item', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
-  const { name, vendor, pars, shelf_target, active, note, invdesc } = req.body || {};
+  const { name, vendor, vendor2, pars, shelf_target, active, note, invdesc } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   try {
     const sets = [];
@@ -102,6 +102,7 @@ app.put('/api/:dept/item', async (req, res) => {
     if (active !== undefined)       { sets.push(`active=$${i++}`);       vals.push(active); }
     if (note !== undefined)         { sets.push(`note=$${i++}`);         vals.push(note); }
     if (invdesc !== undefined)      { sets.push(`invdesc=$${i++}`);      vals.push(invdesc); }
+    if (vendor2 !== undefined)      { sets.push(`vendor2=$${i++}`);      vals.push(vendor2 || null); }
     if (!sets.length) return res.json({ ok: true });
     await pool.query(`UPDATE items SET ${sets.join(', ')} WHERE dept=$1 AND name=$2`, vals);
     res.json({ ok: true });

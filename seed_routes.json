@@ -57,5 +57,209 @@
   }
  ],
  "produce": [],
- "fish": []
+ "fish": [
+  {
+   "id": "gfishfishfresh",
+   "name": "Fish (Fresh)",
+   "items": [
+    "Barracuda (Fresh)",
+    "Branzino",
+    "Salmon",
+    "Sierra (Fresh)",
+    "Pargo",
+    "Mullet (Fresh)",
+    "Goo",
+    "New Zealand Snapper",
+    "Parrot Fish (Fresh)",
+    "Pink Grouper",
+    "King Mackerel",
+    "Striped Bass",
+    "Fresh Tilapia",
+    "Yellow Croaker (Fresh)",
+    "True Snapper U/1",
+    "True Snapper 1/2",
+    "True Snapper 2/4",
+    "Catfish 3-5lb",
+    "Catfish Prepped",
+    "Imitation Crab Meat",
+    "Cherrystone",
+    "Manila Clam",
+    "Blood Clam",
+    "Cat Fish Fillet",
+    "Dover Sole Fillet",
+    "Rock Cod Snapper Fillet",
+    "Oyster Jar",
+    "Oysters",
+    "Brown Chicken"
+   ]
+  },
+  {
+   "id": "gfishshrimp",
+   "name": "Shrimp",
+   "items": [
+    "21/25 Cooked Shrimp With Tail",
+    "26/30 Cooked Shrimp With Tail",
+    "41/50 Cooked Shrimp With Tail",
+    "51/60 Cooked Shrimp W/O Tail",
+    "6/8 Freshwater (Deveined w/Shell) EZ Peel",
+    "13/15 Shrimp EZ Peel DV Shell On",
+    "8/12 Freshwater (Deveined w/Shell) EZ Peel"
+   ]
+  },
+  {
+   "id": "gfishshrimppeeleddeveined",
+   "name": "Shrimp (Peeled/Deveined)",
+   "items": [
+    "16/20 Shrimp (Peeled/Tail-Off)",
+    "21/25 Shrimp (Peeled/Tail-Off)",
+    "26/30 Shrimp (Peeled/Tail-Off)",
+    "31/35 Shrimp (Peeled/Tail-Off)",
+    "31/40 Shrimp (Peeled/Tail-Off)",
+    "41/50 Shrimp (Peeled/Tail-Off)",
+    "61/70 Shrimp (Peeled/Tail-Off)"
+   ]
+  },
+  {
+   "id": "gfishtigershrimp",
+   "name": "Tiger Shrimp",
+   "items": [
+    "Tiger Shrimp (4/6)",
+    "Tiger Shrimp (6/8)",
+    "Tiger Shrimp (13/15)",
+    "Tiger Shrimp (8/12)",
+    "Tiger Shrimp (16/20)"
+   ]
+  },
+  {
+   "id": "gfishprawns",
+   "name": "Prawns",
+   "items": [
+    "1/2 Prawns",
+    "2/4 Prawns",
+    "4/6 Prawns",
+    "6/8 Prawns"
+   ]
+  },
+  {
+   "id": "gfishshrimpheadonblock",
+   "name": "Shrimp (Head-On/Block)",
+   "items": [
+    "9/12 Shrimp Head-On Block",
+    "10/20 Shrimp Head-On Block",
+    "20/30 Shrimp Head-On Block",
+    "30/40 Shrimp Head-On Block",
+    "40/50 Shrimp Head-On Block"
+   ]
+  },
+  {
+   "id": "gfishshrimpheadlessblock",
+   "name": "Shrimp (Headless/Block)",
+   "items": [
+    "U-15 White Shrimp Headless Block",
+    "8/12 Shrimp Headless Block",
+    "13/15 Shrimp Headless Block",
+    "16/20 Shrimp Headless Block",
+    "21/25 Shrimp Headless Block",
+    "26/30 Shrimp Headless Block",
+    "31/35 Shrimp Headless Block",
+    "36/40 Shrimp Headless Block",
+    "41/50 Shrimp Headless Block",
+    "51/60 Shrimp Headless Block",
+    "61/70 Shrimp Headless Block",
+    "71/90 Shrimp Headless Block"
+   ]
+  },
+  {
+   "id": "gfishshrimpheadlessiqf",
+   "name": "Shrimp (Headless/IQF)",
+   "items": [
+    "13/15 Shrimp Headless IQF",
+    "16/20 Shrimp Headless IQF",
+    "26/30 Shrimp Headless IQF",
+    "31/35 Shrimp Headless IQF",
+    "41/50 Shrimp Headless IQF",
+    "51/60 Shrimp Headless IQF"
+   ]
+  },
+  {
+   "id": "gfishfishfrozen",
+   "name": "Fish (Frozen)",
+   "items": [
+    "Barracuda (Frozen)",
+    "Butter Fish",
+    "Golden Pompano (800-1200)",
+    "Jack Fish (2-4)",
+    "Milk Fish",
+    "Mullet (Frozen)",
+    "Norway / Saba Mackerel",
+    "Parrot Fish (Frozen)",
+    "Red Drum",
+    "Red Tilapia (800+)",
+    "Robalo 4-6",
+    "Sea Bream",
+    "Sierra (Frozen)",
+    "Swai Fillet",
+    "Tilapia",
+    "Tilapia Fillet",
+    "Yellow Croaker (Frozen)",
+    "Yellowtail (Japanese Amberjack Hamachi)",
+    "White Perch",
+    "Dr. Fish",
+    "Whiting"
+   ]
+  },
+  {
+   "id": "gfishseafoodfrozen",
+   "name": "Seafood (Frozen)",
+   "items": [
+    "Anchovy Grey",
+    "Apple Snail Meat 14 oz",
+    "Baby Clam Meat (Cooked) 14 oz",
+    "Baby Octopus 16-25 2 lb",
+    "Boiled Short Neck Clam Meat 14 oz",
+    "Cigar Minnow (Round Scad)",
+    "Clam Meat 14 oz",
+    "Cleaned Cuttlefish",
+    "Conch Meat (Honduras/Nicaragua)",
+    "Cooked Scallop Meat (60-80)",
+    "Crab Claws Jonah NAUTILUS",
+    "Crab Claws Jonah PAFCO",
+    "Crab Dungeness",
+    "Crab Lump/Claw Meat 10 oz",
+    "Crab Rock Brown 600 g",
+    "Crab Softshell",
+    "Crab Swim 11/15 1.5 lb",
+    "Crawfish 5 lb",
+    "Crawfish Tailmeat 1 lb",
+    "Fish Ball",
+    "Frog Legs 1 lb",
+    "Imitation Crab Sticks",
+    "King Crab",
+    "Lobster Culls",
+    "Lobster Tail (12-14)",
+    "Mussel (Half-Shell) 2 lb",
+    "Mussel (Blue) Whole 1.5 lb",
+    "Mussel (Whole) 2 lb",
+    "Mussel Meat 2.2 lb",
+    "Octopus (1-2lb)",
+    "Octopus (2-4lb)",
+    "Octopus Yanagi (COOKED)",
+    "Round Scad / Scad Layang 2 lb",
+    "Sand Goby 14 oz",
+    "Scallop (10/20) 1 lb",
+    "Scallop Bay (60/80)",
+    "Seafood Mix",
+    "Silver Fish (3-5) 24 oz",
+    "Smelt",
+    "Snow Crab 10 oz +",
+    "Soft Cuttlefish",
+    "Squid Carved 14 oz",
+    "Squid Loligo",
+    "Squid Ring 40 oz",
+    "Squid Tube",
+    "Squid/Calamari 3lb box",
+    "Squid/Calamari 5lb box"
+   ]
+  }
+ ]
 }

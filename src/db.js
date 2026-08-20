@@ -181,6 +181,7 @@ export async function initDb() {
       name          TEXT NOT NULL,
       invdesc       TEXT DEFAULT '',
       vendor        TEXT,
+      vendor2       TEXT,
       case_size     NUMERIC,
       unit          TEXT,
       note          TEXT,
@@ -234,14 +235,30 @@ export async function initDb() {
     );
   `);
 
-  // Seed items only if the table is empty, so redeploys never clobber live data.
-  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM items');
-  if (rows[0].n === 0) {
-    console.log('Empty items table detected — seeding initial data.');
-    await seedInitialData();
-  } else {
-    console.log(`Items table already has ${rows[0].n} rows — skipping seed.`);
-  }
+  // CREATE TABLE IF NOT EXISTS leaves an existing table alone, so a column added
+  // later has to be introduced separately for databases already out there.
+  await pool.query('ALTER TABLE items ADD COLUMN IF NOT EXISTS vendor2 TEXT');
+
+  await seedEmptyDepartments();
+}
+
+// Seed per department rather than all-or-nothing. A department holding rows is
+// never touched, so redeploys still cannot clobber live data, but a department
+// that is empty — a new one, or one not filled in yet — gets its starting list
+// instead of waiting for the whole database to be wiped.
+async function seedEmptyDepartments() {
+  const seedPath = path.join(__dirname, '..', 'seed_items.json');
+  const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+  const { rows } = await pool.query(
+    'SELECT dept, COUNT(*)::int AS n FROM items GROUP BY dept');
+  const have = Object.fromEntries(rows.map(r => [r.dept, r.n]));
+
+  const empty = Object.keys(seed).filter(d => !have[d] && seed[d].length);
+  const kept = Object.keys(have).filter(d => have[d]);
+  if (kept.length) console.log(`Leaving alone: ${kept.map(d => `${d} (${have[d]})`).join(', ')}.`);
+  if (!empty.length) { console.log('No empty departments to seed.'); return; }
+  console.log(`Seeding empty departments: ${empty.join(', ')}.`);
+  await seedInitialData(empty);
 }
 
 // Spreadsheet-sourced data occasionally carries values like " " or "10's" in a
@@ -253,7 +270,7 @@ function num(v) {
   return m ? parseFloat(m[0]) : null;
 }
 
-async function seedInitialData() {
+async function seedInitialData(depts) {
   const seedPath = path.join(__dirname, '..', 'seed_items.json');
   const routePath = path.join(__dirname, '..', 'seed_routes.json');
   const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
@@ -263,15 +280,16 @@ async function seedInitialData() {
   try {
     await client.query('BEGIN');
 
-    for (const dept of Object.keys(seed)) {
+    for (const dept of Object.keys(seed).filter(d => depts.includes(d))) {
       let order = 0;
       for (const it of seed[dept]) {
         await client.query(
-          `INSERT INTO items (dept, name, invdesc, vendor, case_size, unit, note, mode, shelf_target, pars, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+          `INSERT INTO items (dept, name, invdesc, vendor, vendor2, case_size, unit, note, mode, shelf_target, pars, active, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
            ON CONFLICT (dept, name) DO NOTHING`,
-          [dept, it.name, it.invdesc || '', it.vendor, num(it.case_size), it.unit, it.note,
-           it.mode, num(it.shelf_target), JSON.stringify(it.pars || {}), order++]
+          [dept, it.name, it.invdesc || '', it.vendor, it.vendor2 || null,
+           num(it.case_size), it.unit, it.note, it.mode, num(it.shelf_target),
+           JSON.stringify(it.pars || {}), it.active !== false, order++]
         );
         if (it.vendor) {
           await client.query(
@@ -282,7 +300,7 @@ async function seedInitialData() {
       }
     }
 
-    for (const dept of Object.keys(routes)) {
+    for (const dept of Object.keys(routes).filter(d => depts.includes(d))) {
       let pos = 0;
       for (const g of routes[dept]) {
         await client.query(

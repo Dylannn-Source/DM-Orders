@@ -11,7 +11,7 @@ counts into one order ticket per vendor that you can copy and send.
 |---|---|---|---|
 | Produce | 169 | shelf + cooler | Mon, Thu |
 | Meat | 37 | single count | Mon–Sat |
-| Fish & Seafood | *empty — awaiting item list* | single count | Mon–Sat |
+| Fish & Seafood | 143 | single count | Wed, Sun |
 
 ## Deploying to Railway
 
@@ -51,8 +51,8 @@ anyone's bookmarks keep working.
 A PAR is how much of an item you want on hand for a given day. The order is
 computed against it, so **until a PAR is set, an item never gets ordered.**
 
-Produce and meat ship with their PARs already filled in. Set or change any of
-them under **Settings → PARs**, or straight in the database:
+Produce and meat ship with their PARs already filled in; fish does not. Set or
+change any of them under **Settings → PARs**, or straight in the database:
 
 ```sql
 UPDATE items SET pars = '{"mon":5,"tue":5,"wed":5,"thu":8,"fri":8,"sat":8}'::jsonb
@@ -64,14 +64,25 @@ deleting it.
 
 ## Fish & seafood
 
-The department is wired up end to end — tab, six-day toggle, PARs, vendors,
-routes, order tickets — but **it has no items in it yet**. It's waiting on the
-real buy list: what Dat Moi actually orders and from which vendor.
+Transcribed from the order sheet, keeping its sections as the walking route:
+Fish (Fresh) 29, Shrimp 7, Shrimp (Peeled/Deveined) 7, Tiger Shrimp 5, Prawns 4,
+Shrimp (Head-On/Block) 5, Shrimp (Headless/Block) 12, Shrimp (Headless/IQF) 6,
+Fish (Frozen) 21, Seafood (Frozen) 47.
 
-To load it, add rows to the `"fish"` array in `seed_items.json` before a first
-deploy, or insert them into a running database (see below). Optionally group them
-into a walking route in `seed_routes.json` so counting follows the way you move
-through the department.
+Three things about the transcription:
+
+- **Fish stocked both fresh and frozen are named for it** — `Barracuda (Fresh)`
+  and `Barracuda (Frozen)`, and the same for Mullet, Parrot Fish, Sierra and
+  Yellow Croaker. On the sheet the section heading says which; on a one-line
+  order it has to be in the name. They often have different vendors.
+- **Items ruled out on the sheet are kept but switched off** — 15 of them. They
+  stay off orders and out of the count, and **Settings → Seasonal / Active**
+  brings one back rather than retyping it.
+- **The second vendor column is kept as an alternate**, shown while counting as
+  `or NAUTILUS`. Orders are grouped by the first vendor only, so the alternate
+  never appears in the message a vendor receives.
+
+PARs are all at 0 until the real ones are set under **Settings → PARs**.
 
 ## Adding an item
 
@@ -79,8 +90,9 @@ through the department.
 vendor's name for it if it differs, and a vendor. It starts with every PAR at 0,
 so it stays off orders until you set one under **PARs**.
 
-Editing `seed_items.json` only affects a database that has never been seeded, so
-use this screen for anything already deployed.
+`seed_items.json` seeds a department that has **no rows at all**. A department
+holding items is never touched by a deploy, so live PARs, counts and edits are
+safe — but a department that is empty will fill from the seed on the next boot.
 
 ## Adding or changing items in SQL
 

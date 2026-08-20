@@ -9,12 +9,11 @@ const DAY_DEFS = {
     { key: 'mon', label: 'MON' }, { key: 'tue', label: 'TUE' }, { key: 'wed', label: 'WED' },
     { key: 'thu', label: 'THU' }, { key: 'fri', label: 'FRI' }, { key: 'sat', label: 'SAT' }
   ],
-  fish: [
-    { key: 'mon', label: 'MON' }, { key: 'tue', label: 'TUE' }, { key: 'wed', label: 'WED' },
-    { key: 'thu', label: 'THU' }, { key: 'fri', label: 'FRI' }, { key: 'sat', label: 'SAT' }
-  ]
+  // The fish order goes out Wednesday and Sunday.
+  fish: [{ key: 'wed', label: 'WEDNESDAY' }, { key: 'sun', label: 'SUNDAY' }]
 };
-const DAY_NAMES = { mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday' };
+const DAY_NAMES = { sun:'Sunday', mon:'Monday', tue:'Tuesday', wed:'Wednesday',
+                   thu:'Thursday', fri:'Friday', sat:'Saturday' };
 const DEPT_TITLES = { produce:'Inventory & Order', meat:'Daily Order', fish:'Daily Order' };
 
 let dept = localStorage.getItem('dm_dept') || 'produce';
@@ -215,6 +214,7 @@ function renderList(){
       ? `<span class="chip">${htmlEsc(it.vendor)}</span>`
       : `<span class="chip note">vendor unassigned</span>`;
     meta += `<span class="chip">PAR ${fmt(parFor(it, day))}</span>`;
+    if (it.vendor2) meta += `<span class="chip alt">or ${htmlEsc(it.vendor2)}</span>`;
     if (it.note) meta += `<span class="chip note">${htmlEsc(it.note)}</span>`;
 
     const ctl = controlsHtml(it);

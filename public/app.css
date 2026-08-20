@@ -68,6 +68,8 @@ main{padding:10px 12px 4px;}
 .chip{font-size:10.5px;font-family:var(--mono);color:var(--ink-soft);background:var(--paper-2);
   border-radius:5px;padding:2px 6px;}
 .chip.note{color:#8a4413;background:var(--accent-soft);}
+/* the fallback supplier, for reference while counting — never sent on an order */
+.chip.alt{color:var(--ink-soft);background:transparent;border:1px dashed var(--line);}
 .row-ctl{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
 .mini-stepper-group{display:flex;align-items:center;gap:6px;}
 .mini-stepper-group .lbl{font-family:var(--mono);font-size:10px;color:var(--ink-soft);
