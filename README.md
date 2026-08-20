@@ -110,7 +110,9 @@ Anything that comes out at 0 stays off the ticket.
 The app prints the reason and exits rather than looping silently. Check the
 **Deploy** logs:
 
-- **`DATABASE_URL is not set`** — the database isn't linked. Do step 3 above.
+- **`No database connection string found`** — the database isn't linked. Do step 3
+  above. `DATABASE_PRIVATE_URL`, `POSTGRES_URL` and `POSTGRESQL_URL` are accepted
+  too, so either name from Railway's reference picker works.
 - **`Postgres refused the ... connection`** — harmless. Railway's private network
   (`postgres.railway.internal`) runs without TLS while its public proxy requires
   it, so the app tries one, falls back to the other, and carries on. Force it

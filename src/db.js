@@ -6,20 +6,27 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
 
-const DATABASE_URL = process.env.DATABASE_URL;
+// Railway's Postgres exposes both DATABASE_URL and DATABASE_PRIVATE_URL, and the
+// reference picker offers either, so accept whichever name the variable landed on.
+const URL_VARS = ['DATABASE_URL', 'DATABASE_PRIVATE_URL', 'POSTGRES_URL', 'POSTGRESQL_URL'];
+const URL_VAR = URL_VARS.find(v => (process.env[v] || '').trim());
+const DATABASE_URL = URL_VAR ? process.env[URL_VAR].trim() : undefined;
 
 if (!DATABASE_URL) {
   console.error([
     '',
-    'DATABASE_URL is not set, so there is no database to connect to.',
+    'No database connection string found, so there is nothing to connect to.',
+    `Checked: ${URL_VARS.join(', ')}.`,
     '',
     'On Railway this means no Postgres is linked to this service. Railway does',
     'not share one service\'s variables with another automatically:',
     '',
-    '  1. In the project: New -> Database -> Add PostgreSQL',
-    '  2. Open this service -> Variables -> New Variable',
+    '  1. In the project canvas, check a Postgres database exists.',
+    '     If not: New -> Database -> Add PostgreSQL',
+    '  2. Open THIS service (not the database) -> Variables -> New Variable',
     '  3. Name: DATABASE_URL   Value: ${{Postgres.DATABASE_URL}}',
-    '     (match "Postgres" to whatever the database service is actually called)',
+    '     (match "Postgres" to whatever the database service is actually named)',
+    '  4. Deploy.',
     '',
     'Locally, pass it on the command line:',
     '  DATABASE_URL="postgres://user:pass@localhost:5432/datmoi" npm start',
@@ -78,7 +85,7 @@ export async function initDb() {
     pool = await openPool(wantSsl ? false : { rejectUnauthorized: false });
   }
   console.log(`Connected to Postgres at ${new URL(DATABASE_URL).host}` +
-              `${pool.options.ssl ? ' over TLS' : ''}.`);
+              `${pool.options.ssl ? ' over TLS' : ''} (via ${URL_VAR}).`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS items (
