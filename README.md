@@ -11,7 +11,7 @@ counts into one order ticket per vendor that you can copy and send.
 |---|---|---|---|
 | Produce | 169 | shelf + cooler | Mon, Thu |
 | Meat | 37 | single count | Mon–Sat |
-| Fish & Seafood | 151 | single count | Mon–Sat |
+| Fish & Seafood | *empty — awaiting item list* | single count | Mon–Sat |
 
 ## Deploying to Railway
 
@@ -43,52 +43,27 @@ anyone's bookmarks keep working.
 A PAR is how much of an item you want on hand for a given day. The order is
 computed against it, so **until a PAR is set, an item never gets ordered.**
 
-Produce and meat ship with their PARs already filled in. **Fish/seafood ships
-with every PAR at 0** — the item list came out of the POS, but the PARs are the
-buyer's call and aren't recorded there. Set them under **Settings → PARs**, or
-straight in the database:
+Produce and meat ship with their PARs already filled in. Set or change any of
+them under **Settings → PARs**, or straight in the database:
 
 ```sql
 UPDATE items SET pars = '{"mon":5,"tue":5,"wed":5,"thu":8,"fri":8,"sat":8}'::jsonb
-WHERE dept = 'fish' AND name = 'Fresh Tilapia';
+WHERE dept = 'meat' AND name = 'Pork Belly';
 ```
 
-You don't have to do all 151 at once. Set PARs for what you actually reorder and
-the rest sit quietly at 0. **Settings → Seasonal / Active** hides what you don't
-carry right now.
+**Settings → Seasonal / Active** hides anything you don't carry right now without
+deleting it.
 
-## Where the fish/seafood list came from
+## Fish & seafood
 
-It was pulled from the Dat Moi POS catalog (store 5084) and merged from four
-POS departments into one ordering department, grouped into a walking route:
+The department is wired up end to end — tab, six-day toggle, PARs, vendors,
+routes, order tickets — but **it has no items in it yet**. It's waiting on the
+real buy list: what Dat Moi actually orders and from which vendor.
 
-| Route section | Items | POS source |
-|---|---|---|
-| Fresh Fish Case | 72 | Fish |
-| Shrimp & Prawn | 33 | Shrimp |
-| Shellfish & Crab | 15 | Seafood |
-| Oyster Bar | 5 | Oysters + Seafood |
-| Squid & Octopus | 12 | Seafood + Fish |
-| Salt, Smoked & Dried | 10 | Fish + Seafood |
-| Frozen & Prepared | 4 | Seafood |
-
-Reorder or regroup any of it under **Settings → My Routine** so it matches the
-way you actually walk the department.
-
-Three judgment calls worth knowing about:
-
-- **56 of the 151 items came with a vendor**, taken from the POS latest-cost
-  record (Nautilus, Sealand, Sealand Seafood, H&N, H&T, Island Boy, La Ruche,
-  Pacific American Fish Co, Pafco, Rivera, Anjo's Imports, Costco, Sam's Club).
-  The other 95 show as *vendor unassigned* and land on an "UNASSIGNED VENDOR"
-  ticket until you set them under **Settings → Vendors**.
-- **Two POS items were left out** as miscategorized: *Smoked Ham Hock* (filed
-  under Seafood, but it's meat) and *Fine Shrimp Sauce* (filed under Shrimp, but
-  it's a shelf condiment).
-- **Case sizes were only carried over where the POS figure was unambiguously a
-  pound count** for a fish case. Shrimp blocks were left blank because the source
-  mixes `EACH` and `LB` units, and a wrong case size on a vendor order costs real
-  money. Items without a case size just print a plain quantity on the ticket.
+To load it, add rows to the `"fish"` array in `seed_items.json` before a first
+deploy, or insert them into a running database (see below). Optionally group them
+into a walking route in `seed_routes.json` so counting follows the way you move
+through the department.
 
 ## Adding or changing items
 
@@ -99,6 +74,21 @@ Three judgment calls worth knowing about:
 INSERT INTO items (dept, name, vendor, mode, pars, sort_order)
 VALUES ('fish', 'Whole Tilapia', 'SEALAND', 'single',
         '{"mon":5,"tue":5,"wed":5,"thu":8,"fri":8,"sat":8}'::jsonb, 0);
+```
+
+Vendor names are stored uppercase. A vendor typed on an item shows up in
+**Settings → Vendors** on its own; items left without one collect on a single
+"UNASSIGNED VENDOR" ticket until you assign them.
+
+Changing `seed_items.json` only affects a **fresh** database — the seed runs once,
+when the items table is empty, so redeploys never overwrite live data. To reload a
+department that's already deployed, clear it first:
+
+```sql
+DELETE FROM counts  WHERE dept = 'fish';
+DELETE FROM routes  WHERE dept = 'fish';
+DELETE FROM vendors WHERE dept = 'fish';
+DELETE FROM items   WHERE dept = 'fish';
 ```
 
 ## How ordering is calculated

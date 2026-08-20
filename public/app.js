@@ -247,7 +247,12 @@ function renderList(){
     wrap.appendChild(row);
   });
 
-  if (total === 0) wrap.innerHTML = '<div class="emptystate">No items match your search.</div>';
+  if (total === 0){
+    // An empty list means no search hit, or a department with nothing in it yet.
+    wrap.innerHTML = q
+      ? '<div class="emptystate">No items match your search.</div>'
+      : '<div class="emptystate">No items in this department yet.</div>';
+  }
   $('progresslabel').textContent = `${counted} of ${total} counted`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
   $('reviewBtn').textContent = `Review Orders (${counted}/${total})`;
@@ -345,12 +350,20 @@ function showSummary(){
   const wrap = $('ticketsWrap');
   const names = Object.keys(byVendor).sort();
   if (!names.length){
-    // An empty ticket list means one of two very different things. Say which.
-    const anyPar = items.some(it => it.active &&
+    // An empty ticket list has three very different causes. Say which one.
+    const active = items.filter(it => it.active);
+    const anyPar = active.some(it =>
       Object.values(it.pars || {}).some(v => Number(v) > 0));
-    wrap.innerHTML = anyPar
-      ? '<div class="emptystate">No items need ordering yet.<br>Go back and finish counting.</div>'
-      : '<div class="emptystate">No PARs set for this department yet.<br>Set them under Settings \u2192 PARs and the order builds itself as you count.</div>';
+    let msg;
+    if (!active.length){
+      msg = 'No items in this department yet.';
+    } else if (!anyPar){
+      msg = 'No PARs set for this department yet.<br>' +
+            'Set them under Settings \u2192 PARs and the order builds itself as you count.';
+    } else {
+      msg = 'No items need ordering yet.<br>Go back and finish counting.';
+    }
+    wrap.innerHTML = `<div class="emptystate">${msg}</div>`;
     return;
   }
   wrap.innerHTML = '';
