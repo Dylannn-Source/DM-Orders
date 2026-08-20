@@ -25,6 +25,8 @@ counts into one order ticket per vendor that you can copy and send.
    - Then open the **app** service → **Variables** → **New Variable**:
      name `DATABASE_URL`, value `${{Postgres.DATABASE_URL}}`
      (swap `Postgres` for whatever the database service is named).
+     The leading `$` is required — `{{Postgres.DATABASE_URL}}` without it is
+     passed through as plain text and never resolves.
 
    Railway does **not** hand one service's variables to another on its own — the
    reference above is what connects them. Without it the app exits on boot and
@@ -117,6 +119,8 @@ The app prints the reason and exits rather than looping silently. Check the
   (`postgres.railway.internal`) runs without TLS while its public proxy requires
   it, so the app tries one, falls back to the other, and carries on. Force it
   either way with a `DATABASE_SSL` variable set to `on` or `off`.
+- **`is missing the leading $`** — the value reads `{{Postgres.DATABASE_URL}}`.
+  Railway only expands `${{...}}`, so add the `$` at the front.
 - **`still holds an unresolved Railway reference`** — the name inside `${{...}}`
   doesn't match a service in the project. Read the database service's exact name
   off its header, or use **Variables → Add a Reference** and pick it from the list.

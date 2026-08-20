@@ -22,6 +22,17 @@ function redact(v) {
 // A malformed connection string otherwise surfaces as "getaddrinfo ENOTFOUND base",
 // which names neither the variable nor the problem. Check it up front instead.
 function urlProblem(v) {
+  if (/^\{\{.*\}\}$/.test(v)) {
+    return [
+      `${URL_VAR} is missing the leading $ that makes it a Railway reference:`,
+      `    ${v}      <- what is set`,
+      `    $${v}      <- what Railway substitutes`,
+      '',
+      'Railway only expands ${{...}}. Without the dollar sign the value is passed',
+      'through as plain text, so the variable looks correct in the dashboard but',
+      'never resolves. Edit it and put a $ at the front.'
+    ];
+  }
   if (v.includes('${{') || v.includes('}}')) {
     return [
       `${URL_VAR} still holds an unresolved Railway reference:`,
