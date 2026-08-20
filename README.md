@@ -11,7 +11,7 @@ counts into one order ticket per vendor that you can copy and send.
 |---|---|---|---|
 | Produce | 169 | shelf + cooler | Mon, Thu |
 | Meat | 37 | single count | Mon–Sat |
-| Fish & Seafood | 143 | single count | Wed, Sun |
+| Fish & Seafood | 139 | single count | Wed, Sun |
 
 ## Deploying to Railway
 
@@ -65,16 +65,18 @@ deleting it.
 ## Fish & seafood
 
 Transcribed from the order sheet, keeping its sections as the walking route:
-Fish (Fresh) 29, Shrimp 7, Shrimp (Peeled/Deveined) 7, Tiger Shrimp 5, Prawns 4,
+Fish (Fresh) 25, Shrimp 7, Shrimp (Peeled/Deveined) 7, Tiger Shrimp 5, Prawns 4,
 Shrimp (Head-On/Block) 5, Shrimp (Headless/Block) 12, Shrimp (Headless/IQF) 6,
 Fish (Frozen) 21, Seafood (Frozen) 47.
 
 Three things about the transcription:
 
-- **Fish stocked both fresh and frozen are named for it** — `Barracuda (Fresh)`
-  and `Barracuda (Frozen)`, and the same for Mullet, Parrot Fish, Sierra and
-  Yellow Croaker. On the sheet the section heading says which; on a one-line
-  order it has to be in the name. They often have different vendors.
+- **Yellow Croaker is the only fish bought fresh**, so it is the only one whose
+  name carries the state: `Yellow Croaker (Fresh)` and `Yellow Croaker (Frozen)`,
+  since an order has to say which. Barracuda, Mullet, Parrot Fish and Sierra sat
+  on both of the sheet's fish lists but all arrive frozen — the same fish written
+  twice — so each is one line under the frozen list now, carrying every supplier
+  either line named.
 - **Items ruled out on the sheet are kept but switched off** — 15 of them. They
   stay off orders and out of the count, and **Settings → Seasonal / Active**
   brings one back rather than retyping it.
