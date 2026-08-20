@@ -288,6 +288,14 @@ export async function initDb() {
   // predate them pick them up without losing anything already recorded.
   await pool.query('ALTER TABLE counts ADD COLUMN IF NOT EXISTS counted_by TEXT');
   await pool.query('ALTER TABLE order_history ADD COLUMN IF NOT EXISTS placed_by TEXT');
+  // Most warehouse stock moves by the case, but people pick at some of it — a
+  // few bottles off a pallet. Cases and loose units are counted separately,
+  // because "5 cases and 9 bottles" is what is on the shelf and 5.375 is not.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pack_size NUMERIC');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS unit_name TEXT');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS qty_units NUMERIC NOT NULL DEFAULT 0');
+  await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS delta_units NUMERIC');
+  await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS units_after NUMERIC');
 
   await seedEmptyDepartments();
 }

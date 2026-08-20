@@ -140,6 +140,19 @@ carries a stripe for it: green under a week, amber under a month, red beyond
 that or never counted. The summary counts how many have gone unchecked for a
 month, which is the number worth watching.
 
+**Cases and loose units are counted separately.** Most stock moves by the case,
+but people pick at some of it, so an item can say what is inside one — 24 bottles
+to a case — and then reads as `5 cases + 9 bottles`, with the total underneath.
+That is what is on the shelf; `5.375 cases` is not.
+
+Taking loose units opens a case when none are loose, exactly as it happens out
+there: 8 cases, someone wants 3 bottles, and it becomes 7 cases + 21 bottles.
+Counting records what was seen and is not quietly restated — 5 cases and 30 loose
+stays that, rather than being rewritten as 6 and 6.
+
+An item added without a pack size stays case-only; the Update panel offers to set
+one later for anything that turns out to get picked at.
+
 Three movements, and the difference between them matters:
 
 - **I counted it** — sets the quantity *and* resets its age. The only one that

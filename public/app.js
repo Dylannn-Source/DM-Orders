@@ -1052,6 +1052,22 @@ function ageOf(row){
 
 const fmtQty = n => String(Math.round(Number(n) * 100) / 100);
 
+// "5 cases + 9 bottles" is what is on the shelf. A single decimal is not.
+function stockLine(row){
+  const cases = `${fmtQty(row.qty)}<span class="whunit"> ${htmlEsc(row.unit || 'cases')}</span>`;
+  if (!row.pack_size) return cases;
+  const u = Number(row.qty_units) || 0;
+  if (!u) return cases;
+  return `${cases} <span class="whplus">+</span> ${fmtQty(u)}<span class="whunit"> ${htmlEsc(row.unit_name || 'units')}</span>`;
+}
+function totalLine(row){
+  if (!row.pack_size) return '';
+  const total = Number(row.qty) * Number(row.pack_size) + (Number(row.qty_units) || 0);
+  // "per case", not "per cases"
+  const one = (row.unit || 'case').replace(/s$/i, '');
+  return `${fmtQty(total)} ${htmlEsc(row.unit_name || 'units')} all in &middot; ${fmtQty(row.pack_size)} per ${htmlEsc(one)}`;
+}
+
 function renderWarehouse(){
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const wrap = $('whWrap');
@@ -1070,6 +1086,11 @@ function renderWarehouse(){
         <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
         <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
       </div>
+      <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
+      <div class="vitem">
+        <input type="tel" inputmode="decimal" class="textinput" id="whNewPack" placeholder="e.g. 24">
+        <input type="text" class="textinput" id="whNewUnitName" placeholder="bottles / packs">
+      </div>
     </div>
     <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
     <div class="hint" id="whMsg"></div>`;
@@ -1086,18 +1107,29 @@ function renderWarehouse(){
     div.innerHTML = `
       <div class="whtop">
         <span class="whname">${htmlEsc(row.item_name)}</span>
-        <span class="whqty">${fmtQty(row.qty)}${row.unit ? ` <span class="whunit">${htmlEsc(row.unit)}</span>` : ''}</span>
+        <span class="whqty">${stockLine(row)}</span>
       </div>
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
+      ${row.pack_size ? `<div class="whtotal">${totalLine(row)}</div>` : ''}
       ${open ? `
         <div class="whform">
-          <input type="tel" inputmode="decimal" id="whQty_${row.id || ''}" class="whqtyinput" placeholder="How many?">
+          <input type="tel" inputmode="decimal" class="whcases" placeholder="${htmlEsc(row.unit || 'cases')}">
+          ${row.pack_size
+            ? `<input type="tel" inputmode="decimal" class="whunits" placeholder="${htmlEsc(row.unit_name || 'units')}">`
+            : ''}
         </div>
         <div class="whacts">
           <button onclick="whMove('${esc(row.item_name)}','counted')">I counted it</button>
           <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
-          <button onclick="whMove('${esc(row.item_name)}','taken')">Took to store</button>
-        </div>`
+          <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
+        </div>
+        ${row.pack_size ? '' : `
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Does anyone pick single ones off this?</div>
+        <div class="whform">
+          <input type="tel" inputmode="decimal" class="whpack" placeholder="how many inside">
+          <input type="text" class="whpackname" placeholder="bottles / packs">
+          <button class="whpackset" onclick="whSetPack('${esc(row.item_name)}')">Set</button>
+        </div>`}`
       : `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`}`;
     wrap.appendChild(div);
   });
@@ -1109,9 +1141,15 @@ function renderWarehouse(){
       <div class="vs-sub">who changed what, most recent first</div></div>`;
     whMoves.slice(0, 25).forEach(m => {
       const when = new Date(m.moved_at).toLocaleDateString('en-US', { month:'short', day:'numeric' });
-      const what = m.kind === 'counted' ? `counted <b>${htmlEsc(m.item_name)}</b> at ${fmtQty(m.qty_after)}`
-        : m.kind === 'added' ? `dropped off ${fmtQty(Math.abs(m.delta || 0))} <b>${htmlEsc(m.item_name)}</b> (now ${fmtQty(m.qty_after)})`
-        : m.kind === 'taken' ? `took ${fmtQty(Math.abs(m.delta || 0))} <b>${htmlEsc(m.item_name)}</b> to the store (now ${fmtQty(m.qty_after)})`
+      const amount = (c, u) => [
+        Number(c) ? `${fmtQty(Math.abs(c))} case${Math.abs(Number(c)) === 1 ? '' : 's'}` : null,
+        Number(u) ? `${fmtQty(Math.abs(u))} loose` : null
+      ].filter(Boolean).join(' and ') || 'nothing';
+      const left = `now ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`;
+      const what = m.kind === 'counted'
+          ? `counted <b>${htmlEsc(m.item_name)}</b> at ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`
+        : m.kind === 'added' ? `dropped off ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
+        : m.kind === 'taken' ? `took ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
         : `removed <b>${htmlEsc(m.item_name)}</b>`;
       const d = document.createElement('div');
       d.className = 'whmove';
@@ -1126,12 +1164,16 @@ function whToggle(name){ whOpen = whOpen === name ? null : name; renderWarehouse
 
 async function whAdd(){
   const name = $('whNewName').value.trim();
-  const unit = $('whNewUnit').value.trim();
-  const qty = $('whNewQty').value.trim();
   if (!name){ $('whMsg').textContent = 'Give it a name first.'; return; }
   const res = await fetch('/api/warehouse/item', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, unit, qty })
+    body: JSON.stringify({
+      name,
+      unit: $('whNewUnit').value.trim(),
+      qty: $('whNewQty').value.trim(),
+      pack_size: $('whNewPack').value.trim(),
+      unit_name: $('whNewUnitName').value.trim()
+    })
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok){ $('whMsg').textContent = body.error || 'Could not add that.'; return; }
@@ -1139,14 +1181,26 @@ async function whAdd(){
 }
 
 async function whMove(name, kind){
-  const input = document.querySelector('.whqtyinput');
-  const qty = input ? input.value.trim() : '';
-  if (qty === ''){ return; }
+  const cases = document.querySelector('.whcases')?.value.trim() || '';
+  const units = document.querySelector('.whunits')?.value.trim() || '';
+  // Counting zero is a real answer — none left. Moving nothing is not.
+  if (kind !== 'counted' && cases === '' && units === '') return;
   const res = await fetch('/api/warehouse/move', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ item_name: name, kind, qty })
+    body: JSON.stringify({ item_name: name, kind, cases: cases || 0, units: units || 0 })
   });
   if (res.ok){ whOpen = null; await showWarehouse(); }
+}
+
+async function whSetPack(name){
+  const pack = document.querySelector('.whpack')?.value.trim();
+  const unit_name = document.querySelector('.whpackname')?.value.trim();
+  if (!pack) return;
+  const res = await fetch('/api/warehouse/item/' + encodeURIComponent(name), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pack_size: pack, unit_name })
+  });
+  if (res.ok) await showWarehouse();
 }
 
 // ---- backup ----

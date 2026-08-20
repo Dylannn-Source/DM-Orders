@@ -252,20 +252,24 @@ app.get('/api/warehouse', async (_req, res) => {
 });
 
 app.post('/api/warehouse/item', async (req, res) => {
-  const { name, unit, qty } = req.body || {};
+  const { name, unit, qty, pack_size, unit_name, qty_units } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
-  const start = Number(qty) || 0;
+  const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
+  const cases = Number(qty) || 0;
+  const units = pack ? (Number(qty_units) || 0) : 0;
   try {
     const ins = await pool.query(
-      `INSERT INTO warehouse_stock (item_name, unit, qty, counted_at, counted_by)
-       VALUES ($1,$2,$3,NOW(),$4)
+      `INSERT INTO warehouse_stock
+         (item_name, unit, qty, pack_size, unit_name, qty_units, counted_at, counted_by)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)
        ON CONFLICT (item_name) DO NOTHING RETURNING item_name`,
-      [clean, String(unit || '').trim() || null, start, req.employee.name]);
+      [clean, String(unit || '').trim() || null, cases, pack,
+       pack ? (String(unit_name || '').trim() || 'units') : null, units, req.employee.name]);
     if (!ins.rowCount) return res.status(409).json({ error: 'that is already on the list' });
     await pool.query(
-      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, moved_by)
-       VALUES ($1,'counted',NULL,$2,$3)`, [clean, start, req.employee.name]);
+      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, units_after, moved_by)
+       VALUES ($1,'counted',NULL,$2,$3,$4)`, [clean, cases, units, req.employee.name]);
     res.json({ ok: true });
   } catch (e) {
     console.error('warehouse add failed', e);
@@ -273,39 +277,89 @@ app.post('/api/warehouse/item', async (req, res) => {
   }
 });
 
+// Turn a case-only item into one that gets picked at, or change how many are in
+// a case. Kept apart from movements: this describes the item, not its quantity.
+app.put('/api/warehouse/item/:name', async (req, res) => {
+  const { pack_size, unit_name, unit } = req.body || {};
+  const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
+  try {
+    const { rows } = await pool.query(
+      // Every parameter is cast: a bare $2 tested with IS NULL leaves Postgres
+      // no way to infer its type and the statement is rejected outright.
+      `UPDATE warehouse_stock
+          SET pack_size = $2::numeric,
+              unit_name = CASE WHEN $2::numeric IS NULL THEN NULL
+                               ELSE COALESCE($3::text, unit_name, 'units') END,
+              unit = COALESCE($4::text, unit),
+              qty_units = CASE WHEN $2::numeric IS NULL THEN 0 ELSE qty_units END,
+              updated_at = NOW()
+        WHERE item_name = $1::text RETURNING item_name`,
+      [req.params.name, pack, String(unit_name || '').trim() || null,
+       String(unit || '').trim() || null]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('warehouse item update failed', e);
+    res.status(500).json({ error: 'warehouse item update failed' });
+  }
+});
+
 // One route for all three movements. "counted" sets the number and is the only
 // one that refreshes its age — adding or taking a case tells you the stock moved,
 // not that anyone looked at the shelf.
 app.put('/api/warehouse/move', async (req, res) => {
-  const { item_name, kind, qty, note } = req.body || {};
+  const { item_name, kind, cases, units, note } = req.body || {};
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   if (!['counted', 'added', 'taken'].includes(kind)) {
     return res.status(400).json({ error: 'kind must be counted, added or taken' });
   }
-  const n = Number(qty);
-  if (!isFinite(n) || n < 0) return res.status(400).json({ error: 'quantity must be a number' });
+  const c = Number(cases) || 0;
+  const u = Number(units) || 0;
+  if (![c, u].every(n => isFinite(n) && n >= 0)) {
+    return res.status(400).json({ error: 'quantities must be numbers' });
+  }
+  if (kind !== 'counted' && c === 0 && u === 0) {
+    return res.status(400).json({ error: 'say how many' });
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'SELECT qty FROM warehouse_stock WHERE item_name=$1 FOR UPDATE', [item_name]);
+      'SELECT qty, qty_units, pack_size FROM warehouse_stock WHERE item_name=$1 FOR UPDATE', [item_name]);
     if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not on the list' }); }
-    const before = Number(rows[0].qty);
-    const after = kind === 'counted' ? n
-                : kind === 'added'   ? before + n
-                : Math.max(before - n, 0);
-    const delta = kind === 'counted' ? null : after - before;
+    const pack = rows[0].pack_size === null ? null : Number(rows[0].pack_size);
+    const beforeC = Number(rows[0].qty), beforeU = Number(rows[0].qty_units);
+
+    let afterC, afterU;
+    if (kind === 'counted') {
+      // Recorded as seen. Five stacked cases and thirty loose bottles is what is
+      // on the shelf, so it is not quietly restated as six cases and six.
+      afterC = c; afterU = pack ? u : 0;
+    } else if (kind === 'added') {
+      afterC = beforeC + c; afterU = pack ? beforeU + u : 0;
+    } else {
+      afterC = beforeC - c; afterU = pack ? beforeU - u : 0;
+      // Nobody loose left and someone wants three bottles: open a case, which is
+      // exactly what happens out there.
+      while (pack && afterU < 0 && afterC > 0) { afterC -= 1; afterU += pack; }
+      afterC = Math.max(afterC, 0); afterU = Math.max(afterU, 0);
+    }
+
     await client.query(
       kind === 'counted'
-        ? `UPDATE warehouse_stock SET qty=$2, counted_at=NOW(), counted_by=$3, updated_at=NOW() WHERE item_name=$1`
-        : `UPDATE warehouse_stock SET qty=$2, updated_at=NOW() WHERE item_name=$1`,
-      kind === 'counted' ? [item_name, after, req.employee.name] : [item_name, after]);
+        ? `UPDATE warehouse_stock SET qty=$2, qty_units=$3, counted_at=NOW(), counted_by=$4, updated_at=NOW() WHERE item_name=$1`
+        : `UPDATE warehouse_stock SET qty=$2, qty_units=$3, updated_at=NOW() WHERE item_name=$1`,
+      kind === 'counted' ? [item_name, afterC, afterU, req.employee.name]
+                         : [item_name, afterC, afterU]);
     await client.query(
-      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, note, moved_by)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [item_name, kind, delta, after, String(note || '').trim() || null, req.employee.name]);
+      `INSERT INTO warehouse_moves (item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [item_name, kind,
+       kind === 'counted' ? null : afterC - beforeC,
+       kind === 'counted' ? null : afterU - beforeU,
+       afterC, afterU, String(note || '').trim() || null, req.employee.name]);
     await client.query('COMMIT');
-    res.json({ ok: true, qty: after });
+    res.json({ ok: true, qty: afterC, qty_units: afterU });
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('warehouse move failed', e);
