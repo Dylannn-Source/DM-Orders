@@ -114,6 +114,13 @@ Oxtail: 1 - order as needed
 One ticket per vendor, so the vendor's own name is left out of the message.
 An item only carries a trailing note if one was set on it.
 
+**Items go out under the name the vendor uses for them.** An item has two names:
+the one it's sold under in the store, and the one the vendor calls it — `BANANA
+BLOSSOM` on the shelf is `BANANA FLOWER` on the order. The order uses the vendor's
+name; the counting screen and the order ticket both show the shelf name so you can
+still recognise what you counted. Edit them under **Settings → Order Names**, where
+an empty box means "send the shelf name". They live in the `invdesc` column.
+
 Quantities are shown and sent as plain numbers. Case sizes are still stored on
 the item and used nowhere in the display — re-add them to the ticket line in
 `showSummary` and to `buildText` if a vendor ever needs them spelled out.

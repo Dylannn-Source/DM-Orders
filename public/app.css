@@ -121,6 +121,12 @@ main{padding:10px 12px 4px;}
   border-bottom:1px dashed var(--line);font-size:14px;}
 .tline:last-child{border-bottom:none;}
 .tname{font-weight:600;}
+/* the shelf name, shown under the vendor's name on a ticket so a reviewer can
+   still recognise the item they counted */
+.tsell{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);display:block;margin-top:1px;}
+.hint{font-size:12.5px;line-height:1.5;color:var(--ink-soft);padding:0 2px 14px;}
+#orderNameWrap .vitem{padding:10px 12px;}
+#orderNameWrap .textinput{width:100%;}
 .tnote{font-family:var(--mono);font-size:10.5px;color:var(--accent);display:block;margin-top:1px;}
 .tqty{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap;
   padding-left:10px;text-align:right;}

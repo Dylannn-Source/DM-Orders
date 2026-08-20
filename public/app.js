@@ -72,6 +72,11 @@ async function write(method, path, body){
 }
 
 // ---- item helpers ----
+// What the vendor is asked for. Items are known internally by the name the store
+// sells them under; invdesc holds the vendor's own name for the same thing
+// (BANANA BLOSSOM on the shelf is BANANA FLOWER on the order).
+function orderName(it){ return (it.invdesc || '').trim() || it.name; }
+
 function parFor(it, d){ return (it.pars && it.pars[d] !== undefined) ? Number(it.pars[d]) : 0; }
 function shelfTargetFor(it){ return it.shelf_target === null || it.shelf_target === undefined ? 1 : Number(it.shelf_target); }
 
@@ -302,7 +307,8 @@ function handleResetTap(){
 
 // ---- views ----
 function hideAll(){
-  ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView','historyView']
+  ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
+   'orderNameView','historyView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -324,6 +330,8 @@ function showSettingsHub(){
   $('vendorHubCount').textContent = unassigned ? `${unassigned} unassigned` : 'all set';
   $('seasonalHubCount').textContent = `${off} off`;
   $('parHubCount').textContent = `${items.length} items`;
+  const renamed = items.filter(i => orderName(i) !== i.name).length;
+  $('orderNameHubCount').textContent = renamed ? `${renamed} renamed` : 'same as shelf';
   $('routeHubCount').textContent = routes.length ? (notRouted ? `${notRouted} not placed` : 'all set') : 'not set up';
 }
 
@@ -384,7 +392,9 @@ function showSummary(){
           const frac = Math.abs(it.rawQty % 1) > 0.001;
           const ch = roundChoices[it.name];
           return `<div class="tline">
-            <span class="tname">${htmlEsc(it.name)}${it.note?`<span class="tnote">${htmlEsc(it.note)}</span>`:''}</span>
+            <span class="tname">${htmlEsc(orderName(it))}${
+              orderName(it) !== it.name ? `<span class="tsell">${htmlEsc(it.name)}</span>` : ''
+            }${it.note?`<span class="tnote">${htmlEsc(it.note)}</span>`:''}</span>
             <span style="text-align:right;">
               <span class="tqty">${fmt(it.orderQty)}</span>
               ${frac ? `<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px;">
@@ -419,7 +429,7 @@ function setRound(name, mode){ roundChoices[name] = mode; showSummary(); }
 function buildText(list, dateStr){
   const lines = [`Dat Moi Order - ${dateStr}`, ''];
   list.forEach(it => {
-    let l = `${it.name}: ${fmt(it.orderQty)}`;
+    let l = `${orderName(it)}: ${fmt(it.orderQty)}`;
     if (it.note) l += ` - ${it.note}`;
     lines.push(l);
   });
@@ -604,6 +614,46 @@ async function setActive(name, val){
   if (it) it.active = val;
   await write('PUT', '/item', { name, active: val });
   renderSeasonal();
+}
+
+// ---- order names (what the vendor calls it) ----
+function showOrderNameSettings(){
+  hideAll(); $('orderNameView').style.display = 'block'; $('footerBar').style.display = 'none';
+  renderOrderNames();
+}
+function renderOrderNames(){
+  const wrap = $('orderNameWrap');
+  wrap.innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Order Names</div>
+      <div class="vs-sub">${items.filter(i => orderName(i) !== i.name).length} of ${items.length} differ from the shelf name</div>
+    </div>
+    <div class="hint">The bold name is what you sell it as. The box below it is what
+    the vendor calls it, and that is the name that goes out on the order. Leave a box
+    empty to send the shelf name.</div>`;
+  [...items].sort((a,b)=>a.name.localeCompare(b.name)).forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'vgroup';
+    div.innerHTML = `
+      <div class="vgroup-head" style="cursor:default;">
+        <div class="oldname">${htmlEsc(it.name)}</div>
+      </div>
+      <div class="vitem">
+        <input type="text" class="textinput" value="${htmlEsc(it.invdesc || '')}"
+          placeholder="${htmlEsc(it.name)}"
+          onchange="setOrderName('${esc(it.name)}', this.value)">
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+async function setOrderName(name, val){
+  const it = items.find(i => i.name === name);
+  if (!it) return;
+  it.invdesc = val.trim();
+  await write('PUT', '/item', { name, invdesc: it.invdesc });
+  const sub = document.querySelector('#orderNameWrap .vs-sub');
+  if (sub) sub.textContent =
+    `${items.filter(i => orderName(i) !== i.name).length} of ${items.length} differ from the shelf name`;
 }
 
 // ---- routine / route ----

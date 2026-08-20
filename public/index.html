@@ -56,6 +56,9 @@
   <div class="hubrow" onclick="showVendorSettings()">
     <div class="hubname">Vendors</div><span class="chip" id="vendorHubCount"></span>
   </div>
+  <div class="hubrow" onclick="showOrderNameSettings()">
+    <div class="hubname">Order Names</div><span class="chip" id="orderNameHubCount"></span>
+  </div>
   <div class="hubrow" onclick="showHistory()">
     <div class="hubname">Order History</div>
   </div>
@@ -79,6 +82,11 @@
 <div id="vendorView">
   <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Vendors</span></div>
   <div id="vendorWrap"></div>
+</div>
+
+<div id="orderNameView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Order Names</span></div>
+  <div id="orderNameWrap"></div>
 </div>
 
 <div id="historyView">
