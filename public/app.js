@@ -760,15 +760,32 @@ async function addItem(){
 // ---- signing in ------------------------------------------------------------
 // The whole app sits behind this. Everything under /api refuses without a
 // session, so the screen below is the only thing a stranger with the URL sees.
+// Most people use the same phone every day, so the name step only needs asking
+// once per device. Signing out clears it — that is the deliberate hand-over.
+const LAST_KEY = 'dm_last_employee';
+function rememberDevice(emp){
+  try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: emp.id, name: emp.name })); } catch {}
+}
+function forgetDevice(){ try { localStorage.removeItem(LAST_KEY); } catch {} }
+function rememberedDevice(){
+  try { return JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch { return null; }
+}
+
 async function boot(){
   const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => null);
-  if (!r) { authError('Cannot reach the app. Check your connection.'); showAuth('who'); return; }
+  if (!r) { showAuth('who'); authError('Cannot reach the app. Check your connection.'); return; }
   authNames = r.names || [];
   me = r.employee;
   if (r.needs_setup) return showAuth('setup');
-  if (!me) return showAuth('who');
-  if (me.must_change_pin) return showAuth('change');
-  startApp();
+  if (me) return me.must_change_pin ? showAuth('change') : startApp();
+
+  // Straight to the PIN pad for whoever used this phone last, as long as they
+  // still have an account.
+  const last = rememberedDevice();
+  const still = last && authNames.find(n => n.id === last.id);
+  if (still){ authPick = still; return showAuth('pin'); }
+  forgetDevice();
+  showAuth('who');
 }
 
 function startApp(){
@@ -823,7 +840,7 @@ function renderAuth(){
       <div class="pindots">${dots}</div>
       <div class="pinpad">
         ${[1,2,3,4,5,6,7,8,9].map(n => `<button onclick="pinTap('${n}')">${n}</button>`).join('')}
-        <button class="wide" onclick="showAuth('who')">Back</button>
+        <button class="wide" onclick="notMe()">Not you?</button>
         <button onclick="pinTap('0')">0</button>
         <button class="wide" onclick="pinTap('del')">Delete</button>
       </div>`;
@@ -834,6 +851,8 @@ function renderAuth(){
     ? authNames.map(n => `<button class="whobtn" onclick="pickWho(${n.id})">${htmlEsc(n.name)}</button>`).join('')
     : '<div class="authsub">No accounts yet. Ask a manager to add you.</div>';
 }
+
+function notMe(){ forgetDevice(); authPick = null; showAuth('who'); }
 
 function pickWho(id){
   authPick = authNames.find(n => n.id === id);
@@ -861,6 +880,7 @@ async function tryLogin(showErrors){
   if (res.ok){
     me = body.employee;
     authPin = '';
+    rememberDevice(me);
     if (me.must_change_pin) return showAuth('change');
     return startApp();
   }
@@ -881,6 +901,7 @@ async function doSetup(){
   const body = await res.json().catch(() => ({}));
   if (!res.ok) return authError(body.error || 'Could not set that up.');
   me = body.employee;
+  rememberDevice(me);
   startApp();
 }
 
@@ -899,6 +920,7 @@ async function doChangePin(){
 
 async function doLogout(){
   await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+  forgetDevice();
   me = null; authPick = null; authPin = '';
   const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => ({ names: [] }));
   authNames = r.names || [];

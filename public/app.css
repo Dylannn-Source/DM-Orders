@@ -5,8 +5,8 @@
   --ink-soft:#4B5C4F;
   --line:#D3DBC7;
   --card:#FFFFFF;
-  --accent:#D65F2E;
-  --accent-soft:#F6DCC9;
+  --accent:#BD3A3D;
+  --accent-soft:#F7DEDE;
   --good:#5C7A3D;
   --good-soft:#E1EAD1;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -67,7 +67,7 @@ main{padding:10px 12px 4px;}
 .row-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;}
 .chip{font-size:10.5px;font-family:var(--mono);color:var(--ink-soft);background:var(--paper-2);
   border-radius:5px;padding:2px 6px;}
-.chip.note{color:#8a4413;background:var(--accent-soft);}
+.chip.note{color:#8E2B2E;background:var(--accent-soft);}
 /* the fallback supplier, for reference while counting — never sent on an order */
 .chip.alt{color:var(--ink-soft);background:transparent;border:1px dashed var(--line);}
 .row-ctl{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
@@ -88,7 +88,7 @@ main{padding:10px 12px 4px;}
   padding:8px 11px;font-weight:700;font-size:12.5px;font-family:var(--mono);color:var(--ink-soft);}
 .fetoggle button.sel-full{background:var(--good-soft);border-color:var(--good);color:var(--good);}
 .fetoggle button.sel-half{background:#F3E9C9;border-color:#B98900;color:#8a6d00;}
-.fetoggle button.sel-empty{background:var(--accent-soft);border-color:var(--accent);color:#8a4413;}
+.fetoggle button.sel-empty{background:var(--accent-soft);border-color:var(--accent);color:#8E2B2E;}
 /* Always its own full-width line at a fixed height, so a row is exactly as tall
    empty as it is showing ORDER 12.25. Anything that reflows here shifts every
    row below it out from under the finger doing the counting. */
@@ -194,7 +194,7 @@ select.single.unassigned{border-color:var(--accent);background:var(--accent-soft
   background:var(--card);border-radius:11px;color:var(--ink);font-weight:600;}
 .pinpad button:active{background:var(--paper-2);}
 .pinpad button.wide{grid-column:span 1;font-size:13px;font-family:var(--sans);font-weight:600;}
-.autherr{margin-top:16px;font-size:13.5px;color:#8a2f13;background:var(--accent-soft);
+.autherr{margin-top:16px;font-size:13.5px;color:#8E2B2E;background:var(--accent-soft);
   border-radius:8px;padding:10px 12px;display:none;line-height:1.45;}
 .autherr.on{display:block;}
 .authlink{margin-top:18px;text-align:center;}
@@ -202,3 +202,9 @@ select.single.unassigned{border-color:var(--accent);background:var(--accent-soft
   text-decoration:underline;padding:8px;}
 .whoami{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);letter-spacing:.04em;}
 .emprole{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
+
+/* ---- the mark ---- */
+.authlogo{display:block;width:100%;max-width:290px;height:auto;margin:0 auto 18px;
+  border-radius:14px;}
+.headrow{display:flex;align-items:center;gap:11px;}
+.headmark{width:40px;height:40px;border-radius:9px;flex:none;}
