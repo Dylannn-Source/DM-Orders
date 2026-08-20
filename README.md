@@ -165,6 +165,37 @@ two cases" has an answer. Stock lives in `warehouse_stock`, separate from
 `counts`, so **Reset never touches it** — the ordering counts are a scratch pad
 wiped each round, and this is a standing record.
 
+## Connecting Vori
+
+Vori counts every unit the business owns, wherever it sits. The warehouse tab
+counts one location. Subtract the second from the first and what is left is what
+should be at the store — the number nobody currently has:
+
+```
+Vori, all in   −   warehouse   =   at the store
+     200              129              71
+```
+
+**Setting it up.** Create a **read-only** API key at
+[app.vori.com/retail/api-keys](https://app.vori.com/retail/api-keys), then add it
+in Railway as `VORI_API_KEY`. Optionally set `VORI_STORE_ID` and
+`VORI_SYNC_MINUTES` (default 30). Nothing here ever writes to Vori.
+
+Then link each warehouse line to the Vori product it is — free-text names cannot
+be matched to product IDs on their own — with the **Link** button on the item.
+
+**Three things stop a comparison, and each says so rather than guessing:**
+
+- Not linked to a Vori product yet.
+- No pack size, so cases cannot be compared with whatever Vori counts in.
+- The warehouse alone holding more than Vori says exists, which means one of the
+  two is out of date. It shows `?` and says so instead of printing a negative.
+
+**On trusting the result.** Vori's on-hand is a perpetual count driven by sales
+and receiving, and it drifts. A difference is only as good as the older of the
+two numbers behind it, so both carry their age. Treat a figure with a
+three-week-old warehouse count as the guess it is.
+
 ## Adding an item
 
 **Settings → Add an Item** adds one to the department you're in: shelf name, the

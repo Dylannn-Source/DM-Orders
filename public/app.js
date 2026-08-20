@@ -1022,7 +1022,21 @@ async function setEmployeeActive(id, active){
 // answered by whoever is standing in front of it. Nobody is standing in front of
 // this one, so the screen has to say how old each number is and let a stale one
 // look like the guess it is.
-let whStock = [], whMoves = [], whOpen = null;
+let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
+
+// Vori counts every unit the business owns; the warehouse row counts one place.
+// What is left is what should be at the store. Both halves have to be in the same
+// unit for that to mean anything, which is what the pack size is for.
+function splitOf(row){
+  if (row.vori_on_hand === null || row.vori_on_hand === undefined) return null;
+  const total = Number(row.vori_on_hand);
+  const pack = row.pack_size ? Number(row.pack_size) : null;
+  // Without a pack size a case cannot be compared with whatever Vori counts in.
+  if (!pack) return { total, warehouse: null, onsite: null, blocked: 'needs a pack size' };
+  const warehouse = Number(row.qty) * pack + (Number(row.qty_units) || 0);
+  const onsite = total - warehouse;
+  return { total, warehouse, onsite, unit: row.unit_name || 'units' };
+}
 
 async function showWarehouse(){
   hideAll();
@@ -1034,7 +1048,7 @@ async function showWarehouse(){
   $('whWrap').innerHTML = '<div class="hint">Loading...</div>';
   const r = await fetch('/api/warehouse').then(x => x.json()).catch(() => null);
   if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
-  whStock = r.stock; whMoves = r.moves;
+  whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
   renderWarehouse();
 }
 
@@ -1069,13 +1083,22 @@ function totalLine(row){
 }
 
 function renderWarehouse(){
+  if (whLinking) return renderLinkPanel();
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const wrap = $('whWrap');
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
-  $('whSummary').innerHTML = whStock.length
+  const linked = whStock.filter(r => r.vori_product_id).length;
+  const voriLine = !whVori.configured
+    ? '<div class="whsync">Vori is not connected. Add a read-only API key as VORI_API_KEY in Railway.</div>'
+    : `<div class="whsync">Vori: ${whVori.products || 0} products,
+        ${whVori.last_sync ? 'synced ' + new Date(whVori.last_sync).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'never synced'}
+        &middot; ${linked} of ${whStock.length} linked
+        <button class="vorilink" onclick="whSync()">Sync now</button>
+        <span id="whSyncMsg"></span></div>`;
+  $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
-    : 'Nothing on the list yet.';
+    : 'Nothing on the list yet.') + voriLine;
 
   const shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
   wrap.innerHTML = `
@@ -1111,6 +1134,7 @@ function renderWarehouse(){
       </div>
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
       ${row.pack_size ? `<div class="whtotal">${totalLine(row)}</div>` : ''}
+      ${voriBlock(row)}
       ${open ? `
         <div class="whform">
           <input type="tel" inputmode="decimal" class="whcases" placeholder="${htmlEsc(row.unit || 'cases')}">
@@ -1160,7 +1184,106 @@ function renderWarehouse(){
   }
 }
 
+// The three numbers, with the age of each. A difference is only as trustworthy
+// as the older of the two figures it came from, so both are shown.
+function voriBlock(row){
+  if (!whVori.configured) return '';
+  if (!row.vori_product_id){
+    return `<div class="vorirow unlinked">
+      <span>Not linked to Vori</span>
+      <button class="vorilink" onclick="whStartLink('${esc(row.item_name)}')">Link</button></div>`;
+  }
+  const s = splitOf(row);
+  if (!s){
+    return `<div class="vorirow unlinked"><span>Linked, waiting for the first sync</span>
+      <button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button></div>`;
+  }
+  if (s.blocked){
+    return `<div class="vorirow unlinked"><span>Vori says ${fmtQty(s.total)} &mdash; ${s.blocked} to compare</span></div>`;
+  }
+  const negative = s.onsite < 0;
+  const hrs = row.vori_hours_old === null ? null : Number(row.vori_hours_old);
+  const age = hrs === null ? '' : hrs < 1 ? 'just synced' : hrs < 48 ? `${Math.round(hrs)}h ago` : `${Math.round(hrs/24)}d ago`;
+  return `
+    <div class="voritrio">
+      <div class="vcell"><div class="vnum">${fmtQty(s.total)}</div><div class="vlab">Vori, all in</div></div>
+      <div class="vop">&minus;</div>
+      <div class="vcell"><div class="vnum">${fmtQty(s.warehouse)}</div><div class="vlab">warehouse</div></div>
+      <div class="vop">=</div>
+      <div class="vcell ${negative ? 'bad' : 'onsite'}">
+        <div class="vnum">${negative ? '?' : fmtQty(s.onsite)}</div><div class="vlab">at the store</div></div>
+    </div>
+    ${negative
+      ? `<div class="voriwarn">The warehouse alone holds more than Vori says exists.
+         One of the two is out of date &mdash; recount here, or check Vori.</div>`
+      : `<div class="whtotal">in ${htmlEsc(s.unit)} &middot; Vori ${htmlEsc(age)}</div>`}
+    <div class="vorirow"><span class="vorilinked">Vori: ${htmlEsc(row.vori_name || row.vori_product_id)}</span>
+      <button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button></div>`;
+}
+
 function whToggle(name){ whOpen = whOpen === name ? null : name; renderWarehouse(); }
+
+// ---- linking a warehouse line to a Vori product ----
+function whStartLink(name){ whLinking = { name, results: null, error: null }; renderLinkPanel(); }
+function whCancelLink(){ whLinking = null; renderWarehouse(); }
+
+function renderLinkPanel(){
+  const wrap = $('whWrap');
+  const l = whLinking;
+  wrap.innerHTML = `
+    <div class="vsummarybar"><div class="vs-title">Link to Vori</div>
+      <div class="vs-sub">${htmlEsc(l.name)}</div></div>
+    <div class="hint">Search Vori's catalogue and pick the product this is. Until it
+    is linked there is nothing to subtract from.</div>
+    <div class="whform">
+      <input type="text" class="textinput" id="voriQ" placeholder="Search Vori...">
+      <button class="whpackset" onclick="whSearchVori()">Search</button>
+    </div>
+    <div class="hint" id="voriMsg">${l.error ? htmlEsc(l.error) : ''}</div>
+    <div id="voriResults">${(l.results || []).map(p => `
+      <div class="whrow" style="border-left-color:var(--line);">
+        <div class="whtop"><span class="whname">${htmlEsc(p.name)}</span></div>
+        ${p.barcode ? `<div class="whtotal">${htmlEsc(p.barcode)}</div>` : ''}
+        <div class="whacts"><button onclick="whDoLink('${esc(p.id)}','${esc(p.name)}')">This one</button></div>
+      </div>`).join('')}</div>
+    <button class="addbtn" style="width:100%;margin-top:10px;" onclick="whCancelLink()">Back</button>`;
+  if (l.results === null) setTimeout(() => $('voriQ')?.focus(), 50);
+}
+
+async function whSearchVori(){
+  const q = $('voriQ').value.trim();
+  $('voriMsg').textContent = 'Searching...';
+  const r = await fetch('/api/vori/search?q=' + encodeURIComponent(q)).then(x => x.json()).catch(() => null);
+  if (!r || r.error){ whLinking.error = r?.error || 'Could not reach Vori.'; whLinking.results = []; }
+  else { whLinking.results = r.products; whLinking.error = r.products.length ? null : 'Nothing matched.'; }
+  renderLinkPanel();
+}
+
+async function whDoLink(id, name){
+  await fetch('/api/warehouse/item/' + encodeURIComponent(whLinking.name) + '/vori', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vori_product_id: id, vori_name: name })
+  });
+  whLinking = null;
+  await showWarehouse();
+}
+
+async function whUnlink(name){
+  await fetch('/api/warehouse/item/' + encodeURIComponent(name) + '/vori', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vori_product_id: null, vori_name: null })
+  });
+  await showWarehouse();
+}
+
+async function whSync(){
+  const el = $('whSyncMsg');
+  if (el) el.textContent = 'Asking Vori...';
+  const r = await fetch('/api/vori/sync', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' })
+    .then(x => x.json()).catch(() => null);
+  if (!r || r.error){ if (el) el.textContent = r?.error || 'Sync failed.'; return; }
+  await showWarehouse();
+}
 
 async function whAdd(){
   const name = $('whNewName').value.trim();

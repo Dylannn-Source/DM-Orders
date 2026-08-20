@@ -6,6 +6,7 @@ import {
   hashPin, verifyPin, isValidPin, issueSession, clearSession, currentEmployee,
   lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
 } from './auth.js';
+import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -239,12 +240,19 @@ app.put('/api/employees/:id', async (req, res) => {
 // screen leans on that rather than on the number alone.
 app.get('/api/warehouse', async (_req, res) => {
   try {
-    const [stock, moves] = await Promise.all([
-      pool.query(`SELECT *, EXTRACT(EPOCH FROM (NOW() - counted_at))/86400 AS days_since_count
-                    FROM warehouse_stock ORDER BY item_name`),
-      pool.query(`SELECT * FROM warehouse_moves ORDER BY moved_at DESC LIMIT 60`)
+    const [stock, moves, vori] = await Promise.all([
+      pool.query(`SELECT w.*,
+                         EXTRACT(EPOCH FROM (NOW() - w.counted_at))/86400 AS days_since_count,
+                         v.on_hand      AS vori_on_hand,
+                         v.synced_at    AS vori_synced_at,
+                         EXTRACT(EPOCH FROM (NOW() - v.synced_at))/3600 AS vori_hours_old
+                    FROM warehouse_stock w
+                    LEFT JOIN vori_inventory v ON v.product_id = w.vori_product_id
+                   ORDER BY w.item_name`),
+      pool.query(`SELECT * FROM warehouse_moves ORDER BY moved_at DESC LIMIT 60`),
+      voriStatus().catch(() => ({ configured: false }))
     ]);
-    res.json({ stock: stock.rows, moves: moves.rows });
+    res.json({ stock: stock.rows, moves: moves.rows, vori });
   } catch (e) {
     console.error('warehouse fetch failed', e);
     res.status(500).json({ error: 'warehouse fetch failed' });
@@ -382,6 +390,55 @@ app.delete('/api/warehouse/item/:name', async (req, res) => {
   } catch (e) {
     console.error('warehouse delete failed', e);
     res.status(500).json({ error: 'warehouse delete failed' });
+  }
+});
+
+// ---- Vori ------------------------------------------------------------------
+// Read-only. Nothing in this app writes to Vori, and the key it uses should be
+// scoped read-only too.
+app.get('/api/vori/status', async (_req, res) => {
+  try { res.json(await voriStatus()); }
+  catch (e) { res.status(500).json({ error: 'vori status failed' }); }
+});
+
+app.post('/api/vori/sync', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  if (!voriConfigured()) {
+    return res.status(400).json({
+      error: 'No Vori API key set. Add VORI_API_KEY in Railway, then deploy.'
+    });
+  }
+  try {
+    const out = await syncInventory({ full: !!req.body?.full });
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    console.error('vori sync failed', e);
+    res.status(502).json({ error: String(e.message || e).slice(0, 300) });
+  }
+});
+
+app.get('/api/vori/search', async (req, res) => {
+  if (!voriConfigured()) return res.status(400).json({ error: 'No Vori API key set.' });
+  try { res.json({ products: await searchProducts(req.query.q) }); }
+  catch (e) {
+    console.error('vori search failed', e);
+    res.status(502).json({ error: String(e.message || e).slice(0, 300) });
+  }
+});
+
+// Point a warehouse line at the Vori product it actually is.
+app.put('/api/warehouse/item/:name/vori', async (req, res) => {
+  const { vori_product_id, vori_name } = req.body || {};
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warehouse_stock SET vori_product_id=$2::text, vori_name=$3::text, updated_at=NOW()
+        WHERE item_name=$1::text RETURNING item_name`,
+      [req.params.name, vori_product_id || null, vori_name || null]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('vori link failed', e);
+    res.status(500).json({ error: 'vori link failed' });
   }
 });
 
@@ -653,9 +710,29 @@ app.get('*', (_req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+// Poll Vori on a timer so the numbers stay current without anyone remembering
+// to press Sync. Only quantities that actually moved come back, so this is cheap.
+function startVoriPolling() {
+  if (!voriConfigured()) {
+    console.log('No VORI_API_KEY set — Vori on-hand will not be shown.');
+    return;
+  }
+  const minutes = Math.max(5, Number(process.env.VORI_SYNC_MINUTES) || 30);
+  const run = () => syncInventory()
+    .then(r => console.log(`Vori sync: ${r.records} products` +
+      (r.quantityField ? ` (quantity read from "${r.quantityField}")` : '')))
+    // A failed poll is not fatal — the last mirrored numbers stay, marked with
+    // their age, and the next run tries the same window again.
+    .catch(e => console.error('Vori sync failed:', e.message));
+  setTimeout(run, 10_000);
+  setInterval(run, minutes * 60_000);
+  console.log(`Vori sync every ${minutes} minutes.`);
+}
+
 initDb()
   .then(() => {
     app.listen(PORT, () => console.log(`Dat Moi ordering running on :${PORT}`));
+    startVoriPolling();
   })
   .catch(err => {
     console.error('DB init failed', err);

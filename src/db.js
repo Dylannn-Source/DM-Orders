@@ -254,6 +254,16 @@ export async function initDb() {
 
     CREATE INDEX IF NOT EXISTS warehouse_moves_at ON warehouse_moves (moved_at DESC);
 
+    -- A mirror of Vori's on-hand, kept in step by polling. Vori counts every unit
+    -- the business owns; the warehouse table counts one location, and the
+    -- difference is what should be at the store.
+    CREATE TABLE IF NOT EXISTS vori_inventory (
+      product_id       TEXT PRIMARY KEY,
+      on_hand          NUMERIC,
+      vori_updated_at  TIMESTAMPTZ,
+      synced_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS employees (
       id              SERIAL PRIMARY KEY,
       name            TEXT NOT NULL,
@@ -296,6 +306,10 @@ export async function initDb() {
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS qty_units NUMERIC NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS delta_units NUMERIC');
   await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS units_after NUMERIC');
+  // Which Vori product a warehouse line is, and what it is called there — free
+  // text names cannot be matched to product ids on their own.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_product_id TEXT');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_name TEXT');
 
   await seedEmptyDepartments();
 }
