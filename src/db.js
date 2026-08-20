@@ -10,7 +10,58 @@ const { Pool } = pg;
 // reference picker offers either, so accept whichever name the variable landed on.
 const URL_VARS = ['DATABASE_URL', 'DATABASE_PRIVATE_URL', 'POSTGRES_URL', 'POSTGRESQL_URL'];
 const URL_VAR = URL_VARS.find(v => (process.env[v] || '').trim());
-const DATABASE_URL = URL_VAR ? process.env[URL_VAR].trim() : undefined;
+// Strip stray wrapping quotes — pasting a quoted value into the dashboard is easy
+// to do and otherwise fails far away from the cause.
+const RAW_URL = URL_VAR ? process.env[URL_VAR].trim().replace(/^["']|["']$/g, '') : undefined;
+
+// Never print credentials, even while diagnosing.
+function redact(v) {
+  return String(v).replace(/(:\/\/[^:/@]*:)[^@]*@/, '$1***@');
+}
+
+// A malformed connection string otherwise surfaces as "getaddrinfo ENOTFOUND base",
+// which names neither the variable nor the problem. Check it up front instead.
+function urlProblem(v) {
+  if (v.includes('${{') || v.includes('}}')) {
+    return [
+      `${URL_VAR} still holds an unresolved Railway reference:`,
+      `    ${v}`,
+      '',
+      'Railway leaves that text verbatim when the name inside the braces does not',
+      'match a service in this project. Open the database service and read its exact',
+      'name from the header, then use:',
+      '    ${{<that exact name>.DATABASE_URL}}',
+      '',
+      'Simpler: delete the variable, then use Variables -> Add a Reference and pick',
+      'the database from the list. Railway fills in the right name itself.'
+    ];
+  }
+  if (!/^postgres(ql)?:\/\//i.test(v)) {
+    return [
+      `${URL_VAR} is not a Postgres connection string. It is set to:`,
+      `    ${redact(v)}`,
+      '',
+      'It should look like:  postgresql://user:password@host:5432/railway'
+    ];
+  }
+  try {
+    const u = new URL(v);
+    if (!u.hostname) throw new Error('no host');
+  } catch {
+    return [`${URL_VAR} is not a valid URL:`, `    ${redact(v)}`];
+  }
+  return null;
+}
+
+if (RAW_URL) {
+  const problem = urlProblem(RAW_URL);
+  if (problem) {
+    console.error(['', ...problem, ''].join('\n'));
+    process.exit(1);
+  }
+}
+
+const DATABASE_URL = RAW_URL;
 
 if (!DATABASE_URL) {
   console.error([

@@ -117,6 +117,11 @@ The app prints the reason and exits rather than looping silently. Check the
   (`postgres.railway.internal`) runs without TLS while its public proxy requires
   it, so the app tries one, falls back to the other, and carries on. Force it
   either way with a `DATABASE_SSL` variable set to `on` or `off`.
+- **`still holds an unresolved Railway reference`** — the name inside `${{...}}`
+  doesn't match a service in the project. Read the database service's exact name
+  off its header, or use **Variables → Add a Reference** and pick it from the list.
+- **`is not a Postgres connection string`** — the variable holds something other
+  than a `postgresql://` URL. The log prints the value with the password masked.
 - **`password authentication failed`** — the `DATABASE_URL` value is stale. Re-point
   it at `${{Postgres.DATABASE_URL}}` rather than pasting a literal URL, so it keeps
   working when Railway rotates the credentials.
