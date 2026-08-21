@@ -158,9 +158,10 @@ cuts across all of them.
 goes where you were standing. Set the containers up first under **Manage
 containers**, then fill them.
 
-**Inside a container are eight pallet spots**, there from the moment the container
-is created rather than added one at a time. An empty one is a place to put
-something, not something to make first.
+**Inside a container are eight pallet spots** — the number that fits, not a
+default. They exist from the moment the container is created, so an empty one is
+a place to put something rather than something to make first, and there is no way
+to add a ninth from anywhere in the app.
 
 They are drawn as you look in from the doors: the back of the container at the top
 of the screen, spots 1 and 2 nearest you at the bottom, with both ends labelled.

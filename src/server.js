@@ -364,12 +364,14 @@ app.post('/api/place/:loc/item', async (req, res) => {
 // A container has a fixed number of pallet spots and they exist whether or not
 // anything is on them — an empty spot is a place to put something, not an absence
 // to be created first.
+// Eight, and there is no more room in the container for a ninth. A hard number
+// rather than a default, so nothing anywhere can quietly exceed the floor space.
 const SPOTS_PER_CONTAINER = 8;
-async function ensureSpots(loc, container, upTo = SPOTS_PER_CONTAINER) {
+async function ensureSpots(loc, container) {
   const { rows } = await pool.query(
     'SELECT COALESCE(MAX(slot), -1) AS max FROM warehouse_pallets WHERE location=$1 AND container=$2',
     [loc, container]);
-  for (let slot = Number(rows[0].max) + 1; slot < upTo; slot++) {
+  for (let slot = Number(rows[0].max) + 1; slot < SPOTS_PER_CONTAINER; slot++) {
     await pool.query(
       `INSERT INTO warehouse_pallets (location, container, label, slot, level)
        VALUES ($1,$2,$3,$4,0) ON CONFLICT DO NOTHING`,
@@ -383,11 +385,8 @@ app.post('/api/place/:loc/spots', async (req, res) => {
   const cont = String(req.body?.container || '').trim();
   if (!cont) return res.status(400).json({ error: 'which container?' });
   try {
-    const extra = Number(req.body?.add) > 0 ? Number(req.body.add) : 0;
-    const { rows } = await pool.query(
-      'SELECT COUNT(*)::int AS n FROM warehouse_pallets WHERE location=$1 AND container=$2', [loc, cont]);
-    await ensureSpots(loc, cont, extra ? rows[0].n + extra : SPOTS_PER_CONTAINER);
-    res.json({ ok: true });
+    await ensureSpots(loc, cont);
+    res.json({ ok: true, spots: SPOTS_PER_CONTAINER });
   } catch (e) {
     console.error('spots failed', e);
     res.status(500).json({ error: 'could not set those up' });
@@ -547,38 +546,6 @@ app.put('/api/place/:loc/move', async (req, res) => {
 });
 
 // ---- pallets standing inside a container ----
-app.post('/api/place/:loc/pallet', async (req, res) => {
-  const loc = checkPlace(req, res); if (!loc) return;
-  if (!canWrite(req, res, loc)) return;
-  const { container, label, stack_on_slot } = req.body || {};
-  const cont = String(container || '').trim();
-  if (!cont) return res.status(400).json({ error: 'which container?' });
-  try {
-    let slot, level;
-    if (stack_on_slot !== undefined && stack_on_slot !== null && stack_on_slot !== '') {
-      // Stacking onto an existing slot: sit one level above whatever is highest.
-      slot = Number(stack_on_slot);
-      const { rows } = await pool.query(
-        'SELECT COALESCE(MAX(level), -1) + 1 AS n FROM warehouse_pallets WHERE location=$1 AND container=$2 AND slot=$3',
-        [loc, cont, slot]);
-      level = rows[0].n;
-    } else {
-      const { rows } = await pool.query(
-        'SELECT COALESCE(MAX(slot), -1) + 1 AS n FROM warehouse_pallets WHERE location=$1 AND container=$2',
-        [loc, cont]);
-      slot = rows[0].n; level = 0;
-    }
-    const { rows } = await pool.query(
-      `INSERT INTO warehouse_pallets (location, container, label, slot, level)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [loc, cont, String(label || '').trim() || null, slot, level]);
-    res.json({ ok: true, pallet: rows[0] });
-  } catch (e) {
-    console.error('pallet create failed', e);
-    res.status(500).json({ error: 'could not add that pallet' });
-  }
-});
-
 // Rearranging the plan to match the room: along the container, or up and down a
 // stack. A swap rather than a renumber, so nothing else shifts underneath.
 app.put('/api/place/:loc/pallet/:id', async (req, res) => {

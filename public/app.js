@@ -1326,7 +1326,8 @@ function renderContainerPlan(){
   const laidOut = rows2.reverse().flat();
 
   wrap.innerHTML = `
-    <div class="hint">Tap a pallet to fill it in. Each one has a top, middle and bottom.</div>
+    <div class="hint">Tap a pallet to fill it in. Each one has a top, middle and bottom.
+      A container holds eight &mdash; there is no room for more.</div>
     <div class="endmark">back of the container</div>
     <div class="spotgrid">
       ${laidOut.map(p => {
@@ -1345,7 +1346,6 @@ function renderContainerPlan(){
       }).join('')}
     </div>
     <div class="endmark front">front &mdash; the doors</div>
-    ${edit ? `<button class="listlink" onclick="whMakeSpots(2)">+ two more spots</button>` : ''}
     ${loose.length ? `<div class="palloose">
       <div class="palname">Not on a pallet</div>
       <div class="palmeta">${loose.length} item${loose.length === 1 ? '' : 's'} in this container, not placed</div>
@@ -1387,10 +1387,10 @@ function renderPalletForm(){
     <button class="listlink" onclick="whBackToContainer()">&larr; back to the container</button>`;
 }
 
-async function whMakeSpots(add){
+async function whMakeSpots(){
   await fetch('/api/place/' + whLoc + '/spots', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ container: whContainer, add: add || 0 })
+    body: JSON.stringify({ container: whContainer })
   });
   await showWarehouse();
 }
