@@ -84,7 +84,7 @@ out of permanently.
 **Who can change what.** Everyone signed in can *look* at everything — every
 department, every PAR, the warehouse, the movement log, past orders. Changing
 something needs that area granted, per person, under **Settings → Employees**:
-produce, meat, fish, warehouse, coldstorage, ticked individually. A manager has all four by
+produce, meat, fish, Offsite, Monkish, ticked individually. A manager has all four by
 role and needs no ticks.
 
 Granting an area covers everything that writes to it: counting, PARs, vendors,

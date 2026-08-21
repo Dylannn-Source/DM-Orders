@@ -48,11 +48,14 @@ async function areasFor(employee) {
   return rows.map(r => r.area);
 }
 
+// What each area is called on screen. The stored names never change.
+const AREA_LABELS = { warehouse: 'the offsite warehouse', coldstorage: 'Monkish' };
+
 function canWrite(req, res, area) {
   if (req.employee?.role === 'manager') return true;
   if ((req.areas || []).includes(area)) return true;
   res.status(403).json({
-    error: `You can look at ${area}, but changing it is not yours to do. Ask a manager.`,
+    error: `You can look at ${AREA_LABELS[area] || area}, but changing it is not yours to do. Ask a manager.`,
     area, read_only: true
   });
   return false;

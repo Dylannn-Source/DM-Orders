@@ -1027,7 +1027,7 @@ function renderEmployees(list){
       ${e.role === 'manager'
         ? '<div class="vitem"><span class="viname">everything, as a manager</span></div>'
         : whAreas.map(a => `<div class="vitem">
-            <span class="viname">${htmlEsc(a)}</span>
+            <span class="viname">${htmlEsc(areaLabel(a))}</span>
             <input type="checkbox" class="areabox" data-emp="${e.id}" data-area="${htmlEsc(a)}"
                    ${(e.areas || []).includes(a) ? 'checked' : ''}
                    style="width:22px;height:22px;"
@@ -1082,22 +1082,26 @@ async function setEmployeeActive(id, active){
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
 let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse','coldstorage'];
+// The stored area names stay as they are; only what a manager reads changes, so
+// the tick matches the tab it grants.
+const AREA_LABELS = { warehouse: 'Offsite', coldstorage: 'Monkish' };
+const areaLabel = a => AREA_LABELS[a] || a;
 let whLoc = 'warehouse', whContainer = null, whPals = [], whPallet = null;
 
 // The two places differ only in what their sections are called and whether the
 // screen opens on a diagram of them.
 const PLACES = {
   warehouse: {
-    tab: 'WAREHOUSE', eyebrow: 'DAT MOI \u00b7 OFFSITE', title: 'Warehouse',
+    tab: 'OFFSITE', eyebrow: 'DAT MOI \u00b7 OFFSITE', title: 'Warehouse',
     section: 'pallet', sections: 'pallets', sectionLabel: 'which pallets?',
     search: 'Search the warehouse...', diagram: false,
     noEdit: 'You can look at the warehouse, but changing what is on the shelves is not yours to do. Ask a manager.'
   },
   coldstorage: {
-    tab: 'COLD', eyebrow: 'DAT MOI \u00b7 MONKISHZ', title: 'Cold Storage',
+    tab: 'MONKISH', eyebrow: 'DAT MOI \u00b7 MONKISHZ', title: 'Cold Storage',
     section: 'container', sections: 'containers', sectionLabel: 'label / temp',
     search: 'Search cold storage...', diagram: true,
-    noEdit: 'You can look at cold storage, but changing what is in the containers is not yours to do. Ask a manager.'
+    noEdit: 'You can look at Monkish, but changing what is in the containers is not yours to do. Ask a manager.'
   }
 };
 const place = () => PLACES[whLoc];
