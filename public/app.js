@@ -1228,31 +1228,52 @@ function renderDiagram(){
 
   wrap.innerHTML = `
     <div class="hint">${whCats.length
-      ? 'Tap a container to see what is inside it.'
-      : `No containers set up yet. ${canEdit(whLoc) ? 'Add them under Manage containers.' : 'Ask a manager to add them.'}`}</div>
+      ? `Tap a ${cfg.section} to see inside it, or <b>+ add</b> to put something in it.`
+      : canEdit(whLoc)
+        ? `Nothing set up yet. Start with <b>Manage ${cfg.sections}</b> below to name the ${cfg.sections} you have out there, then add what is in them.`
+        : `No ${cfg.sections} set up yet. Ask a manager to add them.`}</div>
     <div class="cyard">
       ${whCats.map(c => {
         const rows = byCat[c.name] || [];
         const stale = rows.filter(r => ageOf(r).band === 'stale').length;
         const band = !rows.length ? 'empty' : stale ? 'stale' : 'ok';
-        return `<button class="cbox ${band}" onclick="whOpenContainer('${esc(c.name)}')">
-          <div class="cname">${htmlEsc(c.name)}</div>
-          ${c.pallets ? `<div class="cmeta">${htmlEsc(c.pallets)}</div>` : ''}
-          <div class="ccount">${rows.length}</div>
-          <div class="cmeta">${rows.length === 1 ? 'item' : 'items'}${stale ? ` &middot; ${stale} stale` : ''}</div>
-        </button>`;
+        return `<div class="cbox ${band}">
+          <button class="cbopen" onclick="whOpenContainer('${esc(c.name)}')">
+            <div class="cname">${htmlEsc(c.name)}</div>
+            ${c.pallets ? `<div class="cmeta">${htmlEsc(c.pallets)}</div>` : ''}
+            <div class="ccount">${rows.length}</div>
+            <div class="cmeta">${rows.length === 1 ? 'item' : 'items'}${stale ? ` &middot; ${stale} stale` : ''}</div>
+          </button>
+          ${canEdit(whLoc) ? `<button class="cbadd" onclick="whAddHere('${esc(c.name)}')">+ add</button>` : ''}
+        </div>`;
       }).join('')}
-      ${loose.length ? `<button class="cbox loose" onclick="whOpenContainer(null)">
-          <div class="cname">Not in a container</div>
-          <div class="ccount">${loose.length}</div>
-          <div class="cmeta">${loose.length === 1 ? 'item' : 'items'}</div>
-        </button>` : ''}
+      ${loose.length ? `<div class="cbox loose">
+          <button class="cbopen" onclick="whOpenContainer(null)">
+            <div class="cname">Not in a container</div>
+            <div class="ccount">${loose.length}</div>
+            <div class="cmeta">${loose.length === 1 ? 'item' : 'items'}</div>
+          </button>
+        </div>` : ''}
     </div>
-    ${whCats.length ? `<button class="addbtn" style="width:100%;margin-top:14px;"
-        onclick="whOpenContainer('*')">See everything as a list</button>` : ''}`;
+    <div class="cacts">
+      ${canEdit(whLoc) ? `<button class="addbtn" onclick="whAddHere(null)">+ Add an item</button>` : ''}
+      ${canEdit(whLoc) ? `<button class="addbtn ghost" onclick="whShowPallets()">Manage ${cfg.sections}</button>` : ''}
+    </div>
+    ${whCats.length ? `<button class="listlink" onclick="whOpenContainer('*')">See everything as a list</button>` : ''}`;
 }
 
 function whOpenContainer(name){ whContainer = name; renderWarehouse(); }
+
+// Opening the form from a container means adding to that container, so the field
+// arrives filled in. Left blank it would quietly file the item under nothing.
+function whAddHere(container){
+  whContainer = container === null ? '*' : container;
+  renderWarehouse();
+  setTimeout(() => {
+    const el = $('whNewName');
+    if (el){ el.scrollIntoView({ block: 'center' }); el.focus(); }
+  }, 60);
+}
 function whBackToDiagram(){ whContainer = null; whOpen = null; renderWarehouse(); }
 
 function renderWarehouse(){
@@ -1262,6 +1283,9 @@ function renderWarehouse(){
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const wrap = $('whWrap');
   const whEdit = canEdit(whLoc);
+  // '*' is the flat list, null is the unassigned pile — neither is a container
+  // to add into.
+  const inContainer = (place().diagram && whContainer && whContainer !== '*') ? whContainer : null;
   whSummaryLine();
 
   let shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
@@ -1270,14 +1294,16 @@ function renderWarehouse(){
   }
   wrap.innerHTML = !whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
     <div class="vgroup">
-      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add something</div></div>
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">${
+        inContainer ? `Add to ${htmlEsc(inContainer)}` : 'Add something'}</div></div>
       <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
       <div class="vitem">
         <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
         <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
       </div>
       <div class="vitem">
-        <input type="text" class="textinput" id="whNewCat" list="whCatList" placeholder="Which ${place().section}?">
+        <input type="text" class="textinput" id="whNewCat" list="whCatList"
+               value="${htmlEsc(inContainer || '')}" placeholder="Which ${place().section}?">
         <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
       </div>
       <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>

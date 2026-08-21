@@ -154,6 +154,10 @@ from the door. Each container shows what it holds and turns red when something
 inside has gone a month unchecked. Tapping one drops into its contents; searching
 cuts across all of them.
 
+**+ add** on a container opens the form already pointed at it, so what you add
+goes where you were standing. Set the containers up first under **Manage
+containers**, then fill them.
+
 ## The offsite warehouse
 
 The fourth tab is not a counting screen. The other three ask what is on the
