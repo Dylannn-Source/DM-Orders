@@ -1092,15 +1092,15 @@ let whLoc = 'warehouse', whContainer = null, whPals = [], whPallet = null;
 // screen opens on a diagram of them.
 const PLACES = {
   warehouse: {
-    tab: 'OFFSITE', eyebrow: 'DAT MOI \u00b7 OFFSITE', title: 'Warehouse',
+    tab: 'OFFSITE', eyebrow: 'DAT MOI', title: 'Offsite',
     section: 'pallet', sections: 'pallets', sectionLabel: 'which pallets?',
-    search: 'Search the warehouse...', diagram: false,
+    search: 'Search Offsite...', diagram: false,
     noEdit: 'You can look at the warehouse, but changing what is on the shelves is not yours to do. Ask a manager.'
   },
   coldstorage: {
-    tab: 'MONKISH', eyebrow: 'DAT MOI \u00b7 MONKISHZ', title: 'Cold Storage',
+    tab: 'MONKISH', eyebrow: 'DAT MOI', title: 'Monkish',
     section: 'container', sections: 'containers', sectionLabel: 'label / temp',
-    search: 'Search cold storage...', diagram: true,
+    search: 'Search Monkish...', diagram: true,
     noEdit: 'You can look at Monkish, but changing what is in the containers is not yours to do. Ask a manager.'
   }
 };
