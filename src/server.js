@@ -304,7 +304,10 @@ app.get('/api/place/:loc', async (req, res) => {
       voriStatus().catch(() => ({ configured: false })),
       pool.query('SELECT * FROM warehouse_categories WHERE location=$1 ORDER BY position, name', [loc])
     ]);
-    res.json({ location: loc, stock: stock.rows, moves: moves.rows, vori, categories: cats.rows });
+    const pallets = await pool.query(
+      'SELECT * FROM warehouse_pallets WHERE location=$1 ORDER BY container, slot, level', [loc]);
+    res.json({ location: loc, stock: stock.rows, moves: moves.rows, vori,
+               categories: cats.rows, pallets: pallets.rows });
   } catch (e) {
     console.error('place fetch failed', e);
     res.status(500).json({ error: 'could not load that place' });
@@ -444,6 +447,120 @@ app.put('/api/place/:loc/move', async (req, res) => {
     res.status(500).json({ error: 'could not record that' });
   } finally {
     client.release();
+  }
+});
+
+// ---- pallets standing inside a container ----
+app.post('/api/place/:loc/pallet', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const { container, label, stack_on_slot } = req.body || {};
+  const cont = String(container || '').trim();
+  if (!cont) return res.status(400).json({ error: 'which container?' });
+  try {
+    let slot, level;
+    if (stack_on_slot !== undefined && stack_on_slot !== null && stack_on_slot !== '') {
+      // Stacking onto an existing slot: sit one level above whatever is highest.
+      slot = Number(stack_on_slot);
+      const { rows } = await pool.query(
+        'SELECT COALESCE(MAX(level), -1) + 1 AS n FROM warehouse_pallets WHERE location=$1 AND container=$2 AND slot=$3',
+        [loc, cont, slot]);
+      level = rows[0].n;
+    } else {
+      const { rows } = await pool.query(
+        'SELECT COALESCE(MAX(slot), -1) + 1 AS n FROM warehouse_pallets WHERE location=$1 AND container=$2',
+        [loc, cont]);
+      slot = rows[0].n; level = 0;
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO warehouse_pallets (location, container, label, slot, level)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [loc, cont, String(label || '').trim() || null, slot, level]);
+    res.json({ ok: true, pallet: rows[0] });
+  } catch (e) {
+    console.error('pallet create failed', e);
+    res.status(500).json({ error: 'could not add that pallet' });
+  }
+});
+
+// Rearranging the plan to match the room: along the container, or up and down a
+// stack. A swap rather than a renumber, so nothing else shifts underneath.
+app.put('/api/place/:loc/pallet/:id', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const id = Number(req.params.id);
+  const { label, note, move } = req.body || {};
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: me } = await client.query(
+      'SELECT * FROM warehouse_pallets WHERE id=$1 AND location=$2 FOR UPDATE', [id, loc]);
+    if (!me[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'no such pallet' }); }
+    const p = me[0];
+    if (label !== undefined || note !== undefined) {
+      await client.query(
+        'UPDATE warehouse_pallets SET label=COALESCE($2::text,label), note=COALESCE($3::text,note) WHERE id=$1',
+        [id, label === undefined ? null : (String(label).trim() || null),
+             note === undefined ? null : (String(note).trim() || null)]);
+    }
+    if (move) {
+      const dSlot = move === 'left' ? -1 : move === 'right' ? 1 : 0;
+      const dLevel = move === 'down' ? -1 : move === 'up' ? 1 : 0;
+      const nSlot = p.slot + dSlot, nLevel = p.level + dLevel;
+      if (nSlot >= 0 && nLevel >= 0) {
+        const { rows: other } = await client.query(
+          'SELECT id FROM warehouse_pallets WHERE location=$1 AND container=$2 AND slot=$3 AND level=$4',
+          [loc, p.container, nSlot, nLevel]);
+        if (other[0]) {
+          // Park one out of the way first: the unique key would otherwise reject
+          // the halfway state where both claim the same square.
+          await client.query('UPDATE warehouse_pallets SET slot=-1, level=-1 WHERE id=$1', [p.id]);
+          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [other[0].id, p.slot, p.level]);
+          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [p.id, nSlot, nLevel]);
+        } else {
+          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [p.id, nSlot, nLevel]);
+        }
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('pallet update failed', e);
+    res.status(500).json({ error: 'could not move that pallet' });
+  } finally { client.release(); }
+});
+
+app.delete('/api/place/:loc/pallet/:id', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  try {
+    // Items outlive the pallet — they stay in the container, off any pallet.
+    await pool.query('UPDATE warehouse_stock SET pallet_id=NULL, layer=NULL WHERE pallet_id=$1', [Number(req.params.id)]);
+    await pool.query('DELETE FROM warehouse_pallets WHERE id=$1 AND location=$2', [Number(req.params.id), loc]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('pallet delete failed', e);
+    res.status(500).json({ error: 'could not remove that pallet' });
+  }
+});
+
+// Put an item on a pallet, and say which end of it.
+app.put('/api/place/:loc/item/:name/pallet', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const { pallet_id, layer } = req.body || {};
+  const lay = ['top', 'bottom'].includes(layer) ? layer : null;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warehouse_stock SET pallet_id=$3::integer, layer=$4::text, updated_at=NOW()
+        WHERE location=$1::text AND item_name=$2::text RETURNING item_name`,
+      [loc, req.params.name, pallet_id ? Number(pallet_id) : null, lay]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('item pallet failed', e);
+    res.status(500).json({ error: 'could not move that' });
   }
 });
 

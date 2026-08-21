@@ -158,6 +158,19 @@ cuts across all of them.
 goes where you were standing. Set the containers up first under **Manage
 containers**, then fill them.
 
+**Inside a container is a plan of its pallets.** Each column is a spot on the
+floor and anything drawn above it is stacked on top, so the picture matches what
+you walk up to. The arrows on a pallet move it along the container or up and down
+a stack; moving onto an occupied square swaps the two rather than refusing.
+
+Items sit on a pallet and say which end of it: opening a pallet lists **On top**
+first, then **Underneath**, because the top is what you see and reach when the
+doors open. Every row carries where it is — `Container 2 · P3, stacked · on top` —
+so the answer travels with the item instead of living in the plan.
+
+Deleting a pallet leaves its items in the container, off any pallet, rather than
+taking them with it.
+
 ## The offsite warehouse
 
 The fourth tab is not a counting screen. The other three ask what is on the

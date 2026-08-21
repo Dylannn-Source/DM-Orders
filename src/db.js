@@ -324,6 +324,25 @@ export async function initDb() {
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS qty_units NUMERIC NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS delta_units NUMERIC');
   await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS units_after NUMERIC');
+  // A container holds pallets, and a pallet holds items. Slot is where a pallet
+  // stands along the container; level is how high it is stacked, 0 on the floor
+  // and 1 for one sitting on top of it. Together they are the plan of the room,
+  // which is what makes "where exactly is it" answerable.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS warehouse_pallets (
+      id         SERIAL PRIMARY KEY,
+      location   TEXT NOT NULL,
+      container  TEXT NOT NULL,
+      label      TEXT,
+      slot       INTEGER NOT NULL DEFAULT 0,
+      level      INTEGER NOT NULL DEFAULT 0,
+      note       TEXT,
+      UNIQUE (location, container, slot, level)
+    )`);
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pallet_id INTEGER');
+  // Which end of the pallet it is on. Null where it does not matter.
+  await pool.query(`ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS layer TEXT`);
+
   // Which Vori product a warehouse line is, and what it is called there — free
   // text names cannot be matched to product ids on their own.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_product_id TEXT');

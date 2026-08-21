@@ -1082,7 +1082,7 @@ async function setEmployeeActive(id, active){
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
 let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse','coldstorage'];
-let whLoc = 'warehouse', whContainer = null;
+let whLoc = 'warehouse', whContainer = null, whPals = [], whPallet = null;
 
 // The two places differ only in what their sections are called and whether the
 // screen opens on a diagram of them.
@@ -1132,7 +1132,7 @@ async function showWarehouse(loc){
   const r = await fetch('/api/place/' + whLoc).then(x => x.json()).catch(() => null);
   if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
   whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
-  whCats = r.categories || [];
+  whCats = r.categories || []; whPals = r.pallets || [];
   renderWarehouse();
 }
 
@@ -1193,6 +1193,17 @@ function whGroups(shown){
 // Cold storage opens on a plan of the containers rather than a list, because the
 // first question there is "which box is it in" and you cannot see inside one from
 // the door. Tapping a container drops into its contents.
+// "Container 2 · P3, stacked · on top" — the answer to where exactly is it.
+function whereLine(row){
+  if (!place().diagram) return '';
+  const bits = [];
+  if (row.category) bits.push(htmlEsc(row.category));
+  const p = whPals.find(x => Number(x.id) === Number(row.pallet_id));
+  if (p) bits.push(htmlEsc(p.label || 'pallet') + (p.level > 0 ? ', stacked' : ''));
+  if (row.layer) bits.push(row.layer === 'top' ? 'on top' : 'underneath');
+  return bits.length ? `<div class="whwhere">${bits.join(' \u00b7 ')}</div>` : '';
+}
+
 function whSummaryLine(){
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
@@ -1207,9 +1218,15 @@ function whSummaryLine(){
         <span id="whSyncMsg"></span></div>`;
   const sectionLine = `<div class="whsync">${whCats.length} ${place().sections}
       ${whEdit ? `<button class="vorilink" onclick="whShowPallets()">Manage ${place().sections}</button>` : ''}</div>`;
+  const pal = whPals.find(x => Number(x.id) === Number(whPallet));
   const backLine = place().diagram && whContainer !== null
-    ? `<div class="whsync"><button class="vorilink" onclick="whBackToDiagram()">&larr; back to the ${place().sections}</button>
-       ${whContainer === '*' ? '' : `<b>${htmlEsc(whContainer || 'Not in a container')}</b>`}</div>`
+    ? `<div class="whsync">
+        <button class="vorilink" onclick="whBackToDiagram()">&larr; ${place().sections}</button>
+        ${whContainer === '*' ? '' : `<b>${htmlEsc(whContainer || 'Not in a container')}</b>`}
+        ${whPallet !== null && whContainer !== '*'
+          ? `<button class="vorilink" onclick="whBackToContainer()">&larr; the plan</button>
+             <b>${htmlEsc(pal ? (pal.label || 'Pallet') : 'not on a pallet')}</b>` : ''}
+       </div>`
     : '';
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
@@ -1262,7 +1279,101 @@ function renderDiagram(){
     ${whCats.length ? `<button class="listlink" onclick="whOpenContainer('*')">See everything as a list</button>` : ''}`;
 }
 
-function whOpenContainer(name){ whContainer = name; renderWarehouse(); }
+function whOpenContainer(name){ whContainer = name; whPallet = null; renderWarehouse(); }
+function whOpenPallet(id){ whPallet = id; renderWarehouse(); }
+function whBackToContainer(){ whPallet = null; renderWarehouse(); }
+
+// The plan of one container: each slot is a column, stacked pallets sit above
+// the one below, drawn in that order so the picture matches what you walk up to.
+function renderContainerPlan(){
+  const wrap = $('whWrap');
+  whSummaryLine();
+  const pals = whPals.filter(p => p.container === whContainer);
+  const slots = [...new Set(pals.map(p => p.slot))].sort((a, b) => a - b);
+  const onPallet = id => whStock.filter(r => Number(r.pallet_id) === Number(id));
+  const loose = whStock.filter(r => (r.category || null) === whContainer && !r.pallet_id);
+  const edit = canEdit(whLoc);
+
+  wrap.innerHTML = `
+    <div class="hint">${pals.length
+      ? 'Each column is a spot on the floor; anything above it is stacked on top. Tap a pallet to see what is on it.'
+      : edit ? 'No pallets in here yet. Add the first one below, then stack onto it or set another beside it.'
+             : 'No pallets recorded in here yet.'}</div>
+    <div class="planrow">
+      ${slots.map(slot => {
+        const col = pals.filter(p => p.slot === slot).sort((a, b) => b.level - a.level);
+        return `<div class="plancol">
+          ${col.map(p => {
+            const rows = onPallet(p.id);
+            const stale = rows.filter(r => ageOf(r).band === 'stale').length;
+            return `<div class="pal ${stale ? 'stale' : rows.length ? 'ok' : 'empty'}">
+              <button class="palopen" onclick="whOpenPallet(${p.id})">
+                <div class="pallabel">${htmlEsc(p.label || 'Pallet')}</div>
+                <div class="palcount">${rows.length}</div>
+                <div class="cmeta">${p.level > 0 ? 'stacked' : 'on the floor'}</div>
+              </button>
+              ${edit ? `<div class="palmove">
+                <button onclick="whMovePallet(${p.id},'left')">&larr;</button>
+                <button onclick="whMovePallet(${p.id},'up')">&uarr;</button>
+                <button onclick="whMovePallet(${p.id},'down')">&darr;</button>
+                <button onclick="whMovePallet(${p.id},'right')">&rarr;</button>
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+          <div class="planfloor">${slot + 1}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${loose.length ? `<div class="palloose">
+      <div class="palname">Not on a pallet</div>
+      <div class="palmeta">${loose.length} item${loose.length === 1 ? '' : 's'} in this container, not placed</div>
+      <button class="listlink" onclick="whOpenPallet('none')">show them</button></div>` : ''}
+    ${edit ? `<div class="vgroup" style="margin-top:14px;">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add a pallet</div></div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="newPalLabel" placeholder="label, e.g. P1">
+        <select class="single" id="newPalStack">
+          <option value="">new spot on the floor</option>
+          ${slots.map(sl => `<option value="${sl}">stack onto spot ${sl + 1}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <button class="addbtn" style="width:100%;" onclick="whAddPallet()">Add pallet</button>
+    <div class="hint" id="palMsg"></div>` : ''}`;
+}
+
+async function whAddPallet(){
+  const res = await fetch('/api/place/' + whLoc + '/pallet', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ container: whContainer,
+                           label: $('newPalLabel').value.trim(),
+                           stack_on_slot: $('newPalStack').value })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ $('palMsg').textContent = body.error || 'Could not add that.'; return; }
+  await showWarehouse();
+}
+async function whMovePallet(id, move){
+  await fetch('/api/place/' + whLoc + '/pallet/' + id, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ move })
+  });
+  await showWarehouse();
+}
+function whPlaceItem(name){
+  const pal = document.querySelector(`.palpick[data-item="${CSS.escape(name)}"]`)?.value || '';
+  const lay = document.querySelector(`.laypick[data-item="${CSS.escape(name)}"]`)?.value || '';
+  return whSetItemPallet(name, pal, lay);
+}
+
+async function whSetItemPallet(name, palletId, layer){
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/pallet', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pallet_id: palletId || null, layer: layer || null })
+  });
+  whOpen = null;
+  await showWarehouse();
+}
 
 // Opening the form from a container means adding to that container, so the field
 // arrives filled in. Left blank it would quietly file the item under nothing.
@@ -1279,18 +1390,24 @@ function whBackToDiagram(){ whContainer = null; whOpen = null; renderWarehouse()
 function renderWarehouse(){
   if (whLinking) return renderLinkPanel();
   if (whPallets) return renderPallets();
-  if (place().diagram && whContainer === null && !($('whSearch').value || '').trim()) return renderDiagram();
+  const searching = !!($('whSearch').value || '').trim();
+  if (place().diagram && whContainer === null && !searching) return renderDiagram();
+  if (place().diagram && whContainer && whContainer !== '*' && whPallet === null && !searching)
+    return renderContainerPlan();
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const wrap = $('whWrap');
   const whEdit = canEdit(whLoc);
   // '*' is the flat list, null is the unassigned pile — neither is a container
   // to add into.
   const inContainer = (place().diagram && whContainer && whContainer !== '*') ? whContainer : null;
+  const onOnePallet = place().diagram && whPallet !== null && whPallet !== 'none';
   whSummaryLine();
 
   let shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
   if (place().diagram && whContainer !== null && whContainer !== '*' && !q){
     shown = shown.filter(r => (r.category || null) === whContainer);
+    if (whPallet === 'none') shown = shown.filter(r => !r.pallet_id);
+    else if (whPallet !== null) shown = shown.filter(r => Number(r.pallet_id) === Number(whPallet));
   }
   wrap.innerHTML = !whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
     <div class="vgroup">
@@ -1330,6 +1447,7 @@ function renderWarehouse(){
         <span class="whqty">${stockLine(row)}</span>
       </div>
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
+      ${whereLine(row)}
       ${row.pack_size ? `<div class="whtotal">${totalLine(row)}</div>` : ''}
       ${voriBlock(row)}
       ${open ? `
@@ -1344,6 +1462,22 @@ function renderWarehouse(){
           <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
           <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
         </div>
+        ${place().diagram ? `
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Where on the pallet?</div>
+        <div class="whform">
+          <select class="single palpick" data-item="${htmlEsc(row.item_name)}">
+            <option value="">not on a pallet</option>
+            ${whPals.filter(pp => pp.container === (row.category || null)).map(pp =>
+              `<option value="${pp.id}" ${Number(row.pallet_id) === pp.id ? 'selected' : ''}>${
+                htmlEsc(pp.label || 'Pallet')}${pp.level > 0 ? ' (stacked)' : ''}</option>`).join('')}
+          </select>
+          <select class="single laypick" data-item="${htmlEsc(row.item_name)}">
+            <option value="">—</option>
+            <option value="top" ${row.layer === 'top' ? 'selected' : ''}>on top</option>
+            <option value="bottom" ${row.layer === 'bottom' ? 'selected' : ''}>underneath</option>
+          </select>
+          <button class="whpackset" onclick="whPlaceItem('${esc(row.item_name)}')">Set</button>
+        </div>` : ''}
         <div class="whpick" style="margin-top:9px;padding-left:0;">Which ${place().section} is this in?</div>
         <div class="whform">
           <input type="text" class="whcat" list="whCatList" value="${htmlEsc(row.category || '')}" placeholder="category">
@@ -1365,6 +1499,19 @@ function renderWarehouse(){
   // Searching flattens the groups — you want the item, not the tour.
   if (q){
     shown.forEach(row => wrap.appendChild(renderRow(row)));
+  } else if (onOnePallet){
+    // Top first: it is what you see and reach when you open the doors.
+    [['top', 'On top'], ['bottom', 'Underneath'], [null, 'Not placed on the pallet']]
+      .forEach(([lay, title]) => {
+        const rows = shown.filter(r => (r.layer || null) === lay);
+        if (!rows.length) return;
+        const head = document.createElement('div');
+        head.className = 'palhead';
+        head.innerHTML = `<div class="palname">${title}</div>
+          <div class="palmeta">${rows.length} item${rows.length===1?'':'s'}</div>`;
+        wrap.appendChild(head);
+        rows.forEach(row => wrap.appendChild(renderRow(row)));
+      });
   } else {
     whGroups(shown).forEach(g => {
       const stale = g.rows.filter(r => ageOf(r).band === 'stale').length;
