@@ -295,9 +295,26 @@ app.get('/api/place/:loc', async (req, res) => {
                          EXTRACT(EPOCH FROM (NOW() - w.counted_at))/86400 AS days_since_count,
                          v.on_hand      AS vori_on_hand,
                          v.synced_at    AS vori_synced_at,
-                         EXTRACT(EPOCH FROM (NOW() - v.synced_at))/3600 AS vori_hours_old
+                         EXTRACT(EPOCH FROM (NOW() - v.synced_at))/3600 AS vori_hours_old,
+                         h.held_all, h.held_here, h.no_pack, h.places
                     FROM warehouse_stock w
                     LEFT JOIN vori_inventory v ON v.product_id = w.vori_product_id
+                    -- Vori counts every unit the business owns, so what is left
+                    -- for the store is its number less everything held anywhere
+                    -- else. Subtracting only the place on screen overstates the
+                    -- store by whatever is sitting in the other one.
+                    LEFT JOIN (
+                      SELECT vori_product_id,
+                             SUM(CASE WHEN pack_size IS NOT NULL
+                                      THEN qty * pack_size + COALESCE(qty_units,0) END) AS held_all,
+                             SUM(CASE WHEN pack_size IS NOT NULL AND location = $1
+                                      THEN qty * pack_size + COALESCE(qty_units,0) END) AS held_here,
+                             COUNT(*) FILTER (WHERE pack_size IS NULL)      AS no_pack,
+                             COUNT(DISTINCT location)                       AS places
+                        FROM warehouse_stock
+                       WHERE vori_product_id IS NOT NULL
+                       GROUP BY vori_product_id
+                    ) h ON h.vori_product_id = w.vori_product_id
                    WHERE w.location = $1
                    ORDER BY w.item_name`, [loc]),
       pool.query(`SELECT * FROM warehouse_moves WHERE location=$1 ORDER BY moved_at DESC LIMIT 60`, [loc]),

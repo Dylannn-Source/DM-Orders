@@ -1111,9 +1111,21 @@ function splitOf(row){
   const pack = row.pack_size ? Number(row.pack_size) : null;
   // Without a pack size a case cannot be compared with whatever Vori counts in.
   if (!pack) return { total, warehouse: null, onsite: null, blocked: 'needs a pack size' };
-  const warehouse = Number(row.qty) * pack + (Number(row.qty_units) || 0);
-  const onsite = total - warehouse;
-  return { total, warehouse, onsite, unit: row.unit_name || 'units' };
+  // One of the places holding this has no pack size, so the total held cannot be
+  // worked out and the difference would be a guess dressed as a figure.
+  if (Number(row.no_pack) > 0) {
+    return { total, blocked: 'another place holds it without a pack size' };
+  }
+  // Everything held away from the store, not just the place on screen.
+  const offsite = row.held_all === null || row.held_all === undefined
+    ? Number(row.qty) * pack + (Number(row.qty_units) || 0)
+    : Number(row.held_all);
+  const here = row.held_here === null || row.held_here === undefined
+    ? offsite : Number(row.held_here);
+  return {
+    total, warehouse: offsite, here, onsite: total - offsite,
+    places: Number(row.places || 1), unit: row.unit_name || 'units'
+  };
 }
 
 async function showWarehouse(loc){
@@ -1599,15 +1611,17 @@ function voriBlock(row){
     <div class="voritrio">
       <div class="vcell"><div class="vnum">${fmtQty(s.total)}</div><div class="vlab">Vori, all in</div></div>
       <div class="vop">&minus;</div>
-      <div class="vcell"><div class="vnum">${fmtQty(s.warehouse)}</div><div class="vlab">warehouse</div></div>
+      <div class="vcell"><div class="vnum">${fmtQty(s.warehouse)}</div>
+        <div class="vlab">${s.places > 1 ? 'held offsite' : 'here'}</div></div>
       <div class="vop">=</div>
       <div class="vcell ${negative ? 'bad' : 'onsite'}">
         <div class="vnum">${negative ? '?' : fmtQty(s.onsite)}</div><div class="vlab">at the store</div></div>
     </div>
     ${negative
-      ? `<div class="voriwarn">The warehouse alone holds more than Vori says exists.
-         One of the two is out of date &mdash; recount here, or check Vori.</div>`
-      : `<div class="whtotal">in ${htmlEsc(s.unit)} &middot; Vori ${htmlEsc(age)}</div>`}
+      ? `<div class="voriwarn">More is held offsite than Vori says exists at all.
+         One of the two is out of date &mdash; recount, or check Vori.</div>`
+      : `<div class="whtotal">in ${htmlEsc(s.unit)} &middot; Vori ${htmlEsc(age)}${
+          s.places > 1 ? ` &middot; ${fmtQty(s.here)} of it here, the rest in another place` : ''}</div>`}
     <div class="vorirow"><span class="vorilinked">Vori: ${htmlEsc(row.vori_name || row.vori_product_id)}</span>
       ${canEdit(whLoc) ? `<button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button>` : ''}</div>`;
 }

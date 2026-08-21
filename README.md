@@ -252,12 +252,19 @@ in Railway as `VORI_API_KEY`. Optionally set `VORI_STORE_ID` and
 Then link each warehouse line to the Vori product it is — free-text names cannot
 be matched to product IDs on their own — with the **Link** button on the item.
 
+The middle figure is **everything held away from the store**, not just the place
+on screen. A product kept in both the warehouse and cold storage is subtracted
+once in full, so both tabs give the same answer instead of each ignoring the
+other and overstating the store.
+
 **Three things stop a comparison, and each says so rather than guessing:**
 
 - Not linked to a Vori product yet.
 - No pack size, so cases cannot be compared with whatever Vori counts in.
-- The warehouse alone holding more than Vori says exists, which means one of the
-  two is out of date. It shows `?` and says so instead of printing a negative.
+- More held offsite than Vori says exists at all, which means one of the two is
+  out of date. It shows `?` and says so instead of printing a negative.
+- Another place holding the same product without a pack size, so the total held
+  cannot be worked out.
 
 **On trusting the result.** Vori's on-hand is a perpetual count driven by sales
 and receiving, and it drifts. A difference is only as good as the older of the
