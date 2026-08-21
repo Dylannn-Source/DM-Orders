@@ -381,3 +381,9 @@ body[data-dept="coldstorage"]{
 .lvlrow input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
 .lvlage{font-family:var(--mono);font-size:10px;margin-top:4px;color:var(--ink-soft);}
 .lvlage.stale{color:var(--accent);font-weight:700;}
+.endmark{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ink-soft);text-align:center;padding:4px 0 8px;position:relative;}
+.endmark::before,.endmark::after{content:"";position:absolute;top:50%;width:24%;
+  border-top:1px solid var(--line);}
+.endmark::before{left:0;} .endmark::after{right:0;}
+.endmark.front{padding:10px 0 4px;color:var(--ink);font-weight:700;}

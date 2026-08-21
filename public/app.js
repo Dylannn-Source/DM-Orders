@@ -1318,10 +1318,18 @@ function renderContainerPlan(){
     return;
   }
 
+  // Drawn as you look in from the door: the back of the container at the top of
+  // the screen, spots 1 and 2 nearest you at the bottom. Rows are reversed but
+  // each pair keeps its left-to-right order.
+  const rows2 = [];
+  for (let i = 0; i < pals.length; i += 2) rows2.push(pals.slice(i, i + 2));
+  const laidOut = rows2.reverse().flat();
+
   wrap.innerHTML = `
     <div class="hint">Tap a pallet to fill it in. Each one has a top, middle and bottom.</div>
+    <div class="endmark">back of the container</div>
     <div class="spotgrid">
-      ${pals.map(p => {
+      ${laidOut.map(p => {
         const rows = onPallet(p.id);
         const stack = [0, 1, 2].map(l => rows.find(r => Number(r.stack_pos) === l));
         const stale = rows.some(r => ageOf(r).band === 'stale');
@@ -1336,6 +1344,7 @@ function renderContainerPlan(){
         </button>`;
       }).join('')}
     </div>
+    <div class="endmark front">front &mdash; the doors</div>
     ${edit ? `<button class="listlink" onclick="whMakeSpots(2)">+ two more spots</button>` : ''}
     ${loose.length ? `<div class="palloose">
       <div class="palname">Not on a pallet</div>

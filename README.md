@@ -162,6 +162,9 @@ containers**, then fill them.
 is created rather than added one at a time. An empty one is a place to put
 something, not something to make first.
 
+They are drawn as you look in from the doors: the back of the container at the top
+of the screen, spots 1 and 2 nearest you at the bottom, with both ends labelled.
+
 **Tapping a pallet gives three rows** — top, middle, bottom — each a quantity and
 a product, filled in directly:
 
