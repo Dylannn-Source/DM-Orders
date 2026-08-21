@@ -1200,7 +1200,14 @@ function whereLine(row){
   if (row.category) bits.push(htmlEsc(row.category));
   const p = whPals.find(x => Number(x.id) === Number(row.pallet_id));
   if (p) bits.push(htmlEsc(p.label || 'pallet') + (p.level > 0 ? ', stacked' : ''));
-  if (row.layer) bits.push(row.layer === 'top' ? 'on top' : 'underneath');
+  if (p && row.stack_pos !== null && row.stack_pos !== undefined){
+    const mates = whStock.filter(r => Number(r.pallet_id) === Number(p.id))
+      .sort((a, b) => (a.stack_pos ?? 99) - (b.stack_pos ?? 99) || a.item_name.localeCompare(b.item_name));
+    const i = mates.findIndex(r => r.item_name === row.item_name);
+    if (i === 0) bits.push('top');
+    else if (i === mates.length - 1) bits.push('bottom');
+    else if (i > 0) bits.push('middle');
+  }
   return bits.length ? `<div class="whwhere">${bits.join(' \u00b7 ')}</div>` : '';
 }
 
@@ -1306,10 +1313,15 @@ function renderContainerPlan(){
           ${col.map(p => {
             const rows = onPallet(p.id);
             const stale = rows.filter(r => ageOf(r).band === 'stale').length;
+            // Read top down, the way the pallet is stacked.
+            const stack = [...rows].sort((a, b) =>
+              (a.stack_pos ?? 99) - (b.stack_pos ?? 99) || a.item_name.localeCompare(b.item_name));
             return `<div class="pal ${stale ? 'stale' : rows.length ? 'ok' : 'empty'}">
               <button class="palopen" onclick="whOpenPallet(${p.id})">
                 <div class="pallabel">${htmlEsc(p.label || 'Pallet')}</div>
-                <div class="palcount">${rows.length}</div>
+                <div class="palstack">${stack.length
+                  ? stack.map(r => `<div class="palline">${fmtQty(r.qty)} ${htmlEsc(r.item_name)}</div>`).join('')
+                  : '<div class="palline empty">empty</div>'}</div>
                 <div class="cmeta">${p.level > 0 ? 'stacked' : 'on the floor'}</div>
               </button>
               ${edit ? `<div class="palmove">
@@ -1362,14 +1374,21 @@ async function whMovePallet(id, move){
 }
 function whPlaceItem(name){
   const pal = document.querySelector(`.palpick[data-item="${CSS.escape(name)}"]`)?.value || '';
-  const lay = document.querySelector(`.laypick[data-item="${CSS.escape(name)}"]`)?.value || '';
-  return whSetItemPallet(name, pal, lay);
+  return whSetItemPallet(name, pal);
 }
 
-async function whSetItemPallet(name, palletId, layer){
+async function whStackMove(name, move){
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/stack', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ move })
+  });
+  await showWarehouse();
+}
+
+async function whSetItemPallet(name, palletId){
   await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/pallet', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pallet_id: palletId || null, layer: layer || null })
+    body: JSON.stringify({ pallet_id: palletId || null })
   });
   whOpen = null;
   await showWarehouse();
@@ -1463,18 +1482,13 @@ function renderWarehouse(){
           <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
         </div>
         ${place().diagram ? `
-        <div class="whpick" style="margin-top:9px;padding-left:0;">Where on the pallet?</div>
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Which pallet? It goes on the bottom of the stack; the arrows move it up.</div>
         <div class="whform">
           <select class="single palpick" data-item="${htmlEsc(row.item_name)}">
             <option value="">not on a pallet</option>
             ${whPals.filter(pp => pp.container === (row.category || null)).map(pp =>
               `<option value="${pp.id}" ${Number(row.pallet_id) === pp.id ? 'selected' : ''}>${
                 htmlEsc(pp.label || 'Pallet')}${pp.level > 0 ? ' (stacked)' : ''}</option>`).join('')}
-          </select>
-          <select class="single laypick" data-item="${htmlEsc(row.item_name)}">
-            <option value="">—</option>
-            <option value="top" ${row.layer === 'top' ? 'selected' : ''}>on top</option>
-            <option value="bottom" ${row.layer === 'bottom' ? 'selected' : ''}>underneath</option>
           </select>
           <button class="whpackset" onclick="whPlaceItem('${esc(row.item_name)}')">Set</button>
         </div>` : ''}
@@ -1500,18 +1514,25 @@ function renderWarehouse(){
   if (q){
     shown.forEach(row => wrap.appendChild(renderRow(row)));
   } else if (onOnePallet){
-    // Top first: it is what you see and reach when you open the doors.
-    [['top', 'On top'], ['bottom', 'Underneath'], [null, 'Not placed on the pallet']]
-      .forEach(([lay, title]) => {
-        const rows = shown.filter(r => (r.layer || null) === lay);
-        if (!rows.length) return;
-        const head = document.createElement('div');
-        head.className = 'palhead';
-        head.innerHTML = `<div class="palname">${title}</div>
-          <div class="palmeta">${rows.length} item${rows.length===1?'':'s'}</div>`;
-        wrap.appendChild(head);
-        rows.forEach(row => wrap.appendChild(renderRow(row)));
-      });
+    // One list, read the way it is stacked: first line is the top.
+    const stack = [...shown].sort((a, b) =>
+      (a.stack_pos ?? 99) - (b.stack_pos ?? 99) || a.item_name.localeCompare(b.item_name));
+    const head = document.createElement('div');
+    head.className = 'palhead';
+    head.innerHTML = `<div class="palname">Stacked top to bottom</div>
+      <div class="palmeta">${stack.length} item${stack.length===1?'':'s'} on this pallet</div>`;
+    wrap.appendChild(head);
+    stack.forEach((row, i) => {
+      const el = renderRow(row);
+      const where = i === 0 ? 'top' : i === stack.length - 1 ? 'bottom' : 'middle';
+      el.insertAdjacentHTML('afterbegin',
+        `<div class="stackpos">${where}${canEdit(whLoc) ? `
+          <span><button class="vorilink" ${i === 0 ? 'disabled' : ''}
+                  onclick="whStackMove('${esc(row.item_name)}','up')">&uarr;</button>
+          <button class="vorilink" ${i === stack.length - 1 ? 'disabled' : ''}
+                  onclick="whStackMove('${esc(row.item_name)}','down')">&darr;</button></span>` : ''}</div>`);
+      wrap.appendChild(el);
+    });
   } else {
     whGroups(shown).forEach(g => {
       const stale = g.rows.filter(r => ageOf(r).band === 'stale').length;

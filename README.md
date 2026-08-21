@@ -163,10 +163,24 @@ floor and anything drawn above it is stacked on top, so the picture matches what
 you walk up to. The arrows on a pallet move it along the container or up and down
 a stack; moving onto an occupied square swaps the two rather than refusing.
 
-Items sit on a pallet and say which end of it: opening a pallet lists **On top**
-first, then **Underneath**, because the top is what you see and reach when the
-doors open. Every row carries where it is — `Container 2 · P3, stacked · on top` —
-so the answer travels with the item instead of living in the plan.
+**A pallet reads as its stack.** The number sits centred and bold at the top of
+the card, and under it the contents in the order they are piled:
+
+```
+        P1
+  15 cow feet
+  20 goat
+  20 tilapia
+```
+
+First line is the top of the pile, last is the bottom, however many deep it goes —
+an ordering rather than a top/bottom flag, since a pallet is often three or four
+high. Opening it labels each row `top` / `middle` / `bottom` with arrows to
+reshuffle, and an item placed on a pallet lands at the bottom, which is where a
+pallet grows.
+
+Every row carries where it is — `Container 2 · P1 · middle` — so searching for
+something tells you exactly where to walk.
 
 Deleting a pallet leaves its items in the container, off any pallet, rather than
 taking them with it.

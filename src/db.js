@@ -340,8 +340,15 @@ export async function initDb() {
       UNIQUE (location, container, slot, level)
     )`);
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pallet_id INTEGER');
-  // Which end of the pallet it is on. Null where it does not matter.
-  await pool.query(`ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS layer TEXT`);
+  // Where on the pallet, as an ordering rather than a top/bottom flag: a pallet
+  // can be three or four items deep, and the list order is the stack order.
+  // 0 is the top.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS layer TEXT');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS stack_pos INTEGER');
+  // Carry over anything already placed with the old two-value flag.
+  await pool.query(`
+    UPDATE warehouse_stock SET stack_pos = CASE layer WHEN 'top' THEN 0 WHEN 'bottom' THEN 1 ELSE 0 END
+     WHERE pallet_id IS NOT NULL AND stack_pos IS NULL`);
 
   // Which Vori product a warehouse line is, and what it is called there — free
   // text names cannot be matched to product ids on their own.

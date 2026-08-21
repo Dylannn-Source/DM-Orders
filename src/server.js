@@ -549,19 +549,64 @@ app.delete('/api/place/:loc/pallet/:id', async (req, res) => {
 app.put('/api/place/:loc/item/:name/pallet', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   if (!canWrite(req, res, loc)) return;
-  const { pallet_id, layer } = req.body || {};
-  const lay = ['top', 'bottom'].includes(layer) ? layer : null;
+  const { pallet_id } = req.body || {};
+  const pid = pallet_id ? Number(pallet_id) : null;
   try {
+    // Goes on the bottom of the stack, which is where a pallet grows.
+    let pos = null;
+    if (pid) {
+      const { rows } = await pool.query(
+        'SELECT COALESCE(MAX(stack_pos), -1) + 1 AS n FROM warehouse_stock WHERE pallet_id=$1', [pid]);
+      pos = rows[0].n;
+    }
     const { rows } = await pool.query(
-      `UPDATE warehouse_stock SET pallet_id=$3::integer, layer=$4::text, updated_at=NOW()
+      `UPDATE warehouse_stock SET pallet_id=$3::integer, stack_pos=$4::integer, updated_at=NOW()
         WHERE location=$1::text AND item_name=$2::text RETURNING item_name`,
-      [loc, req.params.name, pallet_id ? Number(pallet_id) : null, lay]);
+      [loc, req.params.name, pid, pos]);
     if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
     res.json({ ok: true });
   } catch (e) {
     console.error('item pallet failed', e);
     res.status(500).json({ error: 'could not move that' });
   }
+});
+
+// Shuffle an item up or down its own pallet, so the list reads in the order the
+// things are actually stacked.
+app.put('/api/place/:loc/item/:name/stack', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const dir = req.body?.move;
+  if (!['up', 'down'].includes(dir)) return res.status(400).json({ error: 'move must be up or down' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: me } = await client.query(
+      'SELECT item_name, pallet_id, stack_pos FROM warehouse_stock WHERE location=$1 AND item_name=$2 FOR UPDATE',
+      [loc, req.params.name]);
+    if (!me[0]?.pallet_id) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'not on a pallet' }); }
+    const { rows: mates } = await client.query(
+      'SELECT item_name, stack_pos FROM warehouse_stock WHERE pallet_id=$1 ORDER BY stack_pos, item_name',
+      [me[0].pallet_id]);
+    const i = mates.findIndex(m => m.item_name === me[0].item_name);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (j >= 0 && j < mates.length) {
+      // Renumber the whole pallet from the swapped order: stack_pos may have
+      // gaps or ties from earlier edits, and rewriting it makes them harmless.
+      const order = [...mates];
+      [order[i], order[j]] = [order[j], order[i]];
+      for (let k = 0; k < order.length; k++) {
+        await client.query('UPDATE warehouse_stock SET stack_pos=$2 WHERE location=$3 AND item_name=$1',
+          [order[k].item_name, k, loc]);
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('stack move failed', e);
+    res.status(500).json({ error: 'could not reorder that' });
+  } finally { client.release(); }
 });
 
 // ---- sections: pallets in the warehouse, containers in cold storage ----
