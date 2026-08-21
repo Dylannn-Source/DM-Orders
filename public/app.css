@@ -354,3 +354,30 @@ body[data-dept="coldstorage"]{
   text-transform:uppercase;letter-spacing:.04em;}
 
 .plancol{min-width:142px;}
+
+/* ---- eight pallet spots, and one pallet's three levels ---- */
+.spotgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.spot{display:block;text-align:left;background:var(--card);border:1px solid var(--line);
+  border-top:5px solid var(--good);border-radius:10px;padding:9px;color:var(--ink);min-height:96px;}
+.spot.stale{border-top-color:var(--accent);}
+.spot.open{border-top-color:var(--line);border-style:dashed;}
+.spotnum{font-weight:700;font-size:16px;text-align:center;padding-bottom:5px;
+  border-bottom:1px solid var(--line);margin-bottom:6px;}
+.spotstack{display:flex;flex-direction:column;gap:2px;}
+.spotline{font-family:var(--mono);font-size:11px;line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.spotline.blank{color:var(--line);}
+.palform{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;}
+.palformnum{font-family:var(--serif);font-size:30px;text-align:center;font-weight:400;
+  padding-bottom:10px;border-bottom:2px solid var(--ink);margin-bottom:14px;}
+.lvl{margin-bottom:14px;}
+.lvlname{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink-soft);margin-bottom:5px;}
+.lvlrow{display:flex;gap:8px;}
+.lvlqty{width:74px;flex:none;}
+.lvlitem{flex:1;min-width:0;}
+.lvlrow input{border:1px solid var(--line);background:var(--paper);border-radius:9px;
+  padding:12px 11px;font-size:16px;color:var(--ink);font-family:var(--mono);}
+.lvlrow input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+.lvlage{font-family:var(--mono);font-size:10px;margin-top:4px;color:var(--ink-soft);}
+.lvlage.stale{color:var(--accent);font-weight:700;}

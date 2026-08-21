@@ -361,6 +361,85 @@ app.post('/api/place/:loc/item', async (req, res) => {
   }
 });
 
+// A container has a fixed number of pallet spots and they exist whether or not
+// anything is on them — an empty spot is a place to put something, not an absence
+// to be created first.
+const SPOTS_PER_CONTAINER = 8;
+async function ensureSpots(loc, container, upTo = SPOTS_PER_CONTAINER) {
+  const { rows } = await pool.query(
+    'SELECT COALESCE(MAX(slot), -1) AS max FROM warehouse_pallets WHERE location=$1 AND container=$2',
+    [loc, container]);
+  for (let slot = Number(rows[0].max) + 1; slot < upTo; slot++) {
+    await pool.query(
+      `INSERT INTO warehouse_pallets (location, container, label, slot, level)
+       VALUES ($1,$2,$3,$4,0) ON CONFLICT DO NOTHING`,
+      [loc, container, String(slot + 1), slot]);
+  }
+}
+
+app.post('/api/place/:loc/spots', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const cont = String(req.body?.container || '').trim();
+  if (!cont) return res.status(400).json({ error: 'which container?' });
+  try {
+    const extra = Number(req.body?.add) > 0 ? Number(req.body.add) : 0;
+    const { rows } = await pool.query(
+      'SELECT COUNT(*)::int AS n FROM warehouse_pallets WHERE location=$1 AND container=$2', [loc, cont]);
+    await ensureSpots(loc, cont, extra ? rows[0].n + extra : SPOTS_PER_CONTAINER);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('spots failed', e);
+    res.status(500).json({ error: 'could not set those up' });
+  }
+});
+
+// Fill one level of one pallet: a quantity and a product, or blank to clear it.
+app.put('/api/place/:loc/pallet/:id/level/:level', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const id = Number(req.params.id);
+  const level = Number(req.params.level);
+  if (![0, 1, 2].includes(level)) return res.status(400).json({ error: 'level must be 0, 1 or 2' });
+  const name = String(req.body?.name || '').trim();
+  const qty = Number(req.body?.qty);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: pal } = await client.query(
+      'SELECT container FROM warehouse_pallets WHERE id=$1 AND location=$2', [id, loc]);
+    if (!pal[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'no such pallet' }); }
+
+    // Whatever was on this level comes off, whether or not something replaces it.
+    await client.query(
+      'UPDATE warehouse_stock SET pallet_id=NULL, stack_pos=NULL WHERE pallet_id=$1 AND stack_pos=$2',
+      [id, level]);
+
+    if (name) {
+      if (!isFinite(qty) || qty < 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'how many?' }); }
+      // The product may be new here, may already be on another pallet, or may be
+      // sitting in the container unplaced. One upsert covers all three.
+      await client.query(
+        `INSERT INTO warehouse_stock (location, item_name, unit, qty, category, pallet_id, stack_pos, counted_at, counted_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8)
+         ON CONFLICT (location, item_name) DO UPDATE
+           SET qty=EXCLUDED.qty, category=EXCLUDED.category, pallet_id=EXCLUDED.pallet_id,
+               stack_pos=EXCLUDED.stack_pos, counted_at=NOW(), counted_by=EXCLUDED.counted_by,
+               updated_at=NOW()`,
+        [loc, name, String(req.body?.unit || '').trim() || null, qty, pal[0].container, id, level, req.employee.name]);
+      await client.query(
+        `INSERT INTO warehouse_moves (location, item_name, kind, delta, qty_after, moved_by)
+         VALUES ($1,$2,'counted',NULL,$3,$4)`, [loc, name, qty, req.employee.name]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('level set failed', e);
+    res.status(500).json({ error: 'could not save that' });
+  } finally { client.release(); }
+});
+
 async function ensureCategory(loc, name) {
   const { rows } = await pool.query(
     'SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories WHERE location=$1', [loc]);
@@ -641,6 +720,7 @@ app.post('/api/place/:loc/category', async (req, res) => {
        ON CONFLICT (location, name) DO NOTHING RETURNING name`,
       [loc, clean, String(pallets || '').trim() || null, rows[0].n]);
     if (!ins.rowCount) return res.status(409).json({ error: 'that one already exists' });
+    if (loc === 'coldstorage') await ensureSpots(loc, clean);
     res.json({ ok: true });
   } catch (e) {
     console.error('category create failed', e);

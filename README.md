@@ -158,29 +158,27 @@ cuts across all of them.
 goes where you were standing. Set the containers up first under **Manage
 containers**, then fill them.
 
-**Inside a container is a plan of its pallets.** Each column is a spot on the
-floor and anything drawn above it is stacked on top, so the picture matches what
-you walk up to. The arrows on a pallet move it along the container or up and down
-a stack; moving onto an occupied square swaps the two rather than refusing.
+**Inside a container are eight pallet spots**, there from the moment the container
+is created rather than added one at a time. An empty one is a place to put
+something, not something to make first.
 
-**A pallet reads as its stack.** The number sits centred and bold at the top of
-the card, and under it the contents in the order they are piled:
+**Tapping a pallet gives three rows** — top, middle, bottom — each a quantity and
+a product, filled in directly:
 
 ```
-        P1
-  15 cow feet
-  20 goat
-  20 tilapia
+            1
+   TOP     15   cow feet
+   MIDDLE  20   goat
+   BOTTOM  20   tilapia
 ```
 
-First line is the top of the pile, last is the bottom, however many deep it goes —
-an ordering rather than a top/bottom flag, since a pallet is often three or four
-high. Opening it labels each row `top` / `middle` / `bottom` with arrows to
-reshuffle, and an item placed on a pallet lands at the bottom, which is where a
-pallet grows.
+A product typed in that is not on the list yet is created; clearing a row takes
+it off the pallet but leaves it in the container, in the unplaced pile. Each spot
+on the grid shows its three lines, so the container reads at a glance without
+opening anything.
 
-Every row carries where it is — `Container 2 · P1 · middle` — so searching for
-something tells you exactly where to walk.
+Every row elsewhere carries where it is — `Container 2 · 1 · middle` — so
+searching for something tells you exactly where to walk.
 
 Deleting a pallet leaves its items in the container, off any pallet, rather than
 taking them with it.
