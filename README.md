@@ -84,7 +84,7 @@ out of permanently.
 **Who can change what.** Everyone signed in can *look* at everything — every
 department, every PAR, the warehouse, the movement log, past orders. Changing
 something needs that area granted, per person, under **Settings → Employees**:
-produce, meat, fish, warehouse, ticked individually. A manager has all four by
+produce, meat, fish, warehouse, coldstorage, ticked individually. A manager has all four by
 role and needs no ticks.
 
 Granting an area covers everything that writes to it: counting, PARs, vendors,
@@ -139,6 +139,20 @@ Three things about the transcription:
   never appears in the message a vendor receives.
 
 PARs are all at 0 until the real ones are set under **Settings → PARs**.
+
+## Stock held away from the shop floor
+
+Two places, one screen: the **offsite warehouse**, divided into pallets, and the
+**cold storage containers at MonkishZ**. They share tables keyed by location, so
+both get staleness, cases-and-loose, movements, Vori links and permissions from
+one implementation rather than two that drift apart. The same item name can sit
+in both without collision.
+
+Cold storage opens on a **plan of the containers** rather than a list, because the
+first question there is which box something is in and you cannot see inside one
+from the door. Each container shows what it holds and turns red when something
+inside has gone a month unchecked. Tapping one drops into its contents; searching
+cuts across all of them.
 
 ## The offsite warehouse
 

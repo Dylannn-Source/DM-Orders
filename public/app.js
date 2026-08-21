@@ -1081,7 +1081,26 @@ async function setEmployeeActive(id, active){
 // this one, so the screen has to say how old each number is and let a stale one
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
-let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse'];
+let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse','coldstorage'];
+let whLoc = 'warehouse', whContainer = null;
+
+// The two places differ only in what their sections are called and whether the
+// screen opens on a diagram of them.
+const PLACES = {
+  warehouse: {
+    tab: 'WAREHOUSE', eyebrow: 'DAT MOI \u00b7 OFFSITE', title: 'Warehouse',
+    section: 'pallet', sections: 'pallets', sectionLabel: 'which pallets?',
+    search: 'Search the warehouse...', diagram: false,
+    noEdit: 'You can look at the warehouse, but changing what is on the shelves is not yours to do. Ask a manager.'
+  },
+  coldstorage: {
+    tab: 'COLD', eyebrow: 'DAT MOI \u00b7 MONKISHZ', title: 'Cold Storage',
+    section: 'container', sections: 'containers', sectionLabel: 'label / temp',
+    search: 'Search cold storage...', diagram: true,
+    noEdit: 'You can look at cold storage, but changing what is in the containers is not yours to do. Ask a manager.'
+  }
+};
+const place = () => PLACES[whLoc];
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
 // What is left is what should be at the store. Both halves have to be in the same
@@ -1097,15 +1116,20 @@ function splitOf(row){
   return { total, warehouse, onsite, unit: row.unit_name || 'units' };
 }
 
-async function showWarehouse(){
+async function showWarehouse(loc){
+  if (loc && loc !== whLoc){ whLoc = loc; whContainer = null; whOpen = null; whPallets = false; }
   hideAll();
-  document.body.dataset.dept = 'warehouse';
+  document.body.dataset.dept = whLoc;
   document.querySelectorAll('#deptBar button').forEach(b =>
-    b.classList.toggle('active', b.dataset.dept === 'warehouse'));
+    b.classList.toggle('active', b.dataset.dept === whLoc));
+  const cfg = place();
+  $('whEyebrow').innerHTML = cfg.eyebrow;
+  $('whTitle').textContent = cfg.title;
+  $('whSearch').placeholder = cfg.search;
   $('warehouseView').style.display = 'block';
   $('footerBar').style.display = 'none';
   $('whWrap').innerHTML = '<div class="hint">Loading...</div>';
-  const r = await fetch('/api/warehouse').then(x => x.json()).catch(() => null);
+  const r = await fetch('/api/place/' + whLoc).then(x => x.json()).catch(() => null);
   if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
   whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
   whCats = r.categories || [];
@@ -1166,14 +1190,14 @@ function whGroups(shown){
     }));
 }
 
-function renderWarehouse(){
-  if (whLinking) return renderLinkPanel();
-  if (whPallets) return renderPallets();
-  const q = ($('whSearch').value || '').trim().toLowerCase();
-  const wrap = $('whWrap');
+// Cold storage opens on a plan of the containers rather than a list, because the
+// first question there is "which box is it in" and you cannot see inside one from
+// the door. Tapping a container drops into its contents.
+function whSummaryLine(){
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
   const linked = whStock.filter(r => r.vori_product_id).length;
+  const whEdit = canEdit(whLoc);
   const voriLine = !whVori.configured
     ? '<div class="whsync">Vori is not connected. Add a read-only API key as VORI_API_KEY in Railway.</div>'
     : `<div class="whsync">Vori: ${whVori.products || 0} products,
@@ -1181,16 +1205,70 @@ function renderWarehouse(){
         &middot; ${linked} of ${whStock.length} linked
         <button class="vorilink" onclick="whSync()">Sync now</button>
         <span id="whSyncMsg"></span></div>`;
-  const whEdit = canEdit('warehouse');
-  const palletLine = `<div class="whsync">${whCats.length} pallet categor${whCats.length===1?'y':'ies'}
-      ${whEdit ? '<button class="vorilink" onclick="whShowPallets()">Manage pallets</button>' : ''}</div>`;
+  const sectionLine = `<div class="whsync">${whCats.length} ${place().sections}
+      ${whEdit ? `<button class="vorilink" onclick="whShowPallets()">Manage ${place().sections}</button>` : ''}</div>`;
+  const backLine = place().diagram && whContainer !== null
+    ? `<div class="whsync"><button class="vorilink" onclick="whBackToDiagram()">&larr; back to the ${place().sections}</button>
+       ${whContainer === '*' ? '' : `<b>${htmlEsc(whContainer || 'Not in a container')}</b>`}</div>`
+    : '';
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
-    : 'Nothing on the list yet.') + palletLine + voriLine;
+    : 'Nothing here yet.') + backLine + sectionLine + voriLine;
+}
 
-  const shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
-  wrap.innerHTML = !whEdit ? `<div class="rowarn">You can look at the warehouse, but
-    changing what is on the shelves is not yours to do. Ask a manager.</div>` : `
+function renderDiagram(){
+  const wrap = $('whWrap');
+  const cfg = place();
+  // The plan still needs the header the list has, or the way in to the
+  // containers and to Vori disappears behind it.
+  whSummaryLine();
+  const byCat = {};
+  whStock.forEach(r => { const k = r.category || null; (byCat[k] = byCat[k] || []).push(r); });
+  const loose = byCat[null] || [];
+
+  wrap.innerHTML = `
+    <div class="hint">${whCats.length
+      ? 'Tap a container to see what is inside it.'
+      : `No containers set up yet. ${canEdit(whLoc) ? 'Add them under Manage containers.' : 'Ask a manager to add them.'}`}</div>
+    <div class="cyard">
+      ${whCats.map(c => {
+        const rows = byCat[c.name] || [];
+        const stale = rows.filter(r => ageOf(r).band === 'stale').length;
+        const band = !rows.length ? 'empty' : stale ? 'stale' : 'ok';
+        return `<button class="cbox ${band}" onclick="whOpenContainer('${esc(c.name)}')">
+          <div class="cname">${htmlEsc(c.name)}</div>
+          ${c.pallets ? `<div class="cmeta">${htmlEsc(c.pallets)}</div>` : ''}
+          <div class="ccount">${rows.length}</div>
+          <div class="cmeta">${rows.length === 1 ? 'item' : 'items'}${stale ? ` &middot; ${stale} stale` : ''}</div>
+        </button>`;
+      }).join('')}
+      ${loose.length ? `<button class="cbox loose" onclick="whOpenContainer(null)">
+          <div class="cname">Not in a container</div>
+          <div class="ccount">${loose.length}</div>
+          <div class="cmeta">${loose.length === 1 ? 'item' : 'items'}</div>
+        </button>` : ''}
+    </div>
+    ${whCats.length ? `<button class="addbtn" style="width:100%;margin-top:14px;"
+        onclick="whOpenContainer('*')">See everything as a list</button>` : ''}`;
+}
+
+function whOpenContainer(name){ whContainer = name; renderWarehouse(); }
+function whBackToDiagram(){ whContainer = null; whOpen = null; renderWarehouse(); }
+
+function renderWarehouse(){
+  if (whLinking) return renderLinkPanel();
+  if (whPallets) return renderPallets();
+  if (place().diagram && whContainer === null && !($('whSearch').value || '').trim()) return renderDiagram();
+  const q = ($('whSearch').value || '').trim().toLowerCase();
+  const wrap = $('whWrap');
+  const whEdit = canEdit(whLoc);
+  whSummaryLine();
+
+  let shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
+  if (place().diagram && whContainer !== null && whContainer !== '*' && !q){
+    shown = shown.filter(r => (r.category || null) === whContainer);
+  }
+  wrap.innerHTML = !whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add something</div></div>
       <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
@@ -1199,7 +1277,7 @@ function renderWarehouse(){
         <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
       </div>
       <div class="vitem">
-        <input type="text" class="textinput" id="whNewCat" list="whCatList" placeholder="Which pallet / category?">
+        <input type="text" class="textinput" id="whNewCat" list="whCatList" placeholder="Which ${place().section}?">
         <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
       </div>
       <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
@@ -1240,7 +1318,7 @@ function renderWarehouse(){
           <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
           <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
         </div>
-        <div class="whpick" style="margin-top:9px;padding-left:0;">Which pallet is this on?</div>
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Which ${place().section} is this in?</div>
         <div class="whform">
           <input type="text" class="whcat" list="whCatList" value="${htmlEsc(row.category || '')}" placeholder="category">
           <button class="whpackset" onclick="whSetCat('${esc(row.item_name)}')">Move</button>
@@ -1252,7 +1330,7 @@ function renderWarehouse(){
           <input type="text" class="whpackname" placeholder="bottles / packs">
           <button class="whpackset" onclick="whSetPack('${esc(row.item_name)}')">Set</button>
         </div>`}`
-      : (canEdit('warehouse')
+      : (canEdit(whLoc)
           ? `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`
           : '')}`;
     return div;
@@ -1267,11 +1345,11 @@ function renderWarehouse(){
       const head = document.createElement('div');
       head.className = 'palhead' + (g.name ? '' : ' loose');
       head.innerHTML = `
-        <div class="palname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</div>
+        <div class="palname">${g.name ? htmlEsc(g.name) : `Not in a ${place().section} yet`}</div>
         <div class="palmeta">${g.pallets ? htmlEsc(g.pallets) + ' &middot; ' : ''}${g.rows.length} item${g.rows.length===1?'':'s'}${stale ? ` &middot; <b>${stale}</b> stale` : ''}</div>`;
       wrap.appendChild(head);
       if (!g.rows.length){
-        wrap.insertAdjacentHTML('beforeend', '<div class="palempty">Nothing on this pallet yet.</div>');
+        wrap.insertAdjacentHTML('beforeend', `<div class="palempty">Nothing in this ${place().section} yet.</div>`);
       }
       g.rows.forEach(row => wrap.appendChild(renderRow(row)));
     });
@@ -1310,7 +1388,7 @@ function voriBlock(row){
   if (!row.vori_product_id){
     return `<div class="vorirow unlinked">
       <span>Not linked to Vori</span>
-      ${canEdit('warehouse') ? `<button class="vorilink" onclick="whStartLink('${esc(row.item_name)}')">Link</button>` : ''}</div>`;
+      ${canEdit(whLoc) ? `<button class="vorilink" onclick="whStartLink('${esc(row.item_name)}')">Link</button>` : ''}</div>`;
   }
   const s = splitOf(row);
   if (!s){
@@ -1337,11 +1415,11 @@ function voriBlock(row){
          One of the two is out of date &mdash; recount here, or check Vori.</div>`
       : `<div class="whtotal">in ${htmlEsc(s.unit)} &middot; Vori ${htmlEsc(age)}</div>`}
     <div class="vorirow"><span class="vorilinked">Vori: ${htmlEsc(row.vori_name || row.vori_product_id)}</span>
-      ${canEdit('warehouse') ? `<button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button>` : ''}</div>`;
+      ${canEdit(whLoc) ? `<button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button>` : ''}</div>`;
 }
 
 function whToggle(name){
-  if (!canEdit('warehouse')) return;
+  if (!canEdit(whLoc)) return;
   whOpen = whOpen === name ? null : name;
   renderWarehouse();
 }
@@ -1383,7 +1461,7 @@ async function whSearchVori(){
 }
 
 async function whDoLink(id, name){
-  await fetch('/api/warehouse/item/' + encodeURIComponent(whLinking.name) + '/vori', {
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(whLinking.name) + '/vori', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ vori_product_id: id, vori_name: name })
   });
@@ -1392,7 +1470,7 @@ async function whDoLink(id, name){
 }
 
 async function whUnlink(name){
-  await fetch('/api/warehouse/item/' + encodeURIComponent(name) + '/vori', {
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/vori', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ vori_product_id: null, vori_name: null })
   });
@@ -1411,7 +1489,7 @@ async function whSync(){
 async function whAdd(){
   const name = $('whNewName').value.trim();
   if (!name){ $('whMsg').textContent = 'Give it a name first.'; return; }
-  const res = await fetch('/api/warehouse/item', {
+  const res = await fetch('/api/place/' + whLoc + '/item', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name,
@@ -1432,7 +1510,7 @@ async function whMove(name, kind){
   const units = document.querySelector('.whunits')?.value.trim() || '';
   // Counting zero is a real answer — none left. Moving nothing is not.
   if (kind !== 'counted' && cases === '' && units === '') return;
-  const res = await fetch('/api/warehouse/move', {
+  const res = await fetch('/api/place/' + whLoc + '/move', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ item_name: name, kind, cases: cases || 0, units: units || 0 })
   });
@@ -1441,7 +1519,7 @@ async function whMove(name, kind){
 
 async function whSetCat(name){
   const category = document.querySelector('.whcat')?.value.trim() ?? '';
-  await fetch('/api/warehouse/item/' + encodeURIComponent(name) + '/category', {
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/category', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ category })
   });
@@ -1458,15 +1536,17 @@ function renderPallets(){
   whStock.forEach(r => { if (r.category) counts[r.category] = (counts[r.category] || 0) + 1; });
   const loose = whStock.filter(r => !r.category).length;
   $('whWrap').innerHTML = `
-    <div class="vsummarybar"><div class="vs-title">Pallets</div>
-      <div class="vs-sub">${whCats.length} categories${loose ? ` &middot; ${loose} item${loose===1?'':'s'} not on one` : ''}</div></div>
-    <div class="hint">Order these the way you walk the room and counting follows your
-    feet. A category can sit on more than one pallet — put the numbers in the box.</div>
+    <div class="vsummarybar"><div class="vs-title">${place().sections.replace(/^./, c => c.toUpperCase())}</div>
+      <div class="vs-sub">${whCats.length} ${place().sections}${loose ? ` &middot; ${loose} item${loose===1?'':'s'} in none of them` : ''}</div></div>
+    <div class="hint">Order these the way you walk the place and counting follows your
+    feet. ${whLoc === 'warehouse'
+      ? 'A category can sit on more than one pallet — put the numbers in the box.'
+      : 'Put whatever is written on the container in the box, or the temperature.'}</div>
     <div class="vgroup">
-      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add a category</div></div>
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add a ${place().section}</div></div>
       <div class="vitem">
-        <input type="text" class="textinput" id="newCatName" placeholder="e.g. Rice">
-        <input type="text" class="textinput" id="newCatPallets" placeholder="pallets 3-5">
+        <input type="text" class="textinput" id="newCatName" placeholder="${whLoc === 'warehouse' ? 'e.g. Rice' : 'e.g. Container 1'}">
+        <input type="text" class="textinput" id="newCatPallets" placeholder="${place().sectionLabel}">
       </div>
     </div>
     <button class="addbtn" style="width:100%;margin-bottom:12px;" onclick="whAddCat()">Add</button>
@@ -1482,7 +1562,7 @@ function renderPallets(){
         </div>
         <div class="whform">
           <input type="text" class="textinput catpal" data-cat="${htmlEsc(c.name)}"
-                 value="${htmlEsc(c.pallets || '')}" placeholder="which pallets?"
+                 value="${htmlEsc(c.pallets || '')}" placeholder="${place().sectionLabel}"
                  onchange="whSetPallets('${esc(c.name)}', this.value)">
           <button class="vorilink" onclick="whDelCat('${esc(c.name)}')">Remove</button>
         </div>
@@ -1493,7 +1573,7 @@ function renderPallets(){
 async function whAddCat(){
   const name = $('newCatName').value.trim();
   if (!name){ $('catMsg').textContent = 'Give it a name first.'; return; }
-  const res = await fetch('/api/warehouse/category', {
+  const res = await fetch('/api/place/' + whLoc + '/category', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, pallets: $('newCatPallets').value.trim() })
   });
@@ -1502,21 +1582,21 @@ async function whAddCat(){
   await showWarehouse();
 }
 async function whSetPallets(name, pallets){
-  await fetch('/api/warehouse/category/' + encodeURIComponent(name), {
+  await fetch('/api/place/' + whLoc + '/category/' + encodeURIComponent(name), {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pallets })
   });
   await showWarehouse();
 }
 async function whMoveCat(name, move){
-  await fetch('/api/warehouse/category/' + encodeURIComponent(name), {
+  await fetch('/api/place/' + whLoc + '/category/' + encodeURIComponent(name), {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ move })
   });
   await showWarehouse();
 }
 async function whDelCat(name){
-  const res = await fetch('/api/warehouse/category/' + encodeURIComponent(name), { method: 'DELETE' });
+  const res = await fetch('/api/place/' + whLoc + '/category/' + encodeURIComponent(name), { method: 'DELETE' });
   if (!res.ok){ const b = await res.json().catch(()=>({})); $('catMsg').textContent = b.error || 'Could not remove that.'; return; }
   await showWarehouse();
 }
@@ -1525,7 +1605,7 @@ async function whSetPack(name){
   const pack = document.querySelector('.whpack')?.value.trim();
   const unit_name = document.querySelector('.whpackname')?.value.trim();
   if (!pack) return;
-  const res = await fetch('/api/warehouse/item/' + encodeURIComponent(name), {
+  const res = await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name), {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pack_size: pack, unit_name })
   });

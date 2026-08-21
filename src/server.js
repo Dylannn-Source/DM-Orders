@@ -38,7 +38,7 @@ app.use(async (req, res, next) => {
 // Anyone signed in can read anything. Changing something needs the area granted,
 // which a manager has by role. Enforced here rather than in the browser: hiding a
 // button is a courtesy, this is the actual rule.
-const AREAS = ['produce', 'meat', 'fish', 'warehouse'];
+const AREAS = ['produce', 'meat', 'fish', 'warehouse', 'coldstorage'];
 
 async function areasFor(employee) {
   if (!employee) return [];
@@ -275,11 +275,20 @@ app.put('/api/employees/:id', async (req, res) => {
   }
 });
 
-// ---- offsite warehouse ------------------------------------------------------
-// Few people go there and not often, so a quantity is only as good as its age.
-// Every response carries how long ago each number was last confirmed, and the
-// screen leans on that rather than on the number alone.
-app.get('/api/warehouse', async (_req, res) => {
+// ---- stock held away from the shop floor ------------------------------------
+// Two places, one shape: the offsite warehouse divided into pallets, and the
+// cold storage containers at MonkishZ. Same tables keyed by location, so both
+// get staleness, cases-and-loose, movements, Vori links and permissions from one
+// implementation rather than two that drift apart.
+const PLACES = new Set(['warehouse', 'coldstorage']);
+function checkPlace(req, res) {
+  const loc = req.params.loc;
+  if (!PLACES.has(loc)) { res.status(400).json({ error: 'unknown place' }); return null; }
+  return loc;
+}
+
+app.get('/api/place/:loc', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
   try {
     const [stock, moves, vori, cats] = await Promise.all([
       pool.query(`SELECT w.*,
@@ -289,86 +298,91 @@ app.get('/api/warehouse', async (_req, res) => {
                          EXTRACT(EPOCH FROM (NOW() - v.synced_at))/3600 AS vori_hours_old
                     FROM warehouse_stock w
                     LEFT JOIN vori_inventory v ON v.product_id = w.vori_product_id
-                   ORDER BY w.item_name`),
-      pool.query(`SELECT * FROM warehouse_moves ORDER BY moved_at DESC LIMIT 60`),
+                   WHERE w.location = $1
+                   ORDER BY w.item_name`, [loc]),
+      pool.query(`SELECT * FROM warehouse_moves WHERE location=$1 ORDER BY moved_at DESC LIMIT 60`, [loc]),
       voriStatus().catch(() => ({ configured: false })),
-      pool.query('SELECT * FROM warehouse_categories ORDER BY position, name')
+      pool.query('SELECT * FROM warehouse_categories WHERE location=$1 ORDER BY position, name', [loc])
     ]);
-    res.json({ stock: stock.rows, moves: moves.rows, vori, categories: cats.rows });
+    res.json({ location: loc, stock: stock.rows, moves: moves.rows, vori, categories: cats.rows });
   } catch (e) {
-    console.error('warehouse fetch failed', e);
-    res.status(500).json({ error: 'warehouse fetch failed' });
+    console.error('place fetch failed', e);
+    res.status(500).json({ error: 'could not load that place' });
   }
 });
 
-app.post('/api/warehouse/item', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+app.post('/api/place/:loc/item', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const { name, unit, qty, pack_size, unit_name, qty_units, category } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
   const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
   const cases = Number(qty) || 0;
   const units = pack ? (Number(qty_units) || 0) : 0;
+  const cat = String(category || '').trim() || null;
   try {
     const ins = await pool.query(
       `INSERT INTO warehouse_stock
-         (item_name, unit, qty, pack_size, unit_name, qty_units, category, counted_at, counted_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8)
-       ON CONFLICT (item_name) DO NOTHING RETURNING item_name`,
-      [clean, String(unit || '').trim() || null, cases, pack,
-       pack ? (String(unit_name || '').trim() || 'units') : null, units,
-       String(category || '').trim() || null, req.employee.name]);
+         (location, item_name, unit, qty, pack_size, unit_name, qty_units, category, counted_at, counted_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),$9)
+       ON CONFLICT (location, item_name) DO NOTHING RETURNING item_name`,
+      [loc, clean, String(unit || '').trim() || null, cases, pack,
+       pack ? (String(unit_name || '').trim() || 'units') : null, units, cat, req.employee.name]);
     if (!ins.rowCount) return res.status(409).json({ error: 'that is already on the list' });
-    if (String(category || '').trim()) {
-      const { rows } = await pool.query(
-        `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
-      await pool.query(
-        `INSERT INTO warehouse_categories (name, position) VALUES ($1,$2)
-         ON CONFLICT (name) DO NOTHING`, [String(category).trim(), rows[0].n]);
-    }
+    if (cat) await ensureCategory(loc, cat);
     await pool.query(
-      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, units_after, moved_by)
-       VALUES ($1,'counted',NULL,$2,$3,$4)`, [clean, cases, units, req.employee.name]);
+      `INSERT INTO warehouse_moves (location, item_name, kind, delta, qty_after, units_after, moved_by)
+       VALUES ($1,$2,'counted',NULL,$3,$4,$5)`, [loc, clean, cases, units, req.employee.name]);
     res.json({ ok: true });
   } catch (e) {
-    console.error('warehouse add failed', e);
-    res.status(500).json({ error: 'warehouse add failed' });
+    console.error('place add failed', e);
+    res.status(500).json({ error: 'could not add that' });
   }
 });
 
-// Turn a case-only item into one that gets picked at, or change how many are in
-// a case. Kept apart from movements: this describes the item, not its quantity.
-app.put('/api/warehouse/item/:name', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+async function ensureCategory(loc, name) {
+  const { rows } = await pool.query(
+    'SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories WHERE location=$1', [loc]);
+  await pool.query(
+    `INSERT INTO warehouse_categories (location, name, position) VALUES ($1,$2,$3)
+     ON CONFLICT (location, name) DO NOTHING`, [loc, name, rows[0].n]);
+}
+
+// Describes the item rather than its quantity, so it is kept apart from moves.
+app.put('/api/place/:loc/item/:name', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const { pack_size, unit_name, unit } = req.body || {};
   const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
   try {
     const { rows } = await pool.query(
-      // Every parameter is cast: a bare $2 tested with IS NULL leaves Postgres
-      // no way to infer its type and the statement is rejected outright.
+      // Every parameter is cast: a bare $2 tested with IS NULL leaves Postgres no
+      // way to infer its type and the statement is rejected outright.
       `UPDATE warehouse_stock
-          SET pack_size = $2::numeric,
-              unit_name = CASE WHEN $2::numeric IS NULL THEN NULL
-                               ELSE COALESCE($3::text, unit_name, 'units') END,
-              unit = COALESCE($4::text, unit),
-              qty_units = CASE WHEN $2::numeric IS NULL THEN 0 ELSE qty_units END,
+          SET pack_size = $3::numeric,
+              unit_name = CASE WHEN $3::numeric IS NULL THEN NULL
+                               ELSE COALESCE($4::text, unit_name, 'units') END,
+              unit = COALESCE($5::text, unit),
+              qty_units = CASE WHEN $3::numeric IS NULL THEN 0 ELSE qty_units END,
               updated_at = NOW()
-        WHERE item_name = $1::text RETURNING item_name`,
-      [req.params.name, pack, String(unit_name || '').trim() || null,
+        WHERE location = $1::text AND item_name = $2::text RETURNING item_name`,
+      [loc, req.params.name, pack, String(unit_name || '').trim() || null,
        String(unit || '').trim() || null]);
     if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
     res.json({ ok: true });
   } catch (e) {
-    console.error('warehouse item update failed', e);
-    res.status(500).json({ error: 'warehouse item update failed' });
+    console.error('place item update failed', e);
+    res.status(500).json({ error: 'could not update that' });
   }
 });
 
 // One route for all three movements. "counted" sets the number and is the only
 // one that refreshes its age — adding or taking a case tells you the stock moved,
 // not that anyone looked at the shelf.
-app.put('/api/warehouse/move', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+app.put('/api/place/:loc/move', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const { item_name, kind, cases, units, note } = req.body || {};
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   if (!['counted', 'added', 'taken'].includes(kind)) {
@@ -386,7 +400,8 @@ app.put('/api/warehouse/move', async (req, res) => {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'SELECT qty, qty_units, pack_size FROM warehouse_stock WHERE item_name=$1 FOR UPDATE', [item_name]);
+      'SELECT qty, qty_units, pack_size FROM warehouse_stock WHERE location=$1 AND item_name=$2 FOR UPDATE',
+      [loc, item_name]);
     if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not on the list' }); }
     const pack = rows[0].pack_size === null ? null : Number(rows[0].pack_size);
     const beforeC = Number(rows[0].qty), beforeU = Number(rows[0].qty_units);
@@ -408,14 +423,16 @@ app.put('/api/warehouse/move', async (req, res) => {
 
     await client.query(
       kind === 'counted'
-        ? `UPDATE warehouse_stock SET qty=$2, qty_units=$3, counted_at=NOW(), counted_by=$4, updated_at=NOW() WHERE item_name=$1`
-        : `UPDATE warehouse_stock SET qty=$2, qty_units=$3, updated_at=NOW() WHERE item_name=$1`,
-      kind === 'counted' ? [item_name, afterC, afterU, req.employee.name]
-                         : [item_name, afterC, afterU]);
+        ? `UPDATE warehouse_stock SET qty=$3, qty_units=$4, counted_at=NOW(), counted_by=$5, updated_at=NOW()
+            WHERE location=$1 AND item_name=$2`
+        : `UPDATE warehouse_stock SET qty=$3, qty_units=$4, updated_at=NOW()
+            WHERE location=$1 AND item_name=$2`,
+      kind === 'counted' ? [loc, item_name, afterC, afterU, req.employee.name]
+                         : [loc, item_name, afterC, afterU]);
     await client.query(
-      `INSERT INTO warehouse_moves (item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [item_name, kind,
+      `INSERT INTO warehouse_moves (location, item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [loc, item_name, kind,
        kind === 'counted' ? null : afterC - beforeC,
        kind === 'counted' ? null : afterU - beforeU,
        afterC, afterU, String(note || '').trim() || null, req.employee.name]);
@@ -423,113 +440,132 @@ app.put('/api/warehouse/move', async (req, res) => {
     res.json({ ok: true, qty: afterC, qty_units: afterU });
   } catch (e) {
     await client.query('ROLLBACK');
-    console.error('warehouse move failed', e);
-    res.status(500).json({ error: 'warehouse move failed' });
+    console.error('place move failed', e);
+    res.status(500).json({ error: 'could not record that' });
   } finally {
     client.release();
   }
 });
 
-// ---- pallets ----
-app.post('/api/warehouse/category', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+// ---- sections: pallets in the warehouse, containers in cold storage ----
+app.post('/api/place/:loc/category', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const { name, pallets } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
   try {
     const { rows } = await pool.query(
-      `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
+      `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories WHERE location=$1`, [loc]);
     const ins = await pool.query(
-      `INSERT INTO warehouse_categories (name, pallets, position) VALUES ($1,$2,$3)
-       ON CONFLICT (name) DO NOTHING RETURNING name`,
-      [clean, String(pallets || '').trim() || null, rows[0].n]);
-    if (!ins.rowCount) return res.status(409).json({ error: 'that category already exists' });
+      `INSERT INTO warehouse_categories (location, name, pallets, position) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (location, name) DO NOTHING RETURNING name`,
+      [loc, clean, String(pallets || '').trim() || null, rows[0].n]);
+    if (!ins.rowCount) return res.status(409).json({ error: 'that one already exists' });
     res.json({ ok: true });
   } catch (e) {
     console.error('category create failed', e);
-    res.status(500).json({ error: 'category create failed' });
+    res.status(500).json({ error: 'could not add that' });
   }
 });
 
-app.put('/api/warehouse/category/:name', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+app.put('/api/place/:loc/category/:name', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const { pallets, move } = req.body || {};
   try {
     if (pallets !== undefined) {
-      await pool.query('UPDATE warehouse_categories SET pallets=$2::text WHERE name=$1::text',
-        [req.params.name, String(pallets || '').trim() || null]);
+      await pool.query(
+        'UPDATE warehouse_categories SET pallets=$3::text WHERE location=$1::text AND name=$2::text',
+        [loc, req.params.name, String(pallets || '').trim() || null]);
     }
     // Swap positions with the neighbour, so the walking order can be nudged
     // without renumbering everything.
     if (move === 'up' || move === 'down') {
-      const { rows } = await pool.query('SELECT name, position FROM warehouse_categories ORDER BY position, name');
+      const { rows } = await pool.query(
+        'SELECT name, position FROM warehouse_categories WHERE location=$1 ORDER BY position, name', [loc]);
       const i = rows.findIndex(r => r.name === req.params.name);
       const j = move === 'up' ? i - 1 : i + 1;
       if (i >= 0 && j >= 0 && j < rows.length) {
-        await pool.query('UPDATE warehouse_categories SET position=$2 WHERE name=$1', [rows[i].name, j]);
-        await pool.query('UPDATE warehouse_categories SET position=$2 WHERE name=$1', [rows[j].name, i]);
+        await pool.query('UPDATE warehouse_categories SET position=$3 WHERE location=$1 AND name=$2', [loc, rows[i].name, j]);
+        await pool.query('UPDATE warehouse_categories SET position=$3 WHERE location=$1 AND name=$2', [loc, rows[j].name, i]);
       }
     }
     res.json({ ok: true });
   } catch (e) {
     console.error('category update failed', e);
-    res.status(500).json({ error: 'category update failed' });
+    res.status(500).json({ error: 'could not update that' });
   }
 });
 
-app.delete('/api/warehouse/category/:name', async (req, res) => {
+app.delete('/api/place/:loc/category/:name', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
   if (!managerOnly(req, res)) return;
   try {
-    // Items outlive their category — they fall back to the unassigned pile
-    // rather than disappearing with it.
-    await pool.query('UPDATE warehouse_stock SET category=NULL WHERE category=$1::text', [req.params.name]);
-    await pool.query('DELETE FROM warehouse_categories WHERE name=$1::text', [req.params.name]);
+    // Items outlive their section — they fall back to the unassigned pile rather
+    // than disappearing with it.
+    await pool.query(
+      'UPDATE warehouse_stock SET category=NULL WHERE location=$1::text AND category=$2::text',
+      [loc, req.params.name]);
+    await pool.query('DELETE FROM warehouse_categories WHERE location=$1::text AND name=$2::text',
+      [loc, req.params.name]);
     res.json({ ok: true });
   } catch (e) {
     console.error('category delete failed', e);
-    res.status(500).json({ error: 'category delete failed' });
+    res.status(500).json({ error: 'could not remove that' });
   }
 });
 
-// Put an item on a pallet.
-app.put('/api/warehouse/item/:name/category', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
+app.put('/api/place/:loc/item/:name/category', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
   const cat = String(req.body?.category || '').trim() || null;
   try {
-    if (cat) {
-      const { rows } = await pool.query(
-        `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
-      await pool.query(
-        `INSERT INTO warehouse_categories (name, position) VALUES ($1,$2)
-         ON CONFLICT (name) DO NOTHING`, [cat, rows[0].n]);
-    }
+    if (cat) await ensureCategory(loc, cat);
     const { rows } = await pool.query(
-      'UPDATE warehouse_stock SET category=$2::text, updated_at=NOW() WHERE item_name=$1::text RETURNING item_name',
-      [req.params.name, cat]);
+      'UPDATE warehouse_stock SET category=$3::text, updated_at=NOW() WHERE location=$1::text AND item_name=$2::text RETURNING item_name',
+      [loc, req.params.name, cat]);
     if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
     res.json({ ok: true });
   } catch (e) {
     console.error('item category failed', e);
-    res.status(500).json({ error: 'item category failed' });
+    res.status(500).json({ error: 'could not move that' });
   }
 });
 
-app.delete('/api/warehouse/item/:name', async (req, res) => {
+app.put('/api/place/:loc/item/:name/vori', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const { vori_product_id, vori_name } = req.body || {};
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warehouse_stock SET vori_product_id=$3::text, vori_name=$4::text, updated_at=NOW()
+        WHERE location=$1::text AND item_name=$2::text RETURNING item_name`,
+      [loc, req.params.name, vori_product_id || null, vori_name || null]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('vori link failed', e);
+    res.status(500).json({ error: 'could not link that' });
+  }
+});
+
+app.delete('/api/place/:loc/item/:name', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
   if (!managerOnly(req, res)) return;
   try {
     const { rows } = await pool.query(
-      'DELETE FROM warehouse_stock WHERE item_name=$1 RETURNING qty', [req.params.name]);
+      'DELETE FROM warehouse_stock WHERE location=$1::text AND item_name=$2::text RETURNING qty', [loc, req.params.name]);
     if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
     await pool.query(
-      `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, moved_by)
-       VALUES ($1,'removed',NULL,0,$2)`, [req.params.name, req.employee.name]);
+      `INSERT INTO warehouse_moves (location, item_name, kind, delta, qty_after, moved_by)
+       VALUES ($1,$2,'removed',NULL,0,$3)`, [loc, req.params.name, req.employee.name]);
     res.json({ ok: true });
   } catch (e) {
-    console.error('warehouse delete failed', e);
-    res.status(500).json({ error: 'warehouse delete failed' });
+    console.error('place delete failed', e);
+    res.status(500).json({ error: 'could not remove that' });
   }
 });
-
 // ---- Vori ------------------------------------------------------------------
 // Read-only. Nothing in this app writes to Vori, and the key it uses should be
 // scoped read-only too.
@@ -563,22 +599,6 @@ app.get('/api/vori/search', async (req, res) => {
   }
 });
 
-// Point a warehouse line at the Vori product it actually is.
-app.put('/api/warehouse/item/:name/vori', async (req, res) => {
-  if (!canWrite(req, res, 'warehouse')) return;
-  const { vori_product_id, vori_name } = req.body || {};
-  try {
-    const { rows } = await pool.query(
-      `UPDATE warehouse_stock SET vori_product_id=$2::text, vori_name=$3::text, updated_at=NOW()
-        WHERE item_name=$1::text RETURNING item_name`,
-      [req.params.name, vori_product_id || null, vori_name || null]);
-    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('vori link failed', e);
-    res.status(500).json({ error: 'vori link failed' });
-  }
-});
 
 const DEPTS = new Set(['produce', 'meat', 'fish']);
 function checkDept(req, res) {

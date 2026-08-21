@@ -27,7 +27,8 @@
   <button data-dept="produce" onclick="switchDept('produce')">PRODUCE</button>
   <button data-dept="meat" onclick="switchDept('meat')">MEAT</button>
   <button data-dept="fish" onclick="switchDept('fish')">FISH</button>
-  <button data-dept="warehouse" onclick="showWarehouse()">WAREHOUSE</button>
+  <button data-dept="warehouse" onclick="showWarehouse('warehouse')">WAREHOUSE</button>
+  <button data-dept="coldstorage" onclick="showWarehouse('coldstorage')">COLD</button>
 </div>
 
 <header>
@@ -63,8 +64,8 @@
     <div class="headrow">
       <img class="headmark" src="/mark.png" alt="" width="132" height="132">
       <div>
-        <div class="eyebrow">DAT MOI &middot; OFFSITE</div>
-        <h1>Warehouse</h1>
+        <div class="eyebrow" id="whEyebrow">DAT MOI &middot; OFFSITE</div>
+        <h1 id="whTitle">Warehouse</h1>
       </div>
     </div>
     <div class="searchrow"><input type="text" id="whSearch" placeholder="Search the warehouse..." oninput="renderWarehouse()"></div>

@@ -330,6 +330,36 @@ export async function initDb() {
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_name TEXT');
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS category TEXT');
 
+  // The offsite warehouse and the cold storage containers are the same shape:
+  // stock held somewhere other than the shop floor, divided into physical
+  // sections. One set of tables carries both, keyed by location, so staleness,
+  // cases-and-loose, movements, Vori links and permissions come for free rather
+  // than being written twice.
+  for (const t of ['warehouse_stock', 'warehouse_moves', 'warehouse_categories']) {
+    await pool.query(
+      `ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS location TEXT NOT NULL DEFAULT 'warehouse'`);
+  }
+  // Widen the keys so the same item name can exist in two places. Guarded, since
+  // ALTER ... ADD PRIMARY KEY has no IF NOT EXISTS.
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conname = 'warehouse_stock_pkey' AND conkey = ARRAY[
+                    (SELECT attnum FROM pg_attribute
+                      WHERE attrelid = 'warehouse_stock'::regclass AND attname = 'item_name')]) THEN
+        ALTER TABLE warehouse_stock DROP CONSTRAINT warehouse_stock_pkey;
+        ALTER TABLE warehouse_stock ADD PRIMARY KEY (location, item_name);
+      END IF;
+      IF EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conname = 'warehouse_categories_pkey' AND conkey = ARRAY[
+                    (SELECT attnum FROM pg_attribute
+                      WHERE attrelid = 'warehouse_categories'::regclass AND attname = 'name')]) THEN
+        ALTER TABLE warehouse_categories DROP CONSTRAINT warehouse_categories_pkey;
+        ALTER TABLE warehouse_categories ADD PRIMARY KEY (location, name);
+      END IF;
+    END $$;`);
+
   await seedEmptyDepartments();
 }
 

@@ -296,3 +296,21 @@ body[data-dept="warehouse"]{
   border-radius:5px;padding:1px 6px;margin-left:7px;vertical-align:1px;}
 .rocount{font-family:var(--mono);font-size:14px;color:var(--ink-soft);}
 body.viewonly .searchrow input{background:var(--card);}
+
+/* ---- cold storage: a plan of the containers ---- */
+body[data-dept="coldstorage"]{
+  --paper:#EDF1F3; --paper-2:#DDE5E9; --ink:#1A2A31; --ink-soft:#4C6570;
+  --line:#C7D6DC; --accent:#C43E3F; --accent-soft:#F7DEDE; --good:#3E7A6B; --good-soft:#D6E8E2;
+}
+.cyard{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.cbox{display:block;text-align:left;background:var(--card);border:1px solid var(--line);
+  border-top:5px solid var(--good);border-radius:11px;padding:12px;color:var(--ink);min-height:104px;}
+.cbox.stale{border-top-color:var(--accent);}
+.cbox.empty{border-top-color:var(--line);opacity:.72;}
+.cbox.loose{border-top-color:var(--accent);border-style:dashed;}
+.cbox:active{background:var(--paper-2);}
+.cname{font-weight:700;font-size:14px;line-height:1.25;}
+.ccount{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1.1;margin-top:6px;}
+.cmeta{font-family:var(--mono);font-size:10px;color:var(--ink-soft);text-transform:uppercase;
+  letter-spacing:.04em;margin-top:2px;}
+#deptBar button{font-size:10.5px;letter-spacing:.06em;}
