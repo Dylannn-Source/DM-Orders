@@ -81,9 +81,21 @@ node scripts/reset-pin.mjs "Dylan" 4821   # give them a temporary PIN
 If no active manager is left it promotes that person, so the app cannot be shut
 out of permanently.
 
-**What a manager can do that staff cannot**: add and reset employees, and
-download the backup. Counting, PARs, vendors and placing orders are open to
-everyone signed in.
+**Who can change what.** Everyone signed in can *look* at everything — every
+department, every PAR, the warehouse, the movement log, past orders. Changing
+something needs that area granted, per person, under **Settings → Employees**:
+produce, meat, fish, warehouse, ticked individually. A manager has all four by
+role and needs no ticks.
+
+Granting an area covers everything that writes to it: counting, PARs, vendors,
+order names, routes, adding items, placing the order, and — for the warehouse —
+moving stock, pallets and Vori links. Adding and resetting employees, running a
+Vori sync, and downloading the backup stay manager-only.
+
+Where someone cannot edit, the controls are not shown: no steppers, no Reset, no
+edit screens in Settings, no warehouse Update, and the header says **view only**.
+That is a courtesy — every one of those routes checks the grant itself, so hiding
+a button is not what enforces anything.
 
 **Who did what** is recorded on each count and each order — `counts.counted_by`
 and `order_history.placed_by`.

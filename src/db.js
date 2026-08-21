@@ -287,6 +287,15 @@ export async function initDb() {
       UNIQUE (name)
     );
 
+    -- Which areas a person may change. Anyone signed in can read everything;
+    -- these rows are only about editing. A manager needs no rows — the role
+    -- carries the lot.
+    CREATE TABLE IF NOT EXISTS employee_areas (
+      employee_id  INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      area         TEXT NOT NULL,
+      PRIMARY KEY (employee_id, area)
+    );
+
     CREATE TABLE IF NOT EXISTS app_config (
       key    TEXT PRIMARY KEY,
       value  TEXT NOT NULL

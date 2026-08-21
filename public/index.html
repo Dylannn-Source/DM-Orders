@@ -35,6 +35,7 @@
     <img class="headmark" src="/mark.png" alt="" width="132" height="132">
     <div>
       <div class="eyebrow" id="deptEyebrow">DAT MOI</div>
+      <span class="vomark" id="viewOnlyMark" style="display:none;">view only</span>
       <h1 id="deptTitle">Inventory &amp; Order</h1>
     </div>
   </div>
@@ -77,22 +78,23 @@
     <button class="backbtn" onclick="showList()">&larr; back to counting</button>
     <span class="eyebrow">Settings</span>
   </div>
-  <div class="hubrow" onclick="showRouteSettings()">
+  <div class="rowarn" id="settingsAccessNote" style="display:none;"></div>
+  <div class="hubrow" id="routeHubRow" onclick="showRouteSettings()">
     <div class="hubname">My Routine</div><span class="chip" id="routeHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showParSettings()">
+  <div class="hubrow" id="parHubRow" onclick="showParSettings()">
     <div class="hubname">PARs</div><span class="chip" id="parHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showSeasonalSettings()">
+  <div class="hubrow" id="seasonalHubRow" onclick="showSeasonalSettings()">
     <div class="hubname">Seasonal / Active</div><span class="chip" id="seasonalHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showVendorSettings()">
+  <div class="hubrow" id="vendorHubRow" onclick="showVendorSettings()">
     <div class="hubname">Vendors</div><span class="chip" id="vendorHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showOrderNameSettings()">
+  <div class="hubrow" id="orderNameHubRow" onclick="showOrderNameSettings()">
     <div class="hubname">Order Names</div><span class="chip" id="orderNameHubCount"></span>
   </div>
-  <div class="hubrow" onclick="showAddItem()">
+  <div class="hubrow" id="addItemHubRow" onclick="showAddItem()">
     <div class="hubname">Add an Item</div><span class="chip" id="addItemHubCount"></span>
   </div>
   <div class="hubrow" id="employeesHubRow" onclick="showEmployees()">

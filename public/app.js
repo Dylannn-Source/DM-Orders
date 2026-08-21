@@ -61,6 +61,7 @@ async function api(method, path, body, retries = 3){
         const body = await res.json().catch(() => ({}));
         if (res.status === 401) { me = null; showAuth(); }
         else if (body.must_change_pin) { showAuth('change'); }
+        else if (body.read_only) { setSync('bad', body.error); }
         const err = new Error(body.error || 'HTTP ' + res.status);
         err.status = res.status;
         throw err;
@@ -93,6 +94,14 @@ async function write(method, path, body){
 // sells them under; invdesc holds the vendor's own name for the same thing
 // (BANANA BLOSSOM on the shelf is BANANA FLOWER on the order).
 function orderName(it){ return (it.invdesc || '').trim() || it.name; }
+
+// Everyone can look. Changing something needs the area granted. The server is
+// the authority — this only decides which controls are worth showing.
+function canEdit(area){
+  if (!me) return false;
+  if (me.role === 'manager') return true;
+  return (me.areas || []).includes(area || dept);
+}
 
 function parFor(it, d){ return (it.pars && it.pars[d] !== undefined) ? Number(it.pars[d]) : 0; }
 function shelfTargetFor(it){ return it.shelf_target === null || it.shelf_target === undefined ? 1 : Number(it.shelf_target); }
@@ -149,6 +158,7 @@ async function switchDept(d){
   $('deptTitle').textContent = DEPT_TITLES[d];
   roundChoices = {};
   await bootstrap();
+  applyAccess();
   showList();
 }
 
@@ -191,6 +201,7 @@ function renderDayToggle(){
 }
 
 async function setDay(d){
+  if (!canEdit()) return;
   day = d;
   renderDayToggle();
   renderList();
@@ -256,6 +267,14 @@ function renderList(){
 function controlsHtml(it){
     const e = counts[it.name] || {};
     const order = computeOrder(it);
+    if (!canEdit()){
+      // Read-only: show what was counted, with nothing to press.
+      const seen = it.mode === 'shelf_cooler'
+        ? `${e.shelf ?? '\u2014'} shelf / ${e.cooler ?? '\u2014'} cooler`
+        : `${e.qty ?? '\u2014'}`;
+      return `<span class="rocount">${htmlEsc(seen)}</span>` +
+        `<span class="order-badge">${order !== null ? (order > 0 ? 'ORDER ' + fmt(order) : 'OK') : ''}</span>`;
+    }
     let ctl;
     if (it.mode === 'shelf_cooler'){
       const s = e.shelf;
@@ -362,6 +381,15 @@ function hideAll(){
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
+function applyAccess(){
+  const editable = canEdit();
+  document.body.classList.toggle('viewonly', !editable);
+  const reset = $('resetBtn');
+  if (reset) reset.style.display = editable ? '' : 'none';
+  const mark = $('viewOnlyMark');
+  if (mark) mark.style.display = editable ? 'none' : '';
+}
+
 function showList(){
   hideAll();
   $('listView').style.display = '';
@@ -384,6 +412,14 @@ function showSettingsHub(){
   $('orderNameHubCount').textContent = renamed ? `${renamed} renamed` : 'same as shelf';
   $('addItemHubCount').textContent = `${items.length} in ${dept}`;
   $('backupHubCount').textContent = 'all departments';
+  const editable = canEdit();
+  ['routeHubRow','parHubRow','seasonalHubRow','vendorHubRow','orderNameHubRow','addItemHubRow']
+    .forEach(id => { const el = $(id); if (el) el.style.display = editable ? '' : 'none'; });
+  const note = $('settingsAccessNote');
+  if (note){
+    note.style.display = editable ? 'none' : '';
+    note.textContent = `You can look at ${dept}, but changing it is not yours to do.`;
+  }
   const isManager = me?.role === 'manager';
   $('employeesHubRow').style.display = isManager ? '' : 'none';
   $('backupHubRow').style.display = isManager ? '' : 'none';
@@ -464,9 +500,9 @@ function showSummary(){
           </div>`;
         }).join('')}
       </div>
-      <div class="ticket-foot">
+      ${canEdit() ? `<div class="ticket-foot">
         <button class="copybtn" onclick="copyTicket(${idx}, this)">Copy text for ${htmlEsc(v)}</button>
-      </div>`;
+      </div>` : ''}`;
     ticket.dataset.text = buildText(list, sendDate);
     ticket.dataset.vendor = v;
     ticket.dataset.dayLabel = dayLabel;
@@ -934,6 +970,7 @@ async function showEmployees(){
   $('employeesWrap').innerHTML = '<div class="hint">Loading...</div>';
   const r = await fetch('/api/employees').then(x => x.json()).catch(() => null);
   if (!r || r.error) { $('employeesWrap').innerHTML = `<div class="hint">${htmlEsc(r?.error || 'Could not load.')}</div>`; return; }
+  whAreas = r.areas || ['produce','meat','fish','warehouse'];
   renderEmployees(r.employees);
 }
 
@@ -947,7 +984,10 @@ function renderEmployees(list){
     </div>
     <div class="hint">A new person starts on the PIN you set here — the last four of
     their phone number is fine — and has to choose their own the first time they
-    sign in. Reset does the same thing again, and clears a lockout.</div>
+    sign in. Reset does the same thing again, and clears a lockout.
+    <br><br>Everyone signed in can look at everything. Ticking an area below lets
+    that person <b>change</b> it — count, edit PARs, place orders, move warehouse
+    stock. Managers can change everything without ticking anything.</div>
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add someone</div></div>
       <div class="vitem"><input type="text" class="textinput" id="newEmpName" placeholder="Name"></div>
@@ -982,7 +1022,16 @@ function renderEmployees(list){
       <div class="vitem"><span class="viname">Active</span>
         <input type="checkbox" ${e.active ? 'checked' : ''}
                ${e.id === me.id ? 'disabled' : ''} style="width:22px;height:22px;"
-               onchange="setEmployeeActive(${e.id}, this.checked)"></div>`;
+               onchange="setEmployeeActive(${e.id}, this.checked)"></div>
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Can change</div></div>
+      ${e.role === 'manager'
+        ? '<div class="vitem"><span class="viname">everything, as a manager</span></div>'
+        : whAreas.map(a => `<div class="vitem">
+            <span class="viname">${htmlEsc(a)}</span>
+            <input type="checkbox" class="areabox" data-emp="${e.id}" data-area="${htmlEsc(a)}"
+                   ${(e.areas || []).includes(a) ? 'checked' : ''}
+                   style="width:22px;height:22px;"
+                   onchange="setEmployeeAreas(${e.id})"></div>`).join('')}`;
     wrap.appendChild(div);
   });
 }
@@ -1012,6 +1061,15 @@ async function setEmployeeRole(id, isManager){
   await empCall('PUT', '/api/employees/' + id, { role: isManager ? 'manager' : 'staff' });
   showEmployees();
 }
+// The whole set is sent every time, read off that person's own boxes, so
+// ticking one cannot clear the rest.
+async function setEmployeeAreas(id){
+  const areas = [...document.querySelectorAll(`.areabox[data-emp="${id}"]`)]
+    .filter(b => b.checked).map(b => b.dataset.area);
+  await empCall('PUT', '/api/employees/' + id, { areas });
+  showEmployees();
+}
+
 async function setEmployeeActive(id, active){
   await empCall('PUT', '/api/employees/' + id, { active });
   showEmployees();
@@ -1023,7 +1081,7 @@ async function setEmployeeActive(id, active){
 // this one, so the screen has to say how old each number is and let a stale one
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
-let whCats = [], whPallets = false;
+let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse'];
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
 // What is left is what should be at the store. Both halves have to be in the same
@@ -1123,14 +1181,16 @@ function renderWarehouse(){
         &middot; ${linked} of ${whStock.length} linked
         <button class="vorilink" onclick="whSync()">Sync now</button>
         <span id="whSyncMsg"></span></div>`;
+  const whEdit = canEdit('warehouse');
   const palletLine = `<div class="whsync">${whCats.length} pallet categor${whCats.length===1?'y':'ies'}
-      <button class="vorilink" onclick="whShowPallets()">Manage pallets</button></div>`;
+      ${whEdit ? '<button class="vorilink" onclick="whShowPallets()">Manage pallets</button>' : ''}</div>`;
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
     : 'Nothing on the list yet.') + palletLine + voriLine;
 
   const shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
-  wrap.innerHTML = `
+  wrap.innerHTML = !whEdit ? `<div class="rowarn">You can look at the warehouse, but
+    changing what is on the shelves is not yours to do. Ask a manager.</div>` : `
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add something</div></div>
       <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
@@ -1192,7 +1252,9 @@ function renderWarehouse(){
           <input type="text" class="whpackname" placeholder="bottles / packs">
           <button class="whpackset" onclick="whSetPack('${esc(row.item_name)}')">Set</button>
         </div>`}`
-      : `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`}`;
+      : (canEdit('warehouse')
+          ? `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`
+          : '')}`;
     return div;
   };
 
@@ -1248,7 +1310,7 @@ function voriBlock(row){
   if (!row.vori_product_id){
     return `<div class="vorirow unlinked">
       <span>Not linked to Vori</span>
-      <button class="vorilink" onclick="whStartLink('${esc(row.item_name)}')">Link</button></div>`;
+      ${canEdit('warehouse') ? `<button class="vorilink" onclick="whStartLink('${esc(row.item_name)}')">Link</button>` : ''}</div>`;
   }
   const s = splitOf(row);
   if (!s){
@@ -1275,10 +1337,14 @@ function voriBlock(row){
          One of the two is out of date &mdash; recount here, or check Vori.</div>`
       : `<div class="whtotal">in ${htmlEsc(s.unit)} &middot; Vori ${htmlEsc(age)}</div>`}
     <div class="vorirow"><span class="vorilinked">Vori: ${htmlEsc(row.vori_name || row.vori_product_id)}</span>
-      <button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button></div>`;
+      ${canEdit('warehouse') ? `<button class="vorilink" onclick="whUnlink('${esc(row.item_name)}')">Unlink</button>` : ''}</div>`;
 }
 
-function whToggle(name){ whOpen = whOpen === name ? null : name; renderWarehouse(); }
+function whToggle(name){
+  if (!canEdit('warehouse')) return;
+  whOpen = whOpen === name ? null : name;
+  renderWarehouse();
+}
 
 // ---- linking a warehouse line to a Vori product ----
 function whStartLink(name){ whLinking = { name, results: null, error: null }; renderLinkPanel(); }

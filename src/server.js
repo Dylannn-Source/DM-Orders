@@ -27,12 +27,36 @@ app.use(async (req, res, next) => {
       return res.status(403).json({ error: 'choose a new PIN first', must_change_pin: true });
     }
     req.employee = me;
+    req.areas = await areasFor(me);
     next();
   } catch (e) {
     console.error('auth check failed', e);
     res.status(500).json({ error: 'auth check failed' });
   }
 });
+
+// Anyone signed in can read anything. Changing something needs the area granted,
+// which a manager has by role. Enforced here rather than in the browser: hiding a
+// button is a courtesy, this is the actual rule.
+const AREAS = ['produce', 'meat', 'fish', 'warehouse'];
+
+async function areasFor(employee) {
+  if (!employee) return [];
+  if (employee.role === 'manager') return [...AREAS];
+  const { rows } = await pool.query(
+    'SELECT area FROM employee_areas WHERE employee_id=$1', [employee.id]);
+  return rows.map(r => r.area);
+}
+
+function canWrite(req, res, area) {
+  if (req.employee?.role === 'manager') return true;
+  if ((req.areas || []).includes(area)) return true;
+  res.status(403).json({
+    error: `You can look at ${area}, but changing it is not yours to do. Ask a manager.`,
+    area, read_only: true
+  });
+  return false;
+}
 
 function managerOnly(req, res) {
   if (req.employee?.role !== 'manager') {
@@ -47,10 +71,11 @@ async function employeeCount() {
   return rows[0].n;
 }
 
-const publicEmployee = e => ({
+const publicEmployee = (e, areas) => ({
   id: e.id, name: e.name, role: e.role, active: e.active,
   must_change_pin: e.must_change_pin, locked: lockState(e).locked,
-  locked_minutes: lockState(e).minutes || null, last_login_at: e.last_login_at || null
+  locked_minutes: lockState(e).minutes || null, last_login_at: e.last_login_at || null,
+  areas: areas || (e.role === 'manager' ? [...AREAS] : [])
 });
 
 // Who am I, and if nobody yet, does this app still need setting up?
@@ -63,8 +88,9 @@ app.get('/api/auth/whoami', async (req, res) => {
       'SELECT id, name FROM employees WHERE active ORDER BY name');
     res.json({
       needs_setup: false,
-      employee: me ? publicEmployee(me) : null,
-      names: rows
+      employee: me ? publicEmployee(me, await areasFor(me)) : null,
+      names: rows,
+      areas: AREAS
     });
   } catch (e) {
     console.error('whoami failed', e);
@@ -127,7 +153,7 @@ app.post('/api/auth/login', async (req, res) => {
     await noteSuccess(emp.id);
     await issueSession(res, emp);
     const fresh = { ...emp, failed_attempts: 0, locked_until: null };
-    res.json({ ok: true, employee: publicEmployee(fresh) });
+    res.json({ ok: true, employee: publicEmployee(fresh, await areasFor(emp)) });
   } catch (e) {
     console.error('login failed', e);
     res.status(500).json({ error: 'login failed' });
@@ -166,7 +192,13 @@ app.get('/api/employees', async (req, res) => {
   if (!managerOnly(req, res)) return;
   try {
     const { rows } = await pool.query('SELECT * FROM employees ORDER BY active DESC, name');
-    res.json({ employees: rows.map(publicEmployee) });
+    const grants = await pool.query('SELECT employee_id, area FROM employee_areas');
+    const byId = {};
+    grants.rows.forEach(g => (byId[g.employee_id] = byId[g.employee_id] || []).push(g.area));
+    res.json({
+      employees: rows.map(e => publicEmployee(e, e.role === 'manager' ? [...AREAS] : (byId[e.id] || []))),
+      areas: AREAS
+    });
   } catch (e) { res.status(500).json({ error: 'employees fetch failed' }); }
 });
 
@@ -195,7 +227,7 @@ app.post('/api/employees', async (req, res) => {
 app.put('/api/employees/:id', async (req, res) => {
   if (!managerOnly(req, res)) return;
   const id = Number(req.params.id);
-  const { pin, active, role } = req.body || {};
+  const { pin, active, role, areas } = req.body || {};
   try {
     if (pin !== undefined) {
       const bad = isValidPin(pin, { allowShort: true });
@@ -219,6 +251,15 @@ app.put('/api/employees/:id', async (req, res) => {
         }
       }
       await pool.query('UPDATE employees SET active=$2 WHERE id=$1', [id, !!active]);
+    }
+    if (Array.isArray(areas)) {
+      const wanted = areas.filter(a => AREAS.includes(a));
+      await pool.query('DELETE FROM employee_areas WHERE employee_id=$1', [id]);
+      for (const a of wanted) {
+        await pool.query(
+          `INSERT INTO employee_areas (employee_id, area) VALUES ($1,$2)
+           ON CONFLICT DO NOTHING`, [id, a]);
+      }
     }
     if (role !== undefined) {
       if (role !== 'manager' && id === req.employee.id) {
@@ -261,6 +302,7 @@ app.get('/api/warehouse', async (_req, res) => {
 });
 
 app.post('/api/warehouse/item', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { name, unit, qty, pack_size, unit_name, qty_units, category } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
@@ -297,6 +339,7 @@ app.post('/api/warehouse/item', async (req, res) => {
 // Turn a case-only item into one that gets picked at, or change how many are in
 // a case. Kept apart from movements: this describes the item, not its quantity.
 app.put('/api/warehouse/item/:name', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { pack_size, unit_name, unit } = req.body || {};
   const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
   try {
@@ -325,6 +368,7 @@ app.put('/api/warehouse/item/:name', async (req, res) => {
 // one that refreshes its age — adding or taking a case tells you the stock moved,
 // not that anyone looked at the shelf.
 app.put('/api/warehouse/move', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { item_name, kind, cases, units, note } = req.body || {};
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   if (!['counted', 'added', 'taken'].includes(kind)) {
@@ -388,6 +432,7 @@ app.put('/api/warehouse/move', async (req, res) => {
 
 // ---- pallets ----
 app.post('/api/warehouse/category', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { name, pallets } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
@@ -407,6 +452,7 @@ app.post('/api/warehouse/category', async (req, res) => {
 });
 
 app.put('/api/warehouse/category/:name', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { pallets, move } = req.body || {};
   try {
     if (pallets !== undefined) {
@@ -447,6 +493,7 @@ app.delete('/api/warehouse/category/:name', async (req, res) => {
 
 // Put an item on a pallet.
 app.put('/api/warehouse/item/:name/category', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const cat = String(req.body?.category || '').trim() || null;
   try {
     if (cat) {
@@ -518,6 +565,7 @@ app.get('/api/vori/search', async (req, res) => {
 
 // Point a warehouse line at the Vori product it actually is.
 app.put('/api/warehouse/item/:name/vori', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
   const { vori_product_id, vori_name } = req.body || {};
   try {
     const { rows } = await pool.query(
@@ -566,6 +614,7 @@ app.get('/api/:dept/bootstrap', async (req, res) => {
 // ---- Counts: upsert a single item's count (called as you tap) ----
 app.put('/api/:dept/count', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { item_name, shelf, cooler, qty } = req.body || {};
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   try {
@@ -586,6 +635,7 @@ app.put('/api/:dept/count', async (req, res) => {
 
 app.delete('/api/:dept/counts', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   try {
     await pool.query('DELETE FROM counts WHERE dept=$1', [dept]);
     res.json({ ok: true });
@@ -598,6 +648,7 @@ app.delete('/api/:dept/counts', async (req, res) => {
 // ---- Session day ----
 app.put('/api/:dept/day', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { day } = req.body || {};
   if (!day) return res.status(400).json({ error: 'day required' });
   try {
@@ -615,6 +666,7 @@ app.put('/api/:dept/day', async (req, res) => {
 // ---- Item updates: vendor, pars, shelf target, active flag ----
 app.put('/api/:dept/item', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { name, vendor, vendor2, pars, shelf_target, active, note, invdesc } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   try {
@@ -641,6 +693,7 @@ app.put('/api/:dept/item', async (req, res) => {
 // department; everything else is a single count.
 app.post('/api/:dept/item', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { name, invdesc, vendor } = req.body || {};
   const clean = (name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
@@ -672,6 +725,7 @@ app.post('/api/:dept/item', async (req, res) => {
 // Bulk vendor reassignment (e.g. every old "WESTLAKE" item -> "TITO'S")
 app.put('/api/:dept/items/bulk-vendor', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { names, vendor } = req.body || {};
   if (!Array.isArray(names) || !names.length) return res.status(400).json({ error: 'names required' });
   try {
@@ -689,6 +743,7 @@ app.put('/api/:dept/items/bulk-vendor', async (req, res) => {
 // ---- Vendors ----
 app.post('/api/:dept/vendor', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { name } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   try {
@@ -705,6 +760,7 @@ app.post('/api/:dept/vendor', async (req, res) => {
 // ---- Routes (walking order) ----
 app.put('/api/:dept/routes', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { groups } = req.body || {};
   if (!Array.isArray(groups)) return res.status(400).json({ error: 'groups required' });
   const client = await pool.connect();
@@ -732,6 +788,7 @@ app.put('/api/:dept/routes', async (req, res) => {
 // ---- Order history ----
 app.post('/api/:dept/order', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
   const { vendor, day_label, items } = req.body || {};
   if (!vendor) return res.status(400).json({ error: 'vendor required' });
   try {
