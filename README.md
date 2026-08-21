@@ -140,6 +140,17 @@ carries a stripe for it: green under a week, amber under a month, red beyond
 that or never counted. The summary counts how many have gone unchecked for a
 month, which is the number worth watching.
 
+**Everything sits on a pallet.** The room is organised by category, and a
+category occupies one pallet or several, so the list is grouped that way and
+ordered the way you walk it — counting follows your feet rather than the
+alphabet. **Manage pallets** adds categories, records which pallets each one
+covers, and nudges them up or down into walking order.
+
+Anything not yet assigned collects under **Not on a pallet yet** at the end, in
+red, so it reads as a job rather than a silent gap. Searching flattens the
+groups: you want the item, not the tour. Removing a category leaves its items
+behind in that pile rather than taking them with it.
+
 **Cases and loose units are counted separately.** Most stock moves by the case,
 but people pick at some of it, so an item can say what is inside one — 24 bottles
 to a case — and then reads as `5 cases + 9 bottles`, with the total underneath.

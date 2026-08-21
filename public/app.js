@@ -1023,6 +1023,7 @@ async function setEmployeeActive(id, active){
 // this one, so the screen has to say how old each number is and let a stale one
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
+let whCats = [], whPallets = false;
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
 // What is left is what should be at the store. Both halves have to be in the same
@@ -1049,6 +1050,7 @@ async function showWarehouse(){
   const r = await fetch('/api/warehouse').then(x => x.json()).catch(() => null);
   if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
   whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
+  whCats = r.categories || [];
   renderWarehouse();
 }
 
@@ -1082,8 +1084,33 @@ function totalLine(row){
   return `${fmtQty(total)} ${htmlEsc(row.unit_name || 'units')} all in &middot; ${fmtQty(row.pack_size)} per ${htmlEsc(one)}`;
 }
 
+// The warehouse is walked pallet by pallet, so the list is grouped the way the
+// room is. Anything not on a pallet collects at the end, where it is a visible
+// job rather than a silent gap.
+function whGroups(shown){
+  const order = whCats.map(c => c.name);
+  const byName = {};
+  whCats.forEach(c => byName[c.name] = c);
+  const groups = new Map();
+  order.forEach(n => groups.set(n, []));
+  shown.forEach(row => {
+    const key = row.category && groups.has(row.category) ? row.category
+              : row.category ? row.category : '\u0000none';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  });
+  return [...groups.entries()]
+    .filter(([name, rows]) => rows.length || name !== '\u0000none')
+    .map(([name, rows]) => ({
+      name: name === '\u0000none' ? null : name,
+      pallets: byName[name]?.pallets || null,
+      rows
+    }));
+}
+
 function renderWarehouse(){
   if (whLinking) return renderLinkPanel();
+  if (whPallets) return renderPallets();
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const wrap = $('whWrap');
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
@@ -1096,9 +1123,11 @@ function renderWarehouse(){
         &middot; ${linked} of ${whStock.length} linked
         <button class="vorilink" onclick="whSync()">Sync now</button>
         <span id="whSyncMsg"></span></div>`;
+  const palletLine = `<div class="whsync">${whCats.length} pallet categor${whCats.length===1?'y':'ies'}
+      <button class="vorilink" onclick="whShowPallets()">Manage pallets</button></div>`;
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
-    : 'Nothing on the list yet.') + voriLine;
+    : 'Nothing on the list yet.') + palletLine + voriLine;
 
   const shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
   wrap.innerHTML = `
@@ -1108,6 +1137,10 @@ function renderWarehouse(){
       <div class="vitem">
         <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
         <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
+      </div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="whNewCat" list="whCatList" placeholder="Which pallet / category?">
+        <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
       </div>
       <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
       <div class="vitem">
@@ -1122,7 +1155,7 @@ function renderWarehouse(){
     wrap.insertAdjacentHTML('beforeend', '<div class="emptystate">Nothing matches that.</div>');
   }
 
-  shown.forEach(row => {
+  const renderRow = row => {
     const age = ageOf(row);
     const div = document.createElement('div');
     div.className = 'whrow ' + age.band;
@@ -1147,6 +1180,11 @@ function renderWarehouse(){
           <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
           <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
         </div>
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Which pallet is this on?</div>
+        <div class="whform">
+          <input type="text" class="whcat" list="whCatList" value="${htmlEsc(row.category || '')}" placeholder="category">
+          <button class="whpackset" onclick="whSetCat('${esc(row.item_name)}')">Move</button>
+        </div>
         ${row.pack_size ? '' : `
         <div class="whpick" style="margin-top:9px;padding-left:0;">Does anyone pick single ones off this?</div>
         <div class="whform">
@@ -1155,8 +1193,27 @@ function renderWarehouse(){
           <button class="whpackset" onclick="whSetPack('${esc(row.item_name)}')">Set</button>
         </div>`}`
       : `<div class="whacts"><button onclick="whToggle('${esc(row.item_name)}')">Update</button></div>`}`;
-    wrap.appendChild(div);
-  });
+    return div;
+  };
+
+  // Searching flattens the groups — you want the item, not the tour.
+  if (q){
+    shown.forEach(row => wrap.appendChild(renderRow(row)));
+  } else {
+    whGroups(shown).forEach(g => {
+      const stale = g.rows.filter(r => ageOf(r).band === 'stale').length;
+      const head = document.createElement('div');
+      head.className = 'palhead' + (g.name ? '' : ' loose');
+      head.innerHTML = `
+        <div class="palname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</div>
+        <div class="palmeta">${g.pallets ? htmlEsc(g.pallets) + ' &middot; ' : ''}${g.rows.length} item${g.rows.length===1?'':'s'}${stale ? ` &middot; <b>${stale}</b> stale` : ''}</div>`;
+      wrap.appendChild(head);
+      if (!g.rows.length){
+        wrap.insertAdjacentHTML('beforeend', '<div class="palempty">Nothing on this pallet yet.</div>');
+      }
+      g.rows.forEach(row => wrap.appendChild(renderRow(row)));
+    });
+  }
 
   if (whMoves.length){
     const h = document.createElement('div');
@@ -1295,7 +1352,8 @@ async function whAdd(){
       unit: $('whNewUnit').value.trim(),
       qty: $('whNewQty').value.trim(),
       pack_size: $('whNewPack').value.trim(),
-      unit_name: $('whNewUnitName').value.trim()
+      unit_name: $('whNewUnitName').value.trim(),
+      category: $('whNewCat').value.trim()
     })
   });
   const body = await res.json().catch(() => ({}));
@@ -1313,6 +1371,88 @@ async function whMove(name, kind){
     body: JSON.stringify({ item_name: name, kind, cases: cases || 0, units: units || 0 })
   });
   if (res.ok){ whOpen = null; await showWarehouse(); }
+}
+
+async function whSetCat(name){
+  const category = document.querySelector('.whcat')?.value.trim() ?? '';
+  await fetch('/api/warehouse/item/' + encodeURIComponent(name) + '/category', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category })
+  });
+  whOpen = null;
+  await showWarehouse();
+}
+
+// ---- pallets ----
+function whShowPallets(){ whPallets = true; renderWarehouse(); }
+function whClosePallets(){ whPallets = false; renderWarehouse(); }
+
+function renderPallets(){
+  const counts = {};
+  whStock.forEach(r => { if (r.category) counts[r.category] = (counts[r.category] || 0) + 1; });
+  const loose = whStock.filter(r => !r.category).length;
+  $('whWrap').innerHTML = `
+    <div class="vsummarybar"><div class="vs-title">Pallets</div>
+      <div class="vs-sub">${whCats.length} categories${loose ? ` &middot; ${loose} item${loose===1?'':'s'} not on one` : ''}</div></div>
+    <div class="hint">Order these the way you walk the room and counting follows your
+    feet. A category can sit on more than one pallet — put the numbers in the box.</div>
+    <div class="vgroup">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add a category</div></div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="newCatName" placeholder="e.g. Rice">
+        <input type="text" class="textinput" id="newCatPallets" placeholder="pallets 3-5">
+      </div>
+    </div>
+    <button class="addbtn" style="width:100%;margin-bottom:12px;" onclick="whAddCat()">Add</button>
+    <div class="hint" id="catMsg"></div>
+    ${whCats.map((c, i) => `
+      <div class="vgroup">
+        <div class="vgroup-head" style="cursor:default;">
+          <div class="oldname">${htmlEsc(c.name)} <span class="chip">${counts[c.name] || 0}</span></div>
+          <div>
+            <button class="vorilink" ${i === 0 ? 'disabled' : ''} onclick="whMoveCat('${esc(c.name)}','up')">&uarr;</button>
+            <button class="vorilink" ${i === whCats.length - 1 ? 'disabled' : ''} onclick="whMoveCat('${esc(c.name)}','down')">&darr;</button>
+          </div>
+        </div>
+        <div class="whform">
+          <input type="text" class="textinput catpal" data-cat="${htmlEsc(c.name)}"
+                 value="${htmlEsc(c.pallets || '')}" placeholder="which pallets?"
+                 onchange="whSetPallets('${esc(c.name)}', this.value)">
+          <button class="vorilink" onclick="whDelCat('${esc(c.name)}')">Remove</button>
+        </div>
+      </div>`).join('')}
+    <button class="addbtn" style="width:100%;margin-top:10px;" onclick="whClosePallets()">Back to the warehouse</button>`;
+}
+
+async function whAddCat(){
+  const name = $('newCatName').value.trim();
+  if (!name){ $('catMsg').textContent = 'Give it a name first.'; return; }
+  const res = await fetch('/api/warehouse/category', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, pallets: $('newCatPallets').value.trim() })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ $('catMsg').textContent = body.error || 'Could not add that.'; return; }
+  await showWarehouse();
+}
+async function whSetPallets(name, pallets){
+  await fetch('/api/warehouse/category/' + encodeURIComponent(name), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pallets })
+  });
+  await showWarehouse();
+}
+async function whMoveCat(name, move){
+  await fetch('/api/warehouse/category/' + encodeURIComponent(name), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ move })
+  });
+  await showWarehouse();
+}
+async function whDelCat(name){
+  const res = await fetch('/api/warehouse/category/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (!res.ok){ const b = await res.json().catch(()=>({})); $('catMsg').textContent = b.error || 'Could not remove that.'; return; }
+  await showWarehouse();
 }
 
 async function whSetPack(name){

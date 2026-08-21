@@ -264,6 +264,15 @@ export async function initDb() {
       synced_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    -- The warehouse is organised by category, and a category occupies one pallet
+    -- or several. Position is the order you walk them, so counting follows your
+    -- feet rather than the alphabet.
+    CREATE TABLE IF NOT EXISTS warehouse_categories (
+      name      TEXT PRIMARY KEY,
+      pallets   TEXT,
+      position  INTEGER NOT NULL DEFAULT 0
+    );
+
     CREATE TABLE IF NOT EXISTS employees (
       id              SERIAL PRIMARY KEY,
       name            TEXT NOT NULL,
@@ -310,6 +319,7 @@ export async function initDb() {
   // text names cannot be matched to product ids on their own.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_product_id TEXT');
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_name TEXT');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS category TEXT');
 
   await seedEmptyDepartments();
 }

@@ -277,3 +277,13 @@ body[data-dept="warehouse"]{
   font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);}
 .vorirow.unlinked{opacity:.85;}
 .vorilinked{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.palhead{margin:20px 0 9px;padding-bottom:6px;border-bottom:2px solid var(--ink);}
+.palhead:first-child{margin-top:2px;}
+.palhead.loose{border-bottom-color:var(--accent);}
+.palname{font-family:var(--serif);font-size:18px;line-height:1.2;}
+.palhead.loose .palname{color:var(--accent);}
+.palmeta{font-family:var(--mono);font-size:10px;color:var(--ink-soft);letter-spacing:.03em;
+  text-transform:uppercase;margin-top:3px;}
+.palmeta b{color:var(--accent);}
+.palempty{font-size:12.5px;color:var(--ink-soft);padding:4px 2px 10px;}
+.vorilink[disabled]{opacity:.35;}

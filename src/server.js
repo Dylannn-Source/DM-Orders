@@ -240,7 +240,7 @@ app.put('/api/employees/:id', async (req, res) => {
 // screen leans on that rather than on the number alone.
 app.get('/api/warehouse', async (_req, res) => {
   try {
-    const [stock, moves, vori] = await Promise.all([
+    const [stock, moves, vori, cats] = await Promise.all([
       pool.query(`SELECT w.*,
                          EXTRACT(EPOCH FROM (NOW() - w.counted_at))/86400 AS days_since_count,
                          v.on_hand      AS vori_on_hand,
@@ -250,9 +250,10 @@ app.get('/api/warehouse', async (_req, res) => {
                     LEFT JOIN vori_inventory v ON v.product_id = w.vori_product_id
                    ORDER BY w.item_name`),
       pool.query(`SELECT * FROM warehouse_moves ORDER BY moved_at DESC LIMIT 60`),
-      voriStatus().catch(() => ({ configured: false }))
+      voriStatus().catch(() => ({ configured: false })),
+      pool.query('SELECT * FROM warehouse_categories ORDER BY position, name')
     ]);
-    res.json({ stock: stock.rows, moves: moves.rows, vori });
+    res.json({ stock: stock.rows, moves: moves.rows, vori, categories: cats.rows });
   } catch (e) {
     console.error('warehouse fetch failed', e);
     res.status(500).json({ error: 'warehouse fetch failed' });
@@ -260,7 +261,7 @@ app.get('/api/warehouse', async (_req, res) => {
 });
 
 app.post('/api/warehouse/item', async (req, res) => {
-  const { name, unit, qty, pack_size, unit_name, qty_units } = req.body || {};
+  const { name, unit, qty, pack_size, unit_name, qty_units, category } = req.body || {};
   const clean = String(name || '').trim();
   if (!clean) return res.status(400).json({ error: 'name required' });
   const pack = Number(pack_size) > 0 ? Number(pack_size) : null;
@@ -269,12 +270,20 @@ app.post('/api/warehouse/item', async (req, res) => {
   try {
     const ins = await pool.query(
       `INSERT INTO warehouse_stock
-         (item_name, unit, qty, pack_size, unit_name, qty_units, counted_at, counted_by)
-       VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)
+         (item_name, unit, qty, pack_size, unit_name, qty_units, category, counted_at, counted_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8)
        ON CONFLICT (item_name) DO NOTHING RETURNING item_name`,
       [clean, String(unit || '').trim() || null, cases, pack,
-       pack ? (String(unit_name || '').trim() || 'units') : null, units, req.employee.name]);
+       pack ? (String(unit_name || '').trim() || 'units') : null, units,
+       String(category || '').trim() || null, req.employee.name]);
     if (!ins.rowCount) return res.status(409).json({ error: 'that is already on the list' });
+    if (String(category || '').trim()) {
+      const { rows } = await pool.query(
+        `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
+      await pool.query(
+        `INSERT INTO warehouse_categories (name, position) VALUES ($1,$2)
+         ON CONFLICT (name) DO NOTHING`, [String(category).trim(), rows[0].n]);
+    }
     await pool.query(
       `INSERT INTO warehouse_moves (item_name, kind, delta, qty_after, units_after, moved_by)
        VALUES ($1,'counted',NULL,$2,$3,$4)`, [clean, cases, units, req.employee.name]);
@@ -374,6 +383,87 @@ app.put('/api/warehouse/move', async (req, res) => {
     res.status(500).json({ error: 'warehouse move failed' });
   } finally {
     client.release();
+  }
+});
+
+// ---- pallets ----
+app.post('/api/warehouse/category', async (req, res) => {
+  const { name, pallets } = req.body || {};
+  const clean = String(name || '').trim();
+  if (!clean) return res.status(400).json({ error: 'name required' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
+    const ins = await pool.query(
+      `INSERT INTO warehouse_categories (name, pallets, position) VALUES ($1,$2,$3)
+       ON CONFLICT (name) DO NOTHING RETURNING name`,
+      [clean, String(pallets || '').trim() || null, rows[0].n]);
+    if (!ins.rowCount) return res.status(409).json({ error: 'that category already exists' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('category create failed', e);
+    res.status(500).json({ error: 'category create failed' });
+  }
+});
+
+app.put('/api/warehouse/category/:name', async (req, res) => {
+  const { pallets, move } = req.body || {};
+  try {
+    if (pallets !== undefined) {
+      await pool.query('UPDATE warehouse_categories SET pallets=$2::text WHERE name=$1::text',
+        [req.params.name, String(pallets || '').trim() || null]);
+    }
+    // Swap positions with the neighbour, so the walking order can be nudged
+    // without renumbering everything.
+    if (move === 'up' || move === 'down') {
+      const { rows } = await pool.query('SELECT name, position FROM warehouse_categories ORDER BY position, name');
+      const i = rows.findIndex(r => r.name === req.params.name);
+      const j = move === 'up' ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < rows.length) {
+        await pool.query('UPDATE warehouse_categories SET position=$2 WHERE name=$1', [rows[i].name, j]);
+        await pool.query('UPDATE warehouse_categories SET position=$2 WHERE name=$1', [rows[j].name, i]);
+      }
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('category update failed', e);
+    res.status(500).json({ error: 'category update failed' });
+  }
+});
+
+app.delete('/api/warehouse/category/:name', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    // Items outlive their category — they fall back to the unassigned pile
+    // rather than disappearing with it.
+    await pool.query('UPDATE warehouse_stock SET category=NULL WHERE category=$1::text', [req.params.name]);
+    await pool.query('DELETE FROM warehouse_categories WHERE name=$1::text', [req.params.name]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('category delete failed', e);
+    res.status(500).json({ error: 'category delete failed' });
+  }
+});
+
+// Put an item on a pallet.
+app.put('/api/warehouse/item/:name/category', async (req, res) => {
+  const cat = String(req.body?.category || '').trim() || null;
+  try {
+    if (cat) {
+      const { rows } = await pool.query(
+        `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories`);
+      await pool.query(
+        `INSERT INTO warehouse_categories (name, position) VALUES ($1,$2)
+         ON CONFLICT (name) DO NOTHING`, [cat, rows[0].n]);
+    }
+    const { rows } = await pool.query(
+      'UPDATE warehouse_stock SET category=$2::text, updated_at=NOW() WHERE item_name=$1::text RETURNING item_name',
+      [req.params.name, cat]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('item category failed', e);
+    res.status(500).json({ error: 'item category failed' });
   }
 });
 
