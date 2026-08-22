@@ -626,3 +626,6 @@ body.simple .whhead { padding-bottom:6px; }
   cursor:pointer;border-radius:999px;border:1px solid var(--line);background:var(--card);
   color:var(--ink);line-height:1}
 .chip.cases button:disabled{opacity:.35}
+/* Whatever is painted on the physical pallet, so the app can be matched to the floor. */
+.pwhere{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--accent)}
+.ptile .pwhere{display:block;margin-top:1px}

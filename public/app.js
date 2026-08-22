@@ -1929,6 +1929,8 @@ function renderSimple(){
         <span class="pname">${htmlEsc(c)}</span>
         ${counts[c] ? `<span class="pgot">${counts[c]} taken</span>`
                     : `<span class="pn">${n} thing${n === 1 ? '' : 's'}</span>`}
+        ${(whCats.find(x => x.name === c) || {}).pallets
+            ? `<span class="pwhere">${htmlEsc((whCats.find(x => x.name === c) || {}).pallets)}</span>` : ''}
         ${(whCats.find(x => x.name === c) || {}).part_cases
             ? '<span class="ppart">half cases &amp; loose packs</span>' : ''}
       </button>`;
@@ -1952,7 +1954,9 @@ function renderSimple(){
   wrap.innerHTML = basket
     + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
        <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
-       <p class="bigsub">How many did you take?</p>
+       <p class="bigsub">${(whCats.find(c => c.name === simplePallet) || {}).pallets
+           ? htmlEsc((whCats.find(c => c.name === simplePallet) || {}).pallets) + ' &middot; how many did you take?'
+           : 'How many did you take?'}</p>
        <div class="bigrows">${rows.map(r => bigRow(r, draft, reveal)).join('')}</div>
        ${reveal ? '' : `<button class="askparts" onclick="simpleAskParts()">
           Took half a case, or packs out of a box?</button>`}
@@ -2386,7 +2390,10 @@ function renderShelfList(){
         <span class="shelfname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</span>
         <span class="shelfcount">${g.rows.length}</span>
       </div>
-      <div class="shelftrust ${band}">${trust}${under ? ` &middot; <b class="short">${under} under par</b>` : ''}</div>
+      <div class="shelftrust ${band}">${
+        (whCats.find(x => x.name === g.name) || {}).pallets
+          ? `<b class="pwhere">${htmlEsc((whCats.find(x => x.name === g.name) || {}).pallets)}</b> &middot; ` : ''
+        }${trust}${under ? ` &middot; <b class="short">${under} under par</b>` : ''}</div>
       ${names ? `<div class="shelfnames">${names}</div>` : ''}
     </button>`;
   };
@@ -2799,7 +2806,9 @@ function renderPallets(){
       <div class="vs-sub">${whCats.length} ${place().sections}${loose ? ` &middot; ${loose} item${loose===1?'':'s'} in none of them` : ''}</div></div>
     <div class="hint">Order these the way you walk the place and counting follows your
     feet. ${whLoc === 'warehouse'
-      ? 'A category can sit on more than one pallet — put the numbers in the box.'
+      ? 'Put whatever is written on the pallet in the box &mdash; a number, a bay, "3 and 4" '
+        + 'if the group spans two. It shows next to the name everywhere, so people can match '
+        + 'the app to the floor. Nothing needs it, and the sheet never overwrites it.'
       : 'Put whatever is written on the container in the box, or the temperature.'}</div>
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">Add a ${place().section}</div></div>
