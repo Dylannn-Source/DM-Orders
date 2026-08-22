@@ -611,3 +611,4 @@ body.simple .whhead { padding-bottom:6px; }
   cursor:pointer;color:var(--muted);background:none;border:1px dashed var(--line);
   border-radius:12px}
 .ptile .ppart{font-size:11px;letter-spacing:.05em;color:var(--muted);font-style:italic}
+.toomany{display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--accent)}

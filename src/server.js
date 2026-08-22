@@ -240,11 +240,19 @@ app.put('/api/employees/:id', async (req, res) => {
     if (pin !== undefined) {
       const bad = isValidPin(pin, { allowShort: true });
       if (bad) return res.status(400).json({ error: bad });
+      // Normally a reset PIN is temporary and the person picks their own. Not for
+      // a simple-mode account: being made to invent and type a six-digit code is
+      // exactly the wall that account exists to avoid, and hitting it alone at
+      // the storage unit ends the trip. The manager's PIN is the PIN. The account
+      // can only record stock leaving a pallet, so there is nothing behind it
+      // worth protecting with a ceremony he cannot complete.
+      const { rows: who } = await pool.query('SELECT simple_mode FROM employees WHERE id=$1', [id]);
+      const force = !who[0]?.simple_mode;
       // Resetting also clears a lockout: forgetting and being locked out are the
       // same problem to the person standing there.
       await pool.query(
-        `UPDATE employees SET pin_hash=$2, must_change_pin=TRUE, failed_attempts=0, locked_until=NULL
-          WHERE id=$1`, [id, hashPin(pin)]);
+        `UPDATE employees SET pin_hash=$2, must_change_pin=$3, failed_attempts=0, locked_until=NULL
+          WHERE id=$1`, [id, hashPin(pin), force]);
     }
     if (active !== undefined) {
       if (!active && id === req.employee.id) {
@@ -266,7 +274,11 @@ app.put('/api/employees/:id', async (req, res) => {
       if (simple_mode && id === req.employee.id) {
         return res.status(400).json({ error: 'You cannot put your own account in simple mode.' });
       }
-      await pool.query('UPDATE employees SET simple_mode=$2 WHERE id=$1', [id, !!simple_mode]);
+      // Switching it on also clears any pending forced PIN change, which would
+      // otherwise be the first thing they hit and the one screen they cannot pass.
+      await pool.query(
+        `UPDATE employees SET simple_mode=$2, must_change_pin = CASE WHEN $2 THEN FALSE ELSE must_change_pin END
+          WHERE id=$1`, [id, !!simple_mode]);
     }
     if (Array.isArray(areas)) {
       const wanted = areas.filter(a => AREAS.includes(a));

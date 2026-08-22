@@ -1952,7 +1952,9 @@ function renderSimple(){
        <p class="bigsub">How many did you take?</p>
        <div class="bigrows">${rows.map(r => bigRow(r, draft, parts)).join('')}</div>
        ${parts ? '' : `<button class="askparts" onclick="simpleAskParts()">
-          Took half a case, or packs out of a box?</button>`}`;
+          Took half a case, or packs out of a box?</button>`}
+       <button class="askparts" onclick="simpleOther()">
+         Took something that is not on this list?</button>`;
 }
 
 // Turning it on from where it matters: standing at the pallet, the first time it
@@ -1977,12 +1979,16 @@ function bigRow(r, draft, parts){
   const line = draft.lines[r.item_name] || {};
   const n = Number(line.cases) || 0;
   const u = Number(line.units) || 0;
+  // A leaning thumb on + is otherwise invisible: the basket counts things taken,
+  // not cases, so twenty stray presses on one row still reads as "1 thing".
+  const have = Number(r.qty) || 0;
   const whole = Math.floor(n);
   const half = n - whole >= 0.5;
   const name = esc(r.item_name);
   return `<div class="bigrow ${n || u ? 'on' : ''}">
     <div class="bigtop">
-      <div class="bigname">${htmlEsc(r.item_name)}</div>
+      <div class="bigname">${htmlEsc(r.item_name)}
+        ${n > have && have >= 0 ? `<span class="toomany">the pallet only had ${fmtQty(have)}</span>` : ''}</div>
       <div class="bigstep">
         <button class="minus" ${n ? '' : 'disabled'} onclick="simpleBump('${name}',-1)">&minus;</button>
         <span class="bignum">${n ? fmtQty(n) : 0}</span>
@@ -2055,6 +2061,21 @@ async function simpleDone(){
     .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: Number(v.units) || 0 }))
     .filter(x => x.cases > 0 || x.units > 0);
   if (!items.length && !d.note){ alert('Nothing to save yet.'); return; }
+
+  // Last chance to catch a thumb that leaned on a button. Asked before saving
+  // rather than reported afterwards, because he is still standing next to the
+  // pallet and can look.
+  const src = simpleSrc();
+  const odd = items.filter(x => {
+    const it = src?.items.find(y => y.item_name === x.name);
+    return it && x.cases > (Number(it.qty) || 0);
+  });
+  if (odd.length && !confirm('Check these before saving:\n\n'
+      + odd.map(x => {
+          const it = src.items.find(y => y.item_name === x.name);
+          return `${x.name}\n  you put ${fmtQty(x.cases)}, the pallet had ${fmtQty(it.qty)}`;
+        }).join('\n\n')
+      + '\n\nSave anyway? Press cancel to go back and fix it.')) return;
 
   let res;
   try {
