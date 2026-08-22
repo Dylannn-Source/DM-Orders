@@ -166,14 +166,20 @@ to add a ninth from anywhere in the app.
 They are drawn as you look in from the doors: the back of the container at the top
 of the screen, spots 1 and 2 nearest you at the bottom, with both ends labelled.
 
-**Tapping a pallet gives three rows** — top, middle, bottom — each a quantity and
-a product, filled in directly:
+**Tapping a pallet gives six rows**, numbered from the pallet deck upwards and
+drawn with the deck at the bottom of the screen, so it fills the way it is
+loaded:
 
 ```
             1
-   TOP     15   cow feet
-   MIDDLE  20   goat
-   BOTTOM  20   tilapia
+      top of the pile
+   6    4   boxes of ice
+   5    —
+   4    —
+   3   15   cow feet
+   2   20   goat
+   1   20   tilapia
+    bottom — on the pallet
 ```
 
 A product typed in that is not on the list yet is created; clearing a row takes

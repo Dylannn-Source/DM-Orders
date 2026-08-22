@@ -370,6 +370,7 @@ app.post('/api/place/:loc/item', async (req, res) => {
 // Eight, and there is no more room in the container for a ninth. A hard number
 // rather than a default, so nothing anywhere can quietly exceed the floor space.
 const SPOTS_PER_CONTAINER = 8;
+const LEVELS_PER_PALLET = 6;
 async function ensureSpots(loc, container) {
   const { rows } = await pool.query(
     'SELECT COALESCE(MAX(slot), -1) AS max FROM warehouse_pallets WHERE location=$1 AND container=$2',
@@ -401,8 +402,11 @@ app.put('/api/place/:loc/pallet/:id/level/:level', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   if (!canWrite(req, res, loc)) return;
   const id = Number(req.params.id);
+  // Levels run 1 to 6 counted from the pallet deck upwards.
   const level = Number(req.params.level);
-  if (![0, 1, 2].includes(level)) return res.status(400).json({ error: 'level must be 0, 1 or 2' });
+  if (!Number.isInteger(level) || level < 1 || level > LEVELS_PER_PALLET) {
+    return res.status(400).json({ error: `level must be 1 to ${LEVELS_PER_PALLET}` });
+  }
   const name = String(req.body?.name || '').trim();
   const qty = Number(req.body?.qty);
   const client = await pool.connect();

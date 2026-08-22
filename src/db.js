@@ -350,6 +350,22 @@ export async function initDb() {
     UPDATE warehouse_stock SET stack_pos = CASE layer WHEN 'top' THEN 0 WHEN 'bottom' THEN 1 ELSE 0 END
      WHERE pallet_id IS NOT NULL AND stack_pos IS NULL`);
 
+  // A pallet is six high and is loaded from the deck upwards, so the position is
+  // now counted from the bottom: 1 sits on the deck, 6 is the top. The earlier
+  // three-level numbering ran the other way, 0 being the top, so it is turned
+  // over once — guarded, because doing it twice would flip the stacks back.
+  const { rows: done } = await pool.query(
+    `SELECT 1 FROM app_config WHERE key='stack_pos_from_bottom'`);
+  if (!done[0]) {
+    await pool.query(`
+      UPDATE warehouse_stock
+         SET stack_pos = CASE stack_pos WHEN 0 THEN 3 WHEN 1 THEN 2 WHEN 2 THEN 1 ELSE stack_pos END
+       WHERE pallet_id IS NOT NULL AND stack_pos BETWEEN 0 AND 2`);
+    await pool.query(
+      `INSERT INTO app_config (key, value) VALUES ('stack_pos_from_bottom','1')
+       ON CONFLICT (key) DO NOTHING`);
+  }
+
   // Which Vori product a warehouse line is, and what it is called there — free
   // text names cannot be matched to product ids on their own.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_product_id TEXT');

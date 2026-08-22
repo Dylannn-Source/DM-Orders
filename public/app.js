@@ -1105,6 +1105,8 @@ const PLACES = {
   }
 };
 const place = () => PLACES[whLoc];
+// A pallet is six high, counted from the deck: 1 sits on the boards, 6 is the top.
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
 // What is left is what should be at the store. Both halves have to be in the same
@@ -1216,14 +1218,7 @@ function whereLine(row){
   if (row.category) bits.push(htmlEsc(row.category));
   const p = whPals.find(x => Number(x.id) === Number(row.pallet_id));
   if (p) bits.push(htmlEsc(p.label || 'pallet') + (p.level > 0 ? ', stacked' : ''));
-  if (p && row.stack_pos !== null && row.stack_pos !== undefined){
-    const mates = whStock.filter(r => Number(r.pallet_id) === Number(p.id))
-      .sort((a, b) => (a.stack_pos ?? 99) - (b.stack_pos ?? 99) || a.item_name.localeCompare(b.item_name));
-    const i = mates.findIndex(r => r.item_name === row.item_name);
-    if (i === 0) bits.push('top');
-    else if (i === mates.length - 1) bits.push('bottom');
-    else if (i > 0) bits.push('middle');
-  }
+  if (p && row.stack_pos) bits.push('level ' + row.stack_pos);
   return bits.length ? `<div class="whwhere">${bits.join(' \u00b7 ')}</div>` : '';
 }
 
@@ -1336,15 +1331,17 @@ function renderContainerPlan(){
     <div class="spotgrid">
       ${laidOut.map(p => {
         const rows = onPallet(p.id);
-        const stack = [0, 1, 2].map(l => rows.find(r => Number(r.stack_pos) === l));
+        // Highest first, so the card reads the way the pile looks.
+        const stack = LEVELS.slice().reverse()
+          .map(l => rows.find(r => Number(r.stack_pos) === l)).filter(Boolean);
         const stale = rows.some(r => ageOf(r).band === 'stale');
         return `<button class="spot ${rows.length ? (stale ? 'stale' : 'ok') : 'open'}"
                         onclick="whOpenPallet(${p.id})">
           <div class="spotnum">${htmlEsc(p.label || (p.slot + 1))}</div>
           <div class="spotstack">
-            ${stack.map(r => r
-              ? `<div class="spotline">${fmtQty(r.qty)} ${htmlEsc(r.item_name)}</div>`
-              : '<div class="spotline blank">&mdash;</div>').join('')}
+            ${stack.length
+              ? stack.map(r => `<div class="spotline">${fmtQty(r.qty)} ${htmlEsc(r.item_name)}</div>`).join('')
+              : '<div class="spotline blank">empty</div>'}
           </div>
         </button>`;
       }).join('')}
@@ -1366,17 +1363,17 @@ function renderPalletForm(){
   const rows = whStock.filter(r => Number(r.pallet_id) === p.id);
   const edit = canEdit(whLoc);
   const names = [...new Set(whStock.map(r => r.item_name))].sort();
-  const LEVELS = [[0, 'Top'], [1, 'Middle'], [2, 'Bottom']];
 
   wrap.innerHTML = `
     <div class="palform">
       <div class="palformnum">${htmlEsc(p.label || (p.slot + 1))}</div>
       <datalist id="itemNames">${names.map(n => `<option value="${htmlEsc(n)}">`).join('')}</datalist>
-      ${LEVELS.map(([lvl, title]) => {
+      <div class="endmark">top of the pile</div>
+      ${LEVELS.slice().reverse().map(lvl => {
         const r = rows.find(x => Number(x.stack_pos) === lvl);
         return `<div class="lvl">
-          <div class="lvlname">${title}</div>
           <div class="lvlrow">
+            <div class="lvlnum">${lvl}</div>
             <input type="tel" inputmode="decimal" class="lvlqty" id="q${lvl}"
                    value="${r ? fmtQty(r.qty) : ''}" placeholder="qty" ${edit ? '' : 'disabled'}>
             <input type="text" class="lvlitem" id="n${lvl}" list="itemNames"
@@ -1385,6 +1382,7 @@ function renderPalletForm(){
           ${r ? `<div class="lvlage ${ageOf(r).band}">${htmlEsc(ageOf(r).text)}</div>` : ''}
         </div>`;
       }).join('')}
+      <div class="endmark front">bottom &mdash; on the pallet</div>
       ${edit ? `<button class="addbtn" style="width:100%;margin-top:12px;" onclick="whSavePallet(${p.id})">Save this pallet</button>
                 <div class="hint" id="palSaveMsg" style="padding:10px 0 0;">Clear a row to take it off the pallet.</div>` : ''}
     </div>
@@ -1402,7 +1400,8 @@ async function whMakeSpots(){
 async function whSavePallet(id){
   const msg = $('palSaveMsg');
   if (msg) msg.textContent = 'Saving...';
-  for (const lvl of [0, 1, 2]){
+  // Saved from the deck upwards, the way it is loaded.
+  for (const lvl of LEVELS){
     const name = $('n' + lvl).value.trim();
     const qty = $('q' + lvl).value.trim();
     if (name && qty === ''){ msg.textContent = `How many ${name}?`; return; }
