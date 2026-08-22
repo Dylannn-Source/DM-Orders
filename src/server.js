@@ -80,7 +80,8 @@ async function employeeCount() {
 
 const publicEmployee = (e, areas) => ({
   id: e.id, name: e.name, role: e.role, active: e.active,
-  must_change_pin: e.must_change_pin, locked: lockState(e).locked,
+  must_change_pin: e.must_change_pin, simple_mode: !!e.simple_mode,
+  locked: lockState(e).locked,
   locked_minutes: lockState(e).minutes || null, last_login_at: e.last_login_at || null,
   areas: areas || (e.role === 'manager' ? [...AREAS] : [])
 });
@@ -234,7 +235,7 @@ app.post('/api/employees', async (req, res) => {
 app.put('/api/employees/:id', async (req, res) => {
   if (!managerOnly(req, res)) return;
   const id = Number(req.params.id);
-  const { pin, active, role, areas } = req.body || {};
+  const { pin, active, role, areas, simple_mode } = req.body || {};
   try {
     if (pin !== undefined) {
       const bad = isValidPin(pin, { allowShort: true });
@@ -258,6 +259,14 @@ app.put('/api/employees/:id', async (req, res) => {
         }
       }
       await pool.query('UPDATE employees SET active=$2 WHERE id=$1', [id, !!active]);
+    }
+    if (simple_mode !== undefined) {
+      // A manager could lock themselves out of the rest of the app, so they
+      // cannot put their own account into it.
+      if (simple_mode && id === req.employee.id) {
+        return res.status(400).json({ error: 'You cannot put your own account in simple mode.' });
+      }
+      await pool.query('UPDATE employees SET simple_mode=$2 WHERE id=$1', [id, !!simple_mode]);
     }
     if (Array.isArray(areas)) {
       const wanted = areas.filter(a => AREAS.includes(a));

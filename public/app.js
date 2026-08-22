@@ -439,7 +439,8 @@ function goOffline(){
   bar.innerHTML = `<b>No signal.</b> Showing what this phone last saw.
     A pickup you type is kept and saved when you are back in range.`;
   document.body.prepend(bar);
-  whPicking = true;
+  if (me?.simple_mode) document.body.classList.add('simple');
+  else whPicking = true;
   showWarehouse('warehouse').catch(() => {});
 }
 
@@ -875,6 +876,14 @@ async function boot(){
 
 function startApp(){
   $('authView').style.display = 'none';
+  // Simple mode is the whole app for whoever is in it: no tabs, no settings, no
+  // other departments to get lost in.
+  if (me?.simple_mode){
+    document.body.classList.add('simple');
+    showWarehouse('warehouse').catch(() => {});
+    return;
+  }
+  document.body.classList.remove('simple');
   switchDept(dept);
 }
 
@@ -1073,6 +1082,12 @@ function renderEmployees(list){
         <input type="checkbox" ${e.active ? 'checked' : ''}
                ${e.id === me.id ? 'disabled' : ''} style="width:22px;height:22px;"
                onchange="setEmployeeActive(${e.id}, this.checked)"></div>
+      ${e.role === 'manager' ? '' : `
+      <div class="vitem"><span class="viname">Simple mode
+        <span class="vihint">just the warehouse, pallet by pallet, no keyboard</span></span>
+        <input type="checkbox" ${e.simple_mode ? 'checked' : ''}
+               style="width:22px;height:22px;"
+               onchange="setEmployeeSimple(${e.id}, this.checked)"></div>`}
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">Can change</div></div>
       ${e.role === 'manager'
         ? '<div class="vitem"><span class="viname">everything, as a manager</span></div>'
@@ -1084,6 +1099,15 @@ function renderEmployees(list){
                    onchange="setEmployeeAreas(${e.id})"></div>`).join('')}`;
     wrap.appendChild(div);
   });
+}
+
+async function setEmployeeSimple(id, on){
+  if (on && !confirm('Put this person in simple mode?\n\n'
+    + 'They will see one screen for taking things out of the warehouse — '
+    + 'no tabs, no other departments, no typing. Nothing else in the app.')) {
+    return renderEmployees();
+  }
+  await empCall('PUT', '/api/employees/' + id, { simple_mode: !!on });
 }
 
 async function empCall(method, path, body){
@@ -1205,7 +1229,7 @@ async function showWarehouse(loc){
     b.classList.toggle('active', b.dataset.dept === whLoc));
   const cfg = place();
   $('whEyebrow').innerHTML = cfg.eyebrow;
-  $('whTitle').textContent = cfg.title;
+  $('whTitle').textContent = me?.simple_mode ? 'Taking things' : cfg.title;
   $('whSearch').placeholder = cfg.search;
   $('warehouseView').style.display = 'block';
   $('footerBar').style.display = 'none';
@@ -1326,6 +1350,9 @@ function whereLine(row){
 }
 
 function whSummaryLine(){
+  // None of this means anything to somebody whose only job is to say what he
+  // carried out of the door.
+  if (me?.simple_mode){ $('whSummary').innerHTML = ''; return; }
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
   const linked = whStock.filter(r => r.vori_product_id).length;
@@ -1830,6 +1857,161 @@ function addFormHtml(target){
     <div class="hint" id="whMsg"></div>`;
 }
 
+// Andy's screen.
+//
+// He goes to the storage unit alone and takes whatever is needed. Finding
+// "Three Ladies Jasmine Rice 50lb" in a list of 215 is a spelling test, not a
+// tool, so he is never asked to. The pallet identifies the item instead: he
+// walks to a pallet, taps it, and sees only the things on it -- seven, typically.
+// Then plus and minus. No keyboard is ever shown, nothing can be typed wrong,
+// and there is no way to reach the rest of the app.
+//
+// It writes the same draft as the full pickup screen and posts to the same
+// endpoint, so it inherits working with no signal, surviving a reload, and being
+// safe to re-send.
+let simplePallet = null;
+// Set while the "saved" screen is up. Without it, the refresh that follows a save
+// re-rendered straight over the confirmation and Andy saw the pallet list again
+// with no sign anything had happened.
+let simpleSaved = null;
+
+function simpleSrc(){
+  const cache = cachedList();
+  if (whStock.length) return { items: whStock, cats: whCats.map(c => c.name) };
+  return cache ? { items: cache.items, cats: cache.cats } : null;
+}
+
+function renderSimple(){
+  const wrap = $('whWrap');
+  if (simpleSaved !== null){
+    wrap.innerHTML = `<div class="bigdoneview">
+      <div class="tick">&#10003;</div>
+      <h2 class="bigask">Saved</h2>
+      <p class="bigsub">${simpleSaved} thing${simpleSaved === 1 ? '' : 's'} written down.
+        Nothing else to do.</p>
+      <button class="bigrestart" onclick="simpleRestart()">Take something else</button>
+    </div>`;
+    return;
+  }
+  const src = simpleSrc();
+  const draft = pickDraft();
+  const total = Object.values(draft.lines).reduce((n, v) => n + (Number(v.cases) || 0), 0);
+
+  if (!src){
+    wrap.innerHTML = `<div class="simplewarn">This phone has not loaded the warehouse yet.
+      Open it once at the store, where there is signal.</div>`;
+    return;
+  }
+
+  const basket = `<div class="basket ${total ? 'on' : ''}">
+      <span><b>${total}</b> thing${total === 1 ? '' : 's'} taken</span>
+      ${total ? `<button class="bigdone" onclick="simpleDone()">Done</button>` : ''}
+    </div>`;
+
+  if (simplePallet === null){
+    const counts = {};
+    Object.entries(draft.lines).forEach(([name, v]) => {
+      const it = src.items.find(x => x.item_name === name);
+      const k = it?.category || '';
+      counts[k] = (counts[k] || 0) + (Number(v.cases) || 0);
+    });
+    const tiles = src.cats.map(c => {
+      const n = src.items.filter(r => r.category === c).length;
+      if (!n) return '';
+      return `<button class="ptile ${counts[c] ? 'has' : ''}" onclick="simpleOpen('${esc(c)}')">
+        <span class="pname">${htmlEsc(c)}</span>
+        ${counts[c] ? `<span class="pgot">${counts[c]} taken</span>`
+                    : `<span class="pn">${n} thing${n === 1 ? '' : 's'}</span>`}
+      </button>`;
+    }).join('');
+    wrap.innerHTML = basket
+      + `<h2 class="bigask">What did you take?</h2>
+         <p class="bigsub">Tap the pallet you took it from.</p>
+         <div class="ptiles">${tiles}</div>
+         <button class="ptile other" onclick="simpleOther()">
+           <span class="pname">Something else</span>
+           <span class="pn">not on a pallet, or you are not sure</span></button>`;
+    return;
+  }
+
+  const rows = src.items.filter(r => r.category === simplePallet)
+    .sort((a, b) => a.item_name.localeCompare(b.item_name));
+  wrap.innerHTML = basket
+    + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
+       <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
+       <p class="bigsub">How many did you take?</p>
+       <div class="bigrows">${rows.map(r => {
+         const n = Number((draft.lines[r.item_name] || {}).cases) || 0;
+         return `<div class="bigrow ${n ? 'on' : ''}">
+           <div class="bigname">${htmlEsc(r.item_name)}</div>
+           <div class="bigstep">
+             <button class="minus" ${n ? '' : 'disabled'} onclick="simpleBump('${esc(r.item_name)}',-1)">&minus;</button>
+             <span class="bignum">${n}</span>
+             <button class="plus" onclick="simpleBump('${esc(r.item_name)}',1)">+</button>
+           </div>
+         </div>`;
+       }).join('')}</div>`;
+}
+
+function simpleOpen(cat){ simplePallet = cat; window.scrollTo(0,0); renderSimple(); }
+function simpleBack(){ simplePallet = null; window.scrollTo(0,0); renderSimple(); }
+
+function simpleBump(name, by){
+  const d = pickDraft();
+  const cur = Number((d.lines[name] || {}).cases) || 0;
+  const next = Math.max(0, cur + by);
+  if (next) d.lines[name] = { ...(d.lines[name] || {}), cases: String(next) };
+  else delete d.lines[name];
+  saveDraft(d);
+  renderSimple();
+}
+
+// Anything he cannot place. Recorded as a note on the run rather than guessed at,
+// so somebody who knows can sort it out instead of the number being wrong.
+function simpleOther(){
+  const what = prompt('What did you take? Just describe it — somebody will sort it out.');
+  if (!what || !what.trim()) return;
+  const d = pickDraft();
+  d.note = [d.note, what.trim()].filter(Boolean).join('; ');
+  saveDraft(d);
+  alert('Noted. Carry on, and press Done when you are finished.');
+  renderSimple();
+}
+
+async function simpleDone(){
+  const d = pickDraft();
+  const items = Object.entries(d.lines)
+    .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: 0 }))
+    .filter(x => x.cases > 0);
+  if (!items.length && !d.note){ alert('Nothing to save yet.'); return; }
+
+  let res;
+  try {
+    res = await fetch(`/api/place/warehouse/pickup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: d.run_id, items, note: d.note || null })
+    });
+  } catch {
+    alert('No signal here. What you took is saved on this phone.\n\n'
+      + 'Open this again when you are back at the store and press Done.');
+    return;
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ alert(body.error || 'Could not save that. Try again in a moment.'); return; }
+  clearDraft();
+  simplePallet = null;
+  simpleSaved = items.reduce((a, x) => a + x.cases, 0);
+  // Refresh underneath, but the flag keeps the confirmation on screen until he
+  // says he is doing something else.
+  await showWarehouse('warehouse').catch(() => {});
+  renderSimple();
+}
+
+async function simpleRestart(){
+  simpleSaved = null; simplePallet = null;
+  await showWarehouse('warehouse').catch(() => renderSimple());
+}
+
 // Loading the van. One screen, every item in walk order, a box for how many you
 // took -- no drilling into cards, because a bulk pickup is thirty of them.
 //
@@ -2140,6 +2322,7 @@ function renderWarehouse(){
   // Offsite opens on its pallets, the way Monkish opens on its containers: the
   // tab is for finding out what is out there, and a wall of every item at once
   // never answered that. Searching skips the pallets and answers straight.
+  if (me?.simple_mode) return renderSimple();
   if (!place().diagram && whPicking) return renderPick();
   if (!place().diagram && whOrderView && !searching) return renderOrder();
   if (!place().diagram && whGroup === null && !searching) return renderShelfList();

@@ -365,6 +365,12 @@ export async function initDb() {
   // items back to the store" instead of fourteen lines that happen to share a
   // date, and it is what makes a whole run undoable if somebody fat-fingers it.
   await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS run_id TEXT');
+
+  // Some people should never see the whole app. Andy goes to the storage unit
+  // alone and takes whatever is needed; asking him to find "Three Ladies Jasmine
+  // Rice 50lb" in a list of 215 is a spelling test, not a tool. With this on,
+  // signing in lands straight on a pallet-by-pallet picker with no keyboard.
+  await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS simple_mode BOOLEAN NOT NULL DEFAULT FALSE');
   await pool.query('CREATE INDEX IF NOT EXISTS warehouse_moves_run ON warehouse_moves (run_id)');
 
   // A container has floor space for eight pallets and no more, but the first

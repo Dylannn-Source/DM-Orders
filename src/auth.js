@@ -115,7 +115,7 @@ export async function currentEmployee(req) {
   if (!claims?.id) return null;
   if (Date.now() - Number(claims.at || 0) > SESSION_DAYS * 24 * 60 * 60 * 1000) return null;
   const { rows } = await pool.query(
-    `SELECT id, name, role, active, must_change_pin FROM employees WHERE id=$1`, [claims.id]);
+    `SELECT id, name, role, active, must_change_pin, simple_mode FROM employees WHERE id=$1`, [claims.id]);
   const e = rows[0];
   return e && e.active ? e : null;
 }

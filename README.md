@@ -39,6 +39,23 @@ A run that has been typed but not sent is shown at the top of the Offsite tab
 until it is saved &mdash; that stock has left the building while the app still
 counts it, which is the one thing worth interrupting for.
 
+### Simple mode
+
+Some people should only ever see one screen. A manager can switch an account
+into **simple mode** from Settings &rarr; Employees; signing in then lands
+straight on a pallet-by-pallet picker with no tabs, no other departments, no
+search box and no keyboard.
+
+It exists because finding "Three Ladies Jasmine Rice 50lb" in a list of 215 is a
+spelling test, not a tool. The pallet identifies the item instead: tap the pallet
+you walked to, see only the seven or so things on it, and press plus. Anything
+that cannot be placed goes in as a free-text note on the run for somebody else to
+resolve, rather than being guessed at.
+
+It writes the same draft and posts to the same endpoint as the full pickup
+screen, so it inherits working with no signal, surviving a reload, and being safe
+to press twice. A manager cannot put their own account into it.
+
 ## Offsite warehouse from Google Sheets
 
 Angel keeps the warehouse product list in a Google Sheet. The app reads it,
