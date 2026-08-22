@@ -1116,6 +1116,8 @@ const PLACES = {
 const place = () => PLACES[whLoc];
 // Rows on a pallet, counted from the deck: 1 sits on the boards. Six by default,
 // but each pallet carries its own count — they are not all the same height.
+// Eight, the same eight the server enforces.
+const SPOTS = 8;
 const levelsOf = p => Array.from({ length: Number(p?.levels) || 6 }, (_, i) => i + 1);
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
@@ -1316,10 +1318,15 @@ function whBackToContainer(){ whPallet = null; renderWarehouse(); }
 function renderContainerPlan(){
   const wrap = $('whWrap');
   whSummaryLine();
-  const pals = whPals.filter(p => p.container === whContainer).sort((a, b) => a.slot - b.slot);
+  const all = whPals.filter(p => p.container === whContainer).sort((a, b) => a.slot - b.slot);
   const onPallet = id => whStock.filter(r => Number(r.pallet_id) === Number(id));
   const loose = whStock.filter(r => (r.category || null) === whContainer && !r.pallet_id);
   const edit = canEdit(whLoc);
+  // Containers built under the old version can carry a ninth or tenth spot. The
+  // empty ones are cleared away on boot; anything still here has boxes on it, so
+  // it is drawn apart from the container rather than pretending it fits.
+  const pals = all.filter(p => p.slot < SPOTS);
+  const over = all.filter(p => p.slot >= SPOTS);
 
   if (!pals.length){
     wrap.innerHTML = `<div class="hint">This container has no pallet spots yet.</div>
@@ -1335,7 +1342,7 @@ function renderContainerPlan(){
   const laidOut = rows2.reverse().flat();
 
   wrap.innerHTML = `
-    <div class="hint">Tap a pallet to fill it in. Each one has a top, middle and bottom.
+    <div class="hint">Tap a pallet to fill it in.
       A container holds eight &mdash; there is no room for more.</div>
     <div class="endmark">back of the container</div>
     <div class="spotgrid">
@@ -1357,6 +1364,23 @@ function renderContainerPlan(){
       }).join('')}
     </div>
     <div class="endmark front">front &mdash; the doors</div>
+    ${over.length ? `<div class="overflow">
+      <div class="palname">${over.length} spot${over.length === 1 ? '' : 's'} past the eight</div>
+      <div class="palmeta">Made before the app knew a container only holds eight, and
+        ${over.length === 1 ? 'it still has' : 'they still have'} boxes on
+        ${over.length === 1 ? 'it' : 'them'}. Somebody who has been out there needs to say
+        where ${over.length === 1 ? 'it' : 'they'} really ${over.length === 1 ? 'is' : 'are'}.</div>
+      ${over.map(p => {
+        const rows = onPallet(p.id);
+        return `<div class="overrow">
+          <button class="listlink" onclick="whOpenPallet(${p.id})">
+            ${htmlEsc(p.label || (p.slot + 1))} &mdash; ${rows.length} item${rows.length === 1 ? '' : 's'}</button>
+          ${edit ? `<button class="listlink danger" onclick="whDropSpot(${p.id})">take the spot out</button>` : ''}
+        </div>`;
+      }).join('')}
+      ${edit ? `<div class="palmeta">Taking a spot out keeps its boxes &mdash; they move to
+        &ldquo;not on a pallet&rdquo; in this container until somebody places them again.</div>` : ''}
+    </div>` : ''}
     ${loose.length ? `<div class="palloose">
       <div class="palname">Not on a pallet</div>
       <div class="palmeta">${loose.length} item${loose.length === 1 ? '' : 's'} in this container, not placed</div>
@@ -1423,6 +1447,18 @@ async function whMakeSpots(){
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ container: whContainer })
   });
+  await showWarehouse();
+}
+
+async function whDropSpot(id){
+  const p = whPals.find(x => Number(x.id) === Number(id));
+  const n = whStock.filter(r => Number(r.pallet_id) === Number(id)).length;
+  if (!confirm(`Take spot ${p?.label || ''} out of this container?\n\n`
+    + (n === 1
+        ? 'Its one item stays in the container, listed under "not on a pallet".'
+        : `Its ${n} items stay in the container, listed under "not on a pallet".`))) return;
+  const res = await fetch(`/api/place/${whLoc}/pallet/${id}`, { method: 'DELETE' });
+  if (!res.ok) { alert((await res.json().catch(() => ({}))).error || 'Could not take that spot out.'); return; }
   await showWarehouse();
 }
 

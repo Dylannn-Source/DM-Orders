@@ -437,3 +437,15 @@ input.g:focus{outline:0;background:var(--accent-soft);
 input.g:disabled{color:var(--muted);-webkit-text-fill-color:var(--muted);opacity:1}
 input.gqty{text-align:right;font-variant-numeric:tabular-nums}
 input.g::placeholder{color:var(--muted);opacity:.55}
+
+/* A container that still carries a ninth or tenth pallet from the old version.
+   Deliberately outside the diagram: it is not part of the floor plan. */
+.overflow{margin-top:14px;padding:12px;border:1px solid var(--accent);
+  border-radius:10px;background:var(--accent-soft)}
+.overflow .palname{font-weight:700}
+.overflow .palmeta{margin:4px 0 8px}
+.overrow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:6px 0;border-top:1px solid rgba(0,0,0,.08)}
+.listlink.danger{color:var(--accent);font-weight:600}
+/* Long enough to be a sentence, so it is read rather than shouted. */
+.overflow .palmeta{text-transform:none;letter-spacing:0;line-height:1.45}

@@ -344,6 +344,19 @@ export async function initDb() {
   // stack against the wall or a double-height one in the middle is normal, so
   // it belongs to the pallet rather than to the app.
   await pool.query('ALTER TABLE warehouse_pallets ADD COLUMN IF NOT EXISTS levels INTEGER NOT NULL DEFAULT 6');
+
+  // A container has floor space for eight pallets and no more, but the first
+  // version of this let people add as many as they liked, so some containers
+  // still carry a ninth and tenth from back then. An empty one is a leftover
+  // with nothing in it to lose, so it goes on boot. One with boxes on it is a
+  // real disagreement between the app and the floor, and only somebody who has
+  // been out there can settle it -- those are left alone and flagged in the UI.
+  const { rowCount: extras } = await pool.query(`
+    DELETE FROM warehouse_pallets p
+     WHERE p.slot >= 8
+       AND COALESCE(p.note, '') = ''
+       AND NOT EXISTS (SELECT 1 FROM warehouse_stock s WHERE s.pallet_id = p.id)`);
+  if (extras) console.log(`Removed ${extras} empty pallet spot(s) past the eight a container holds.`);
   // Where on the pallet, as an ordering rather than a top/bottom flag: a pallet
   // can be three or four items deep, and the list order is the stack order.
   // 0 is the top.
