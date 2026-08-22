@@ -397,3 +397,9 @@ body[data-dept="coldstorage"]{
 .palform .endmark{padding:2px 0 10px;}
 .palform .endmark.front{padding:8px 0 2px;}
 .lvl{margin-bottom:9px;}
+.rowctl{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--line);}
+.rowctl button{flex:1;border:1px solid var(--line);background:var(--paper-2);border-radius:9px;
+  padding:10px 0;font-size:13px;font-weight:700;color:var(--ink);font-family:var(--sans);}
+.rowctl button:active{background:var(--line);}
+.rowctl span{font-family:var(--mono);font-size:11px;color:var(--ink-soft);flex:none;}

@@ -166,9 +166,12 @@ to add a ninth from anywhere in the app.
 They are drawn as you look in from the doors: the back of the container at the top
 of the screen, spots 1 and 2 nearest you at the bottom, with both ends labelled.
 
-**Tapping a pallet gives six rows**, numbered from the pallet deck upwards and
+**Tapping a pallet gives its rows**, numbered from the pallet deck upwards and
 drawn with the deck at the bottom of the screen, so it fills the way it is
-loaded:
+loaded. Six to begin with, and **− row** / **+ row** underneath change it for that
+pallet alone, between one and twelve — a short stack against the wall and a
+double-height one in the middle are both normal. Taking a row away is refused
+while something is still on it, naming what, rather than quietly unplacing it:
 
 ```
             1

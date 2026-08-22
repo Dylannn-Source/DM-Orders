@@ -370,7 +370,6 @@ app.post('/api/place/:loc/item', async (req, res) => {
 // Eight, and there is no more room in the container for a ninth. A hard number
 // rather than a default, so nothing anywhere can quietly exceed the floor space.
 const SPOTS_PER_CONTAINER = 8;
-const LEVELS_PER_PALLET = 6;
 async function ensureSpots(loc, container) {
   const { rows } = await pool.query(
     'SELECT COALESCE(MAX(slot), -1) AS max FROM warehouse_pallets WHERE location=$1 AND container=$2',
@@ -402,19 +401,20 @@ app.put('/api/place/:loc/pallet/:id/level/:level', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   if (!canWrite(req, res, loc)) return;
   const id = Number(req.params.id);
-  // Levels run 1 to 6 counted from the pallet deck upwards.
+  // Levels count from the pallet deck upwards, as far as that pallet goes.
   const level = Number(req.params.level);
-  if (!Number.isInteger(level) || level < 1 || level > LEVELS_PER_PALLET) {
-    return res.status(400).json({ error: `level must be 1 to ${LEVELS_PER_PALLET}` });
-  }
   const name = String(req.body?.name || '').trim();
   const qty = Number(req.body?.qty);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { rows: pal } = await client.query(
-      'SELECT container FROM warehouse_pallets WHERE id=$1 AND location=$2', [id, loc]);
+      'SELECT container, levels FROM warehouse_pallets WHERE id=$1 AND location=$2', [id, loc]);
     if (!pal[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'no such pallet' }); }
+    if (!Number.isInteger(level) || level < 1 || level > Number(pal[0].levels)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `This pallet has rows 1 to ${pal[0].levels}.` });
+    }
 
     // Whatever was on this level comes off, whether or not something replaces it.
     await client.query(
@@ -553,13 +553,14 @@ app.put('/api/place/:loc/move', async (req, res) => {
 });
 
 // ---- pallets standing inside a container ----
-// Rearranging the plan to match the room: along the container, or up and down a
-// stack. A swap rather than a renumber, so nothing else shifts underneath.
+// Rename a pallet, or change how many rows it has. Pallets are not all the same
+// height, so the count belongs to each one.
+const MAX_LEVELS = 12;
 app.put('/api/place/:loc/pallet/:id', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   if (!canWrite(req, res, loc)) return;
   const id = Number(req.params.id);
-  const { label, note, move } = req.body || {};
+  const { label, note, rows: rowsChange } = req.body || {};
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -567,29 +568,38 @@ app.put('/api/place/:loc/pallet/:id', async (req, res) => {
       'SELECT * FROM warehouse_pallets WHERE id=$1 AND location=$2 FOR UPDATE', [id, loc]);
     if (!me[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'no such pallet' }); }
     const p = me[0];
+
     if (label !== undefined || note !== undefined) {
       await client.query(
         'UPDATE warehouse_pallets SET label=COALESCE($2::text,label), note=COALESCE($3::text,note) WHERE id=$1',
         [id, label === undefined ? null : (String(label).trim() || null),
              note === undefined ? null : (String(note).trim() || null)]);
     }
-    if (move) {
-      const dSlot = move === 'left' ? -1 : move === 'right' ? 1 : 0;
-      const dLevel = move === 'down' ? -1 : move === 'up' ? 1 : 0;
-      const nSlot = p.slot + dSlot, nLevel = p.level + dLevel;
-      if (nSlot >= 0 && nLevel >= 0) {
-        const { rows: other } = await client.query(
-          'SELECT id FROM warehouse_pallets WHERE location=$1 AND container=$2 AND slot=$3 AND level=$4',
-          [loc, p.container, nSlot, nLevel]);
-        if (other[0]) {
-          // Park one out of the way first: the unique key would otherwise reject
-          // the halfway state where both claim the same square.
-          await client.query('UPDATE warehouse_pallets SET slot=-1, level=-1 WHERE id=$1', [p.id]);
-          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [other[0].id, p.slot, p.level]);
-          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [p.id, nSlot, nLevel]);
-        } else {
-          await client.query('UPDATE warehouse_pallets SET slot=$2, level=$3 WHERE id=$1', [p.id, nSlot, nLevel]);
+
+    if (rowsChange === 'add' || rowsChange === 'remove') {
+      const now = Number(p.levels);
+      if (rowsChange === 'add') {
+        if (now >= MAX_LEVELS) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: `A pallet cannot go above ${MAX_LEVELS} rows.` });
         }
+        await client.query('UPDATE warehouse_pallets SET levels=$2 WHERE id=$1', [id, now + 1]);
+      } else {
+        if (now <= 1) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'A pallet needs at least one row.' });
+        }
+        // Taking a row away must not quietly unplace what is on it, so the top
+        // row has to be emptied first.
+        const { rows: occupied } = await client.query(
+          'SELECT item_name FROM warehouse_stock WHERE pallet_id=$1 AND stack_pos=$2', [id, now]);
+        if (occupied[0]) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: `Row ${now} still has ${occupied[0].item_name} on it. Clear it first.`
+          });
+        }
+        await client.query('UPDATE warehouse_pallets SET levels=$2 WHERE id=$1', [id, now - 1]);
       }
     }
     await client.query('COMMIT');
@@ -597,7 +607,7 @@ app.put('/api/place/:loc/pallet/:id', async (req, res) => {
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('pallet update failed', e);
-    res.status(500).json({ error: 'could not move that pallet' });
+    res.status(500).json({ error: 'could not change that pallet' });
   } finally { client.release(); }
 });
 

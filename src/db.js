@@ -340,6 +340,10 @@ export async function initDb() {
       UNIQUE (location, container, slot, level)
     )`);
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pallet_id INTEGER');
+  // How many rows this particular pallet has. Six is the usual, but a short
+  // stack against the wall or a double-height one in the middle is normal, so
+  // it belongs to the pallet rather than to the app.
+  await pool.query('ALTER TABLE warehouse_pallets ADD COLUMN IF NOT EXISTS levels INTEGER NOT NULL DEFAULT 6');
   // Where on the pallet, as an ordering rather than a top/bottom flag: a pallet
   // can be three or four items deep, and the list order is the stack order.
   // 0 is the top.

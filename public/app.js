@@ -1105,8 +1105,9 @@ const PLACES = {
   }
 };
 const place = () => PLACES[whLoc];
-// A pallet is six high, counted from the deck: 1 sits on the boards, 6 is the top.
-const LEVELS = [1, 2, 3, 4, 5, 6];
+// Rows on a pallet, counted from the deck: 1 sits on the boards. Six by default,
+// but each pallet carries its own count — they are not all the same height.
+const levelsOf = p => Array.from({ length: Number(p?.levels) || 6 }, (_, i) => i + 1);
 
 // Vori counts every unit the business owns; the warehouse row counts one place.
 // What is left is what should be at the store. Both halves have to be in the same
@@ -1332,7 +1333,7 @@ function renderContainerPlan(){
       ${laidOut.map(p => {
         const rows = onPallet(p.id);
         // Highest first, so the card reads the way the pile looks.
-        const stack = LEVELS.slice().reverse()
+        const stack = levelsOf(p).slice().reverse()
           .map(l => rows.find(r => Number(r.stack_pos) === l)).filter(Boolean);
         const stale = rows.some(r => ageOf(r).band === 'stale');
         return `<button class="spot ${rows.length ? (stale ? 'stale' : 'ok') : 'open'}"
@@ -1369,7 +1370,7 @@ function renderPalletForm(){
       <div class="palformnum">${htmlEsc(p.label || (p.slot + 1))}</div>
       <datalist id="itemNames">${names.map(n => `<option value="${htmlEsc(n)}">`).join('')}</datalist>
       <div class="endmark">top of the pile</div>
-      ${LEVELS.slice().reverse().map(lvl => {
+      ${levelsOf(p).slice().reverse().map(lvl => {
         const r = rows.find(x => Number(x.stack_pos) === lvl);
         return `<div class="lvl">
           <div class="lvlrow">
@@ -1383,10 +1384,29 @@ function renderPalletForm(){
         </div>`;
       }).join('')}
       <div class="endmark front">bottom &mdash; on the pallet</div>
+      ${edit ? `<div class="rowctl">
+        <button onclick="whPalletRows(${p.id},'remove')">&minus; row</button>
+        <span>${levelsOf(p).length} rows</span>
+        <button onclick="whPalletRows(${p.id},'add')">+ row</button>
+      </div>` : ''}
       ${edit ? `<button class="addbtn" style="width:100%;margin-top:12px;" onclick="whSavePallet(${p.id})">Save this pallet</button>
                 <div class="hint" id="palSaveMsg" style="padding:10px 0 0;">Clear a row to take it off the pallet.</div>` : ''}
     </div>
     <button class="listlink" onclick="whBackToContainer()">&larr; back to the container</button>`;
+}
+
+async function whPalletRows(id, rows){
+  const msg = $('palSaveMsg');
+  const res = await fetch('/api/place/' + whLoc + '/pallet/' + id, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows })
+  });
+  if (!res.ok){
+    const b = await res.json().catch(() => ({}));
+    if (msg) msg.textContent = b.error || 'Could not change that.';
+    return;
+  }
+  await showWarehouse();
 }
 
 async function whMakeSpots(){
@@ -1401,7 +1421,8 @@ async function whSavePallet(id){
   const msg = $('palSaveMsg');
   if (msg) msg.textContent = 'Saving...';
   // Saved from the deck upwards, the way it is loaded.
-  for (const lvl of LEVELS){
+  const pal = whPals.find(x => Number(x.id) === Number(id));
+  for (const lvl of levelsOf(pal)){
     const name = $('n' + lvl).value.trim();
     const qty = $('q' + lvl).value.trim();
     if (name && qty === ''){ msg.textContent = `How many ${name}?`; return; }
