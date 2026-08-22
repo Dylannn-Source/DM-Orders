@@ -105,10 +105,34 @@ and applies nothing until you say so.
 
 ### The layout it expects
 
-Row 1 is a header. A row with only column A is a pallet heading, and every row
-below it belongs to that heading. Columns:
+Row 1 must be a heading row. **Columns are found by their heading, not by where
+they sit**, so they can be reordered, renamed loosely, or have new ones inserted
+between them without breaking the import. A heading it does not recognise is
+ignored rather than fatal.
 
-`Brand | Description | Size | Need @ Store | Storage Unit | PAR | Order | Next Door W.H. | Stocked W.H.`
+| It looks for | Also accepts |
+|---|---|
+| Description | Item, Product, Name |
+| Storage Unit | Storage, Warehouse, On Hand, Count, Qty |
+| Brand, Size, PAR | Par Level, Target |
+| Next Door W.H. | Next Door, Onsite |
+| Pallet | Pallets, Location, Bay, Spot |
+| Counted by | Unit, Counted as, By |
+
+Description and a count column are the only two required; without them the sync
+refuses and quotes the heading row back at you rather than importing nonsense.
+
+A row with no description and no count is a **group heading**, and everything
+below it belongs to that group until the next one. A pallet written on the
+heading row is taken as that group's pallet.
+
+**Counted by** handles the rows counted in packs rather than cases. Say `packs`
+(or `loose`, `each`) and the number lands as loose units instead of cases;
+anything else, or nothing, means cases. Without that column everything is cases,
+which is what it does today.
+
+A pallet number typed into the app by hand is kept where the sheet does not name
+one, and replaced where it does.
 
 An item's identity is Brand + Description + Size joined together, because
 Description alone is not unique — five brands sell Tom Yum Paste. Renaming any

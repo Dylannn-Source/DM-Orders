@@ -86,48 +86,110 @@ async function fetchTab(tab) {
   return body.values || [];
 }
 
+// Columns are found by their heading, not by where they sit.
+//
+// Angel is going to keep working in this sheet -- pallet numbers are coming, and
+// who knows what else. Reading column F as the par only holds until somebody
+// inserts a column, and then every row imports its par from the Order column and
+// its count from somewhere else, silently, across all 215 rows. A heading can be
+// moved, and things that get moved should not break.
+//
+// Spelling is forgiven, order is not required, and an unknown column is ignored
+// rather than fatal -- he can add whatever he likes.
+const FIELDS = {
+  brand:  ['brand'],
+  desc:   ['description', 'item', 'product', 'name', 'desc'],
+  size:   ['size', 'sz'],
+  need:   ['needstore', 'needatstore', 'need'],
+  qty:    ['storageunit', 'storage', 'warehouse', 'wh', 'onhand', 'count', 'qty', 'quantity'],
+  par:    ['par', 'parlevel', 'target'],
+  onsite: ['nextdoorwh', 'nextdoor', 'nextdoorwarehouse', 'onsite', 'onsitewh'],
+  pallet: ['pallet', 'palletnumber', 'palletno', 'pallets', 'location', 'spot', 'bay', 'row'],
+  // Some rows he counts by the case and some by the pack. If he ever says which
+  // in a column, believe it; until then everything is cases, as it is today.
+  unit:   ['unit', 'units', 'countedby', 'countedas', 'casepack', 'by']
+};
+
+const slug = v => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+export function readHeader(row) {
+  const at = {};
+  (row || []).forEach((cell, i) => {
+    const k = slug(cell);
+    if (!k) return;
+    for (const [field, names] of Object.entries(FIELDS)) {
+      if (at[field] !== undefined) continue;
+      if (names.includes(k)) { at[field] = i; return; }
+    }
+  });
+  return at;
+}
+
 const text = v => (v === null || v === undefined ? '' : String(v).trim());
 function num(v) {
   if (v === null || v === undefined || String(v).trim() === '') return null;
   const n = Number(String(v).replace(/[^0-9.-]/g, ''));
   return isFinite(n) ? n : null;
 }
+// "packs", "loose", "each" mean the number beside it is not a count of cases.
+const LOOSE = /^(pack|packs|loose|each|ea|unit|units|single|singles|pc|pcs|bottle|bottles)$/;
 
-// Angel's layout: a row with only column A is a category heading, and every row
-// under it belongs to that heading until the next one. Row 1 is the header.
-// Columns: Brand | Description | Size | Need @ Store | Storage Unit | PAR |
-//          Order | Next Door W.H. | Stocked W.H.
+// A row with a single piece of text and no numbers is a heading -- the pallet or
+// product group everything under it belongs to, until the next one.
 export function parseRows(rows) {
-  const items = [];
-  const categories = [];
-  const problems = [];
-  let cat = null;
+  const head = readHeader(rows[0]);
+  const items = [], categories = [], problems = [];
+  if (head.desc === undefined || head.qty === undefined) {
+    const saw = (rows[0] || []).map(text).filter(Boolean).join(', ') || '(the first row is empty)';
+    throw new Error('Could not find the columns in this sheet. It needs a heading row with '
+      + 'a description column and a count column. The first row reads: ' + saw);
+  }
+  const cell = (r, f) => head[f] === undefined ? '' : text(r[head[f]]);
+  const cellNum = (r, f) => head[f] === undefined ? null : num(r[head[f]]);
+
+  let cat = null, palletOf = {};
   rows.slice(1).forEach((r, i) => {
-    const line = i + 2;                                  // 1-based, past the header
-    const c = Array.from({ length: 9 }, (_, k) => text(r[k]));
-    if (c.every(x => !x)) return;
-    if (c[0] && c.slice(1).every(x => !x)) {
-      cat = c[0];
+    const line = i + 2;
+    const filled = (r || []).map(text).filter(Boolean);
+    if (!filled.length) return;
+    // A heading is a row naming a group and nothing else: no description, no
+    // count. It is not "exactly one cell" -- the whole point of a pallet column
+    // is that he writes the pallet on the heading row, and demanding a lone cell
+    // made every group he labelled stop being a group.
+    if (!cell(r, 'desc') && cellNum(r, 'qty') === null) {
+      const pal = cell(r, 'pallet');
+      const name = (r || []).map(text).find((v, i) => v && i !== head.pallet);
+      if (!name) return;
+      cat = name;
       if (!categories.includes(cat)) categories.push(cat);
+      if (pal) palletOf[cat] = pal;
       return;
     }
-    if (!c[1]) { problems.push(`Row ${line} has no description, skipped.`); return; }
-    const name = [c[0], c[1], c[2]].filter(Boolean).join(' ');
+    const desc = cell(r, 'desc');
+    if (!desc) { problems.push(`Row ${line} has no description, skipped.`); return; }
+    const brand = cell(r, 'brand') || null;
+    const size = cell(r, 'size') || null;
+    // A pallet written on any row is taken as the group's pallet: he is far more
+    // likely to write it once against the heading than on all thirty-eight rows.
+    const pal = cell(r, 'pallet');
+    if (pal && cat && !palletOf[cat]) palletOf[cat] = pal;
+    const loose = LOOSE.test(slug(cell(r, 'unit')));
     items.push({
-      name, brand: c[0] || null, size: c[2] || null, category: cat,
-      // Only ever used the first time an item appears. See the insert below.
-      qty: num(r[4]) ?? 0,
-      par: num(r[5]), onsite_par: num(r[7]), line
+      name: [brand, desc, size].filter(Boolean).join(' '),
+      brand, size, category: cat,
+      qty: cellNum(r, 'qty') ?? 0,
+      loose,                                  // the count is packs, not cases
+      unit: cell(r, 'unit') || null,
+      par: cellNum(r, 'par'), onsite_par: cellNum(r, 'onsite'), line
     });
   });
-  // Two rows composing to one name would silently become one item.
   const seen = new Map();
   for (const it of items) {
     const k = it.name.toLowerCase();
     if (seen.has(k)) problems.push(`Rows ${seen.get(k)} and ${it.line} are both "${it.name}".`);
     else seen.set(k, it.line);
   }
-  return { items, categories, problems };
+  return { items, categories, problems, pallets: palletOf, columns: Object.keys(head) };
 }
 
 export async function syncSheet({ dryRun = false } = {}) {
@@ -136,11 +198,13 @@ export async function syncSheet({ dryRun = false } = {}) {
   const all = [];
   const cats = [];
   const problems = [];
+  const pallets = {};
   for (const tab of TABS()) {
     const parsed = parseRows(await fetchTab(tab));
     parsed.items.forEach(i => all.push(i));
     parsed.categories.forEach(c => { if (!cats.includes(c)) cats.push(c); });
     parsed.problems.forEach(p => problems.push(`${tab}: ${p}`));
+    Object.assign(pallets, parsed.pallets);
   }
   // An empty read is far more likely to be a broken sheet than a real emptying,
   // and acting on it would wipe the catalogue. Refuse and say so.
@@ -176,6 +240,8 @@ export async function syncSheet({ dryRun = false } = {}) {
 
   const summary = {
     items: all.length, categories: cats.length,
+    pallets_named: Object.keys(pallets).length,
+    loose_counted: all.filter(i => i.loose).length,
     added: added.length, changed: changed.length, gone: gone.length,
     added_names: added.slice(0, 20), gone_names: gone.slice(0, 20),
     problems, dry_run: dryRun
@@ -187,10 +253,14 @@ export async function syncSheet({ dryRun = false } = {}) {
     await client.query('BEGIN');
     let pos = 0;
     for (const name of cats) {
+      // A pallet number typed here by hand is never wiped by a sheet that does
+      // not carry one; the sheet only wins where it actually says something.
       await client.query(
-        `INSERT INTO warehouse_categories (location, name, position) VALUES ($1,$2,$3)
-         ON CONFLICT (location, name) DO UPDATE SET position = EXCLUDED.position`,
-        [LOC, name, pos++]);
+        `INSERT INTO warehouse_categories (location, name, position, pallets) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (location, name) DO UPDATE SET
+           position = EXCLUDED.position,
+           pallets  = COALESCE(EXCLUDED.pallets, warehouse_categories.pallets)`,
+        [LOC, name, pos++, pallets[name] || null]);
     }
     for (const it of all) {
       // The count is taken from the sheet only when the item is new, because at
@@ -200,19 +270,29 @@ export async function syncSheet({ dryRun = false } = {}) {
       // them -- so a sync landing mid-count cannot undo anyone's work. Without
       // that first-time seed a fresh connection reads 215 items at zero and
       // calls two thirds of them under par, which is false and useless.
+      // Some rows he counts by the case and some by the pack. Where the sheet
+      // says which, the number lands in the matching column -- putting forty
+      // packs into the cases column would read as forty cases on the pallet.
+      // Where it says nothing, everything is cases, as it is today.
       await client.query(
         `INSERT INTO warehouse_stock
-           (location, item_name, brand, size, category, par, onsite_par, qty, unit, counted_at, counted_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'cases',NOW(),$9)
+           (location, item_name, brand, size, category, par, onsite_par,
+            qty, qty_units, pick_loose, unit, counted_at, counted_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,
+                 CASE WHEN $10::boolean THEN 0 ELSE $8::numeric END,
+                 CASE WHEN $10::boolean THEN $8::numeric ELSE 0 END,
+                 $10::boolean, COALESCE($11::text,'cases'), NOW(), $9)
          ON CONFLICT (location, item_name) DO UPDATE SET
            brand      = EXCLUDED.brand,
            size       = EXCLUDED.size,
            category   = EXCLUDED.category,
            par        = EXCLUDED.par,
            onsite_par = EXCLUDED.onsite_par,
+           -- once true it stays true: somebody taking loose here proved it
+           pick_loose = warehouse_stock.pick_loose OR EXCLUDED.pick_loose,
            updated_at = NOW()`,
         [LOC, it.name, it.brand, it.size, it.category, it.par, it.onsite_par,
-         it.qty, SOURCE]);
+         it.qty, SOURCE, !!it.loose, it.unit]);
     }
     await client.query('COMMIT');
   } catch (e) {
