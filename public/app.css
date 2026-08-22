@@ -607,3 +607,7 @@ body.simple .whhead { padding-bottom:6px; }
 .runline:last-child{border-bottom:0}
 .runline b{font-variant-numeric:tabular-nums;flex:0 0 auto;color:var(--ink)}
 .runline span{color:var(--muted)}
+.askparts{display:block;width:100%;margin-top:16px;padding:13px;font:inherit;font-size:15px;
+  cursor:pointer;color:var(--muted);background:none;border:1px dashed var(--line);
+  border-radius:12px}
+.ptile .ppart{font-size:11px;letter-spacing:.05em;color:var(--muted);font-style:italic}

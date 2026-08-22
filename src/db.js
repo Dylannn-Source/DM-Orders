@@ -371,6 +371,14 @@ export async function initDb() {
   // Rice 50lb" in a list of 215 is a spelling test, not a tool. With this on,
   // signing in lands straight on a pallet-by-pallet picker with no keyboard.
   await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS simple_mode BOOLEAN NOT NULL DEFAULT FALSE');
+
+  // Nearly everything leaves the warehouse as whole cases. Only a handful of
+  // pallets get picked at -- packs out of a box, half a case of sauce. Putting
+  // those controls on all 215 rows meant clutter everywhere to serve ten
+  // pallets, so they belong to the pallet instead. Off by default: a pallet is
+  // whole cases until somebody says otherwise, and anyone can say so from the
+  // warehouse floor the first time it comes up.
+  await pool.query('ALTER TABLE warehouse_categories ADD COLUMN IF NOT EXISTS part_cases BOOLEAN NOT NULL DEFAULT FALSE');
   await pool.query('CREATE INDEX IF NOT EXISTS warehouse_moves_run ON warehouse_moves (run_id)');
 
   // A container has floor space for eight pallets and no more, but the first

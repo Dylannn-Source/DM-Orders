@@ -960,12 +960,17 @@ app.post('/api/place/:loc/category', async (req, res) => {
 app.put('/api/place/:loc/category/:name', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   if (!canWrite(req, res, loc)) return;
-  const { pallets, move } = req.body || {};
+  const { pallets, move, part_cases } = req.body || {};
   try {
     if (pallets !== undefined) {
       await pool.query(
         'UPDATE warehouse_categories SET pallets=$3::text WHERE location=$1::text AND name=$2::text',
         [loc, req.params.name, String(pallets || '').trim() || null]);
+    }
+    if (part_cases !== undefined) {
+      await pool.query(
+        'UPDATE warehouse_categories SET part_cases=$3 WHERE location=$1::text AND name=$2::text',
+        [loc, req.params.name, !!part_cases]);
     }
     // Swap positions with the neighbour, so the walking order can be nudged
     // without renumbering everything.

@@ -1929,6 +1929,8 @@ function renderSimple(){
         <span class="pname">${htmlEsc(c)}</span>
         ${counts[c] ? `<span class="pgot">${counts[c]} taken</span>`
                     : `<span class="pn">${n} thing${n === 1 ? '' : 's'}</span>`}
+        ${(whCats.find(x => x.name === c) || {}).part_cases
+            ? '<span class="ppart">half cases &amp; loose packs</span>' : ''}
       </button>`;
     }).join('');
     wrap.innerHTML = basket
@@ -1943,17 +1945,35 @@ function renderSimple(){
 
   const rows = src.items.filter(r => r.category === simplePallet)
     .sort((a, b) => a.item_name.localeCompare(b.item_name));
+  const parts = !!(whCats.find(c => c.name === simplePallet) || {}).part_cases;
   wrap.innerHTML = basket
     + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
        <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
        <p class="bigsub">How many did you take?</p>
-       <div class="bigrows">${rows.map(r => bigRow(r, draft)).join('')}</div>`;
+       <div class="bigrows">${rows.map(r => bigRow(r, draft, parts)).join('')}</div>
+       ${parts ? '' : `<button class="askparts" onclick="simpleAskParts()">
+          Took half a case, or packs out of a box?</button>`}`;
+}
+
+// Turning it on from where it matters: standing at the pallet, the first time it
+// comes up. Nobody has to have predicted this pallet in a settings screen, and
+// once it is on it stays on.
+async function simpleAskParts(){
+  if (!confirm('Do you take half cases or loose packs from this pallet?\n\n'
+    + 'Saying yes adds those buttons here, for everybody, from now on.')) return;
+  const res = await fetch(`/api/place/warehouse/category/${encodeURIComponent(simplePallet)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ part_cases: true })
+  });
+  if (!res.ok){ alert('Could not change that. There may be no signal.'); return; }
+  await showWarehouse('warehouse').catch(() => {});
+  renderSimple();
 }
 
 // One item, and the three ways a case actually leaves a pallet: whole ones, half
 // of one, and loose packs out of an opened box. All of it on buttons, because the
 // moment a keyboard appears this stops being Andy's screen.
-function bigRow(r, draft){
+function bigRow(r, draft, parts){
   const line = draft.lines[r.item_name] || {};
   const n = Number(line.cases) || 0;
   const u = Number(line.units) || 0;
@@ -1969,7 +1989,7 @@ function bigRow(r, draft){
         <button class="plus" onclick="simpleBump('${name}',1)">+</button>
       </div>
     </div>
-    <div class="bigparts">
+    ${parts || half || u ? `<div class="bigparts">
       <button class="chip ${half ? 'on' : ''}" onclick="simpleHalf('${name}')">
         ${half ? '&#10003; ' : ''}half a case</button>
       ${u ? `<span class="chip loose">
@@ -1977,7 +1997,7 @@ function bigRow(r, draft){
                <b>${fmtQty(u)}</b> loose
                <button onclick="simpleLoose('${name}',1)">+</button></span>`
           : `<button class="chip" onclick="simpleLoose('${name}',1)">opened a box</button>`}
-    </div>
+    </div>` : ''}
   </div>`;
 }
 
@@ -2139,6 +2159,7 @@ function renderPick(){
   const loose = shown.filter(r => !r.category || !src.cats.includes(r.category));
   if (loose.length) groups.push({ name: '', rows: loose });
 
+  const partCats = new Set(whCats.filter(c => c.part_cases).map(c => c.name));
   const line = r => {
     const v = draft.lines[r.item_name] || {};
     return `<tr class="${Number(v.cases) > 0 || Number(v.units) > 0 ? 'picked' : ''}">
@@ -2146,8 +2167,10 @@ function renderPick(){
         <span class="pickhave">${fmtQty(r.qty)} on the pallet</span></td>
       <td><input class="g pcase" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
                  value="${v.cases ?? ''}"></td>
-      ${r.pack_size ? `<td><input class="g punit" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
-                 value="${v.units ?? ''}"></td>` : '<td class="gflag"></td>'}
+      ${partCats.has(r.category) || r.pack_size
+          ? `<td><input class="g punit" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
+                 value="${v.units ?? ''}"></td>`
+          : '<td class="gflag"></td>'}
     </tr>`;
   };
 
@@ -2763,8 +2786,22 @@ function renderPallets(){
                  onchange="whSetPallets('${esc(c.name)}', this.value)">
           <button class="vorilink" onclick="whDelCat('${esc(c.name)}')">Remove</button>
         </div>
+        ${whLoc === 'warehouse' ? `<div class="vitem">
+          <span class="viname">We take half cases or loose packs from this one
+            <span class="vihint">off for most pallets &mdash; it only adds buttons where they get used</span></span>
+          <input type="checkbox" ${c.part_cases ? 'checked' : ''} style="width:22px;height:22px;"
+                 onchange="whSetParts('${esc(c.name)}', this.checked)"></div>` : ''}
       </div>`).join('')}
     <button class="addbtn" style="width:100%;margin-top:10px;" onclick="whClosePallets()">Back to the warehouse</button>`;
+}
+
+async function whSetParts(name, on){
+  await fetch(`/api/place/${whLoc}/category/${encodeURIComponent(name)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ part_cases: !!on })
+  });
+  await showWarehouse();
+  whPallets = true; renderWarehouse();
 }
 
 async function whAddCat(){
