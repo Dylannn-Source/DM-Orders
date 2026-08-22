@@ -446,10 +446,12 @@ app.put('/api/place/:loc/pallet/:id/level/:level', async (req, res) => {
   } finally { client.release(); }
 });
 
-async function ensureCategory(loc, name) {
-  const { rows } = await pool.query(
+// Takes an optional client so a caller inside a transaction does not leave a
+// category behind when its own work rolls back.
+async function ensureCategory(loc, name, db = pool) {
+  const { rows } = await db.query(
     'SELECT COALESCE(MAX(position), -1) + 1 AS n FROM warehouse_categories WHERE location=$1', [loc]);
-  await pool.query(
+  await db.query(
     `INSERT INTO warehouse_categories (location, name, position) VALUES ($1,$2,$3)
      ON CONFLICT (location, name) DO NOTHING`, [loc, name, rows[0].n]);
 }
@@ -686,6 +688,86 @@ app.put('/api/place/:loc/item/:name/stack', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('stack move failed', e);
     res.status(500).json({ error: 'could not reorder that' });
+  } finally { client.release(); }
+});
+
+// Whole-grid save for the table view: one request for the screen rather than one
+// per cell, so a run of edits either all lands or none does.
+app.put('/api/place/:loc/bulk', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+  if (!rows) return res.status(400).json({ error: 'rows required' });
+  if (rows.length > 500) return res.status(400).json({ error: 'too many rows at once' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let added = 0, changed = 0;
+    for (const r of rows) {
+      const name = String(r.name || '').trim();
+      if (!name) continue;                       // a blank line is not an edit
+      const was = String(r.was || '').trim();
+      const qty = r.qty === '' || r.qty === null || r.qty === undefined ? null : Number(r.qty);
+      if (qty !== null && (!isFinite(qty) || qty < 0)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `"${name}" needs a number, not "${r.qty}".` });
+      }
+      const unit = String(r.unit || '').trim() || null;
+      const cat = String(r.category || '').trim() || null;
+      if (cat) await ensureCategory(loc, cat, client);
+
+      if (was && was !== name) {
+        // A rename collides if the new name is already on the list.
+        const { rows: clash } = await client.query(
+          'SELECT 1 FROM warehouse_stock WHERE location=$1 AND item_name=$2', [loc, name]);
+        if (clash[0]) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: `"${name}" is already on the list, so "${was}" cannot be renamed to it.` });
+        }
+        await client.query(
+          'UPDATE warehouse_stock SET item_name=$3 WHERE location=$1 AND item_name=$2', [loc, was, name]);
+      }
+
+      // Read first so the move log records a real count, not a rename or a
+      // retyped unit. Every parameter is cast: a bare $n tested with IS NULL
+      // leaves Postgres nothing to infer a type from.
+      const { rows: cur } = await client.query(
+        'SELECT qty FROM warehouse_stock WHERE location=$1 AND item_name=$2', [loc, name]);
+      const before = cur[0] ? Number(cur[0].qty) : null;
+      const counted = qty !== null && qty !== before;
+
+      if (cur[0]) {
+        await client.query(
+          `UPDATE warehouse_stock
+              SET qty = COALESCE($3::numeric, qty), unit = $4::text, category = $5::text,
+                  counted_at = CASE WHEN $6::boolean THEN NOW() ELSE counted_at END,
+                  counted_by = CASE WHEN $6::boolean THEN $7::text ELSE counted_by END,
+                  updated_at = NOW()
+            WHERE location=$1 AND item_name=$2`,
+          [loc, name, qty, unit, cat, counted, req.employee.name]);
+        changed++;
+      } else {
+        await client.query(
+          `INSERT INTO warehouse_stock (location, item_name, qty, unit, category, counted_at, counted_by)
+           VALUES ($1,$2,$3::numeric,$4::text,$5::text,NOW(),$6::text)`,
+          [loc, name, qty ?? 0, unit, cat, req.employee.name]);
+        added++;
+      }
+
+      if (counted || !cur[0]) {
+        await client.query(
+          `INSERT INTO warehouse_moves (location, item_name, kind, delta, qty_after, moved_by)
+           VALUES ($1,$2,'counted',NULL,$3::numeric,$4::text)`,
+          [loc, name, qty ?? 0, req.employee.name]);
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, added, changed });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('bulk save failed', e);
+    res.status(500).json({ error: 'could not save the table' });
   } finally { client.release(); }
 });
 

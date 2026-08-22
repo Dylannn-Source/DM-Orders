@@ -1087,6 +1087,15 @@ let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehous
 const AREA_LABELS = { warehouse: 'Offsite', coldstorage: 'Monkish' };
 const areaLabel = a => AREA_LABELS[a] || a;
 let whLoc = 'warehouse', whContainer = null, whPals = [], whPallet = null;
+// Two ways to look at the same stock. Cards answer "have we got it and where";
+// the table is for someone sitting down to enter a lot of rows at once. Kept per
+// person on their own phone, since it is a working preference, not a setting.
+let whView = (() => { try { return localStorage.getItem('dm_wh_view') || 'list'; } catch { return 'list'; } })();
+function whSetView(v){
+  whView = v;
+  try { localStorage.setItem('dm_wh_view', v); } catch {}
+  renderWarehouse();
+}
 
 // The two places differ only in what their sections are called and whether the
 // screen opens on a diagram of them.
@@ -1453,9 +1462,110 @@ function whAddHere(container){
 }
 function whBackToDiagram(){ whContainer = null; whOpen = null; renderWarehouse(); }
 
+// A spreadsheet of the same stock: tab across, tab down, one Save. No cards, no
+// tapping into anything — the shape Angel already works in. Grouped by pallet so
+// the pallet is a heading rather than a fourth column: three columns fit a phone
+// without clipping, the list reads in the order you walk the warehouse, and
+// adding an item is typing its name on the blank line under the right pallet.
+function renderTable(){
+  const wrap = $('whWrap');
+  whSummaryLine();
+  const q = ($('whSearch').value || '').trim().toLowerCase();
+  const searching = !!q;
+  const edit = canEdit(whLoc);
+  const shown = whStock.filter(r => !searching || r.item_name.toLowerCase().includes(q));
+
+  // Every pallet gets a section, even an empty one, so there is always somewhere
+  // to type. While searching, only sections with a hit are worth showing.
+  const groups = [];
+  for (const c of whCats.map(c => c.name)) {
+    const rows = shown.filter(r => r.category === c);
+    if (!searching || rows.length) groups.push({ name: c, rows });
+  }
+  const loose = shown.filter(r => !r.category || !whCats.some(c => c.name === r.category));
+  if (loose.length || (!searching && !groups.length)) groups.push({ name: '', rows: loose });
+
+  let i = 0;
+  const line = (r, cat) => {
+    const n = i++;
+    return `<tr>
+      <td><input class="g gname" data-i="${n}" data-cat="${htmlEsc(cat)}"
+                 data-was="${htmlEsc(r ? r.item_name : '')}" value="${htmlEsc(r ? r.item_name : '')}"
+                 ${edit ? '' : 'disabled'} placeholder="${r ? '' : '+ add an item here'}"></td>
+      <td><input class="g gqty" data-i="${n}" inputmode="decimal"
+                 value="${r ? fmtQty(r.qty) : ''}" ${edit ? '' : 'disabled'}></td>
+      <td><input class="g gunit" data-i="${n}" value="${htmlEsc(r ? (r.unit || '') : '')}"
+                 ${edit ? '' : 'disabled'} placeholder="cases"></td>
+    </tr>`;
+  };
+
+  const section = g => `
+    <tr class="ghead"><th colspan="3">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</th></tr>
+    ${g.rows.sort((a, b) => a.item_name.localeCompare(b.item_name)).map(r => line(r, g.name)).join('')}
+    ${edit && !searching ? [line(null, g.name), line(null, g.name)].join('') : ''}`;
+
+  wrap.innerHTML = `
+    ${whViewToggle()}
+    <div class="gridwrap">
+      <table class="grid">
+        <thead><tr><th>Item</th><th>Qty</th><th>Unit</th></tr></thead>
+        <tbody>${groups.map(section).join('')}</tbody>
+      </table>
+    </div>
+    ${searching ? '<div class="hint">Clear the search to add items.</div>' : ''}
+    ${edit ? `<button class="addbtn" style="width:100%;margin-top:12px;" onclick="whSaveTable()">Save the table</button>
+      <div class="hint" id="gridMsg">Type across, then down. Everything saves at once.</div>`
+    : `<div class="hint">${place().noEdit}</div>`}`;
+}
+
+function whViewToggle(){
+  return `<div class="viewtog">
+    <button class="${whView === 'list' ? 'on' : ''}" onclick="whSetView('list')">Cards</button>
+    <button class="${whView === 'table' ? 'on' : ''}" onclick="whSetView('table')">Table</button>
+  </div>`;
+}
+
+async function whSaveTable(){
+  const msg = $('gridMsg');
+  msg.textContent = 'Saving...';
+  const byIndex = {};
+  document.querySelectorAll('#whWrap .g').forEach(el => {
+    const i = el.dataset.i;
+    const r = byIndex[i] = byIndex[i] || { was: '' };
+    if (el.classList.contains('gname')) {
+      r.name = el.value.trim();
+      r.was = el.dataset.was || '';
+      r.category = el.dataset.cat || '';   // the section it was typed under
+    }
+    if (el.classList.contains('gqty'))  r.qty = el.value.trim();
+    if (el.classList.contains('gunit')) r.unit = el.value.trim();
+  });
+  // Only what actually changed, so a save is not 200 pointless writes.
+  const rows = Object.values(byIndex).filter(r => {
+    if (!r.name) return false;
+    const before = whStock.find(x => x.item_name === (r.was || r.name));
+    if (!before) return true;
+    return r.name !== before.item_name
+      || r.qty !== fmtQty(before.qty)
+      || r.unit !== (before.unit || '')
+      || r.category !== (before.category || '');
+  });
+  if (!rows.length){ msg.textContent = 'Nothing changed.'; return; }
+  const res = await fetch('/api/place/' + whLoc + '/bulk', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ msg.textContent = body.error || 'Could not save that.'; return; }
+  await showWarehouse();
+  const m = $('gridMsg');
+  if (m) m.textContent = `Saved. ${body.added} added, ${body.changed} updated.`;
+}
+
 function renderWarehouse(){
   if (whLinking) return renderLinkPanel();
   if (whPallets) return renderPallets();
+  if (whView === 'table' && !place().diagram) return renderTable();
   const searching = !!($('whSearch').value || '').trim();
   if (place().diagram && whContainer === null && !searching) return renderDiagram();
   if (place().diagram && whContainer && whContainer !== '*' && !searching){
@@ -1476,7 +1586,7 @@ function renderWarehouse(){
     if (whPallet === 'none') shown = shown.filter(r => !r.pallet_id);
     else if (whPallet !== null) shown = shown.filter(r => Number(r.pallet_id) === Number(whPallet));
   }
-  wrap.innerHTML = !whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
+  wrap.innerHTML = (place().diagram ? '' : whViewToggle()) + (!whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">${
         inContainer ? `Add to ${htmlEsc(inContainer)}` : 'Add something'}</div></div>
@@ -1497,7 +1607,7 @@ function renderWarehouse(){
       </div>
     </div>
     <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
-    <div class="hint" id="whMsg"></div>`;
+    <div class="hint" id="whMsg"></div>`);
 
   if (!shown.length && q){
     wrap.insertAdjacentHTML('beforeend', '<div class="emptystate">Nothing matches that.</div>');
