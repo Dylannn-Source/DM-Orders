@@ -1,0 +1,1755 @@
+{
+ "note": "Angel's warehouse sheet, imported once. Quantities are a snapshot; PARs are his.",
+ "categories": [
+  "JAMAICAN SODA",
+  "MALTS",
+  "RICE BAGS",
+  "RICE BOXES",
+  "FLOUR",
+  "COCONUT MILK",
+  "INDOMIE Noodles",
+  "TROPICS",
+  "CHILI PASTE",
+  "QUOC VIET",
+  "COCONUT WATER",
+  "ACKEE",
+  "CALLALOO",
+  "VEGETABLE BROTH",
+  "MILO",
+  "JAPANESE SODAS",
+  "PALLET 1",
+  "MAGGI",
+  "MAE PLOY",
+  "HEREFORD",
+  "SUNBIRD",
+  "PALLET 2",
+  "TEAS"
+ ],
+ "items": [
+  {
+   "name": "D&G Ginger Beer 12oz",
+   "brand": "D&G",
+   "desc": "Ginger Beer",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 27.0,
+   "par": 20.0
+  },
+  {
+   "name": "D&G Pinepple Ginger 12oz",
+   "brand": "D&G",
+   "desc": "Pinepple Ginger",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 14.0,
+   "par": 20.0
+  },
+  {
+   "name": "D&G Pineapple Soda 12oz",
+   "brand": "D&G",
+   "desc": "Pineapple Soda",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 9.0,
+   "par": 10.0
+  },
+  {
+   "name": "D&G Ting 12oz",
+   "brand": "D&G",
+   "desc": "Ting",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 9.0,
+   "par": 10.0
+  },
+  {
+   "name": "D&G Cream Soda 12oz",
+   "brand": "D&G",
+   "desc": "Cream Soda",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 1.0,
+   "par": 5.0
+  },
+  {
+   "name": "D&G Kola Champagne 12oz",
+   "brand": "D&G",
+   "desc": "Kola Champagne",
+   "size": "12oz",
+   "category": "JAMAICAN SODA",
+   "qty": 6.0,
+   "par": 10.0
+  },
+  {
+   "name": "D&G Kola Champagne 2L",
+   "brand": "D&G",
+   "desc": "Kola Champagne",
+   "size": "2L",
+   "category": "JAMAICAN SODA",
+   "qty": 5.0,
+   "par": 5.0
+  },
+  {
+   "name": "D&G Ginger Beer 2L",
+   "brand": "D&G",
+   "desc": "Ginger Beer",
+   "size": "2L",
+   "category": "JAMAICAN SODA",
+   "qty": 15.0,
+   "par": 5.0
+  },
+  {
+   "name": "D&G Pineapple Soda 2L",
+   "brand": "D&G",
+   "desc": "Pineapple Soda",
+   "size": "2L",
+   "category": "JAMAICAN SODA",
+   "qty": 7.0,
+   "par": 5.0
+  },
+  {
+   "name": "D&G Ting 2L",
+   "brand": "D&G",
+   "desc": "Ting",
+   "size": "2L",
+   "category": "JAMAICAN SODA",
+   "qty": 14.0,
+   "par": 5.0
+  },
+  {
+   "name": "Malta Hatuey Malt Hatuey",
+   "brand": "Malta Hatuey",
+   "desc": "Malt Hatuey",
+   "category": "MALTS",
+   "qty": 51.0,
+   "par": 20.0
+  },
+  {
+   "name": "Vitamalt Classic",
+   "brand": "Vitamalt",
+   "desc": "Classic",
+   "category": "MALTS",
+   "qty": 9.0,
+   "par": 20.0
+  },
+  {
+   "name": "Vitamalt Ginger",
+   "brand": "Vitamalt",
+   "desc": "Ginger",
+   "category": "MALTS",
+   "qty": 0,
+   "par": 10.0
+  },
+  {
+   "name": "Powermalt Malt",
+   "brand": "Powermalt",
+   "desc": "Malt",
+   "category": "MALTS",
+   "qty": 1.0,
+   "par": 10.0
+  },
+  {
+   "name": "Vitamalt Plus Ginseng",
+   "brand": "Vitamalt",
+   "desc": "Plus Ginseng",
+   "category": "MALTS",
+   "qty": 3.0,
+   "par": 10.0
+  },
+  {
+   "name": "Three Ladies Jasmine Rice 50lb",
+   "brand": "Three Ladies",
+   "desc": "Jasmine Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 11.0,
+   "par": 20.0
+  },
+  {
+   "name": "Three Ladies Jasmine Rice 25lb",
+   "brand": "Three Ladies",
+   "desc": "Jasmine Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 40.0,
+   "par": 30.0
+  },
+  {
+   "name": "Three Ladies Jasmine Rice 10lb",
+   "brand": "Three Ladies",
+   "desc": "Jasmine Rice",
+   "size": "10lb",
+   "category": "RICE BAGS",
+   "qty": 6.0,
+   "par": 3.0
+  },
+  {
+   "name": "Three Ladies Jasmine Broken Rice 25lb",
+   "brand": "Three Ladies",
+   "desc": "Jasmine Broken Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 0,
+   "par": 3.0
+  },
+  {
+   "name": "Three Ladies Sweet Rice 50lb",
+   "brand": "Three Ladies",
+   "desc": "Sweet Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 0,
+   "par": 3.0
+  },
+  {
+   "name": "Three Ladies Sweet Rice 25lb",
+   "brand": "Three Ladies",
+   "desc": "Sweet Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 0,
+   "par": 3.0
+  },
+  {
+   "name": "Sunlee Jasmine Rice 50lb",
+   "brand": "Sunlee",
+   "desc": "Jasmine Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 45.0,
+   "par": 20.0
+  },
+  {
+   "name": "Sunlee Jasmine Rice 25lb",
+   "brand": "Sunlee",
+   "desc": "Jasmine Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 51.0,
+   "par": 20.0
+  },
+  {
+   "name": "Sunlee Jasmine Rice 10lb",
+   "brand": "Sunlee",
+   "desc": "Jasmine Rice",
+   "size": "10lb",
+   "category": "RICE BAGS",
+   "qty": 3.0,
+   "par": 3.0
+  },
+  {
+   "name": "OF Jasmine Rice 50lb",
+   "brand": "OF",
+   "desc": "Jasmine Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 0,
+   "par": 0.0
+  },
+  {
+   "name": "OF Jasmine Rice 25lb",
+   "brand": "OF",
+   "desc": "Jasmine Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 0,
+   "par": 0.0
+  },
+  {
+   "name": "OF Broken Rice 50lb",
+   "brand": "OF",
+   "desc": "Broken Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 0
+  },
+  {
+   "name": "OF Broken Rice 25lb",
+   "brand": "OF",
+   "desc": "Broken Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 0
+  },
+  {
+   "name": "Pantai Jasmine Rice 2026 50lb",
+   "brand": "Pantai",
+   "desc": "Jasmine Rice 2026",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 0
+  },
+  {
+   "name": "Pantai Jasmine Rice 25lb",
+   "brand": "Pantai",
+   "desc": "Jasmine Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 0
+  },
+  {
+   "name": "Flying Good Jasmine Rice 50lb",
+   "brand": "Flying Good",
+   "desc": "Jasmine Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 0
+  },
+  {
+   "name": "Delta Star Parboiled Rice 50lb",
+   "brand": "Delta Star",
+   "desc": "Parboiled Rice",
+   "size": "50lb",
+   "category": "RICE BAGS",
+   "qty": 12.0,
+   "par": 20.0
+  },
+  {
+   "name": "Delta Star Parboiled Rice 25lb",
+   "brand": "Delta Star",
+   "desc": "Parboiled Rice",
+   "size": "25lb",
+   "category": "RICE BAGS",
+   "qty": 19.0,
+   "par": 20.0
+  },
+  {
+   "name": "Royal Basmati Rice 20lb",
+   "brand": "Royal",
+   "desc": "Basmati Rice",
+   "size": "20lb",
+   "category": "RICE BAGS",
+   "qty": 40.0,
+   "par": 10.0
+  },
+  {
+   "name": "Three Ladies Broken Jasmine Rice 5lb",
+   "brand": "Three Ladies",
+   "desc": "Broken Jasmine Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 40.0,
+   "par": 2.0
+  },
+  {
+   "name": "Three Ladies Jasmine Fragrant Rice 5lb",
+   "brand": "Three Ladies",
+   "desc": "Jasmine Fragrant Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 10.0,
+   "par": 2.0
+  },
+  {
+   "name": "Three Ladies Broken Rice 5lb",
+   "brand": "Three Ladies",
+   "desc": "Broken Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 1.0,
+   "par": 2.0
+  },
+  {
+   "name": "OF Jasmin Rice / Thai Hom Mali Rice 5lb",
+   "brand": "OF",
+   "desc": "Jasmin Rice / Thai Hom Mali Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 30.0
+  },
+  {
+   "name": "OF Thai Hom Mali Brown Rice 5lb",
+   "brand": "OF",
+   "desc": "Thai Hom Mali Brown Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 10.0
+  },
+  {
+   "name": "Golden Thai Dragon Broken Thai Jasmine Rice 5lb",
+   "brand": "Golden Thai Dragon",
+   "desc": "Broken Thai Jasmine Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 16.0
+  },
+  {
+   "name": "Parrot Premium Jasmine Rice(non GMO) 10lb",
+   "brand": "Parrot",
+   "desc": "Premium Jasmine Rice(non GMO)",
+   "size": "10lb",
+   "category": "RICE BOXES",
+   "qty": 5.0
+  },
+  {
+   "name": "Parrot Premium Jasmine Rice 5lb",
+   "brand": "Parrot",
+   "desc": "Premium Jasmine Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 27.0
+  },
+  {
+   "name": "Sunlee Jasmine Rice 5lb",
+   "brand": "Sunlee",
+   "desc": "Jasmine Rice",
+   "size": "5lb",
+   "category": "RICE BOXES",
+   "qty": 16.0,
+   "par": 2.0
+  },
+  {
+   "name": "Honeyville Semolina 50lb",
+   "brand": "Honeyville",
+   "desc": "Semolina",
+   "size": "50lb",
+   "category": "FLOUR",
+   "qty": 25.0,
+   "par": 5.0
+  },
+  {
+   "name": "Honeyville Wheat 50lb",
+   "brand": "Honeyville",
+   "desc": "Wheat",
+   "size": "50lb",
+   "category": "FLOUR",
+   "qty": 22.0,
+   "par": 5.0
+  },
+  {
+   "name": "Honeyville Oat 50lb",
+   "brand": "Honeyville",
+   "desc": "Oat",
+   "size": "50lb",
+   "category": "FLOUR",
+   "qty": 40.0,
+   "par": 5.0
+  },
+  {
+   "name": "Honeyville Rice 50lb",
+   "brand": "Honeyville",
+   "desc": "Rice",
+   "size": "50lb",
+   "category": "FLOUR",
+   "qty": 8.0,
+   "par": 2.0
+  },
+  {
+   "name": "Tropical Farms Coconut Milk 13.5oz",
+   "brand": "Tropical Farms",
+   "desc": "Coconut Milk",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 0,
+   "par": 80.0
+  },
+  {
+   "name": "Parrot Coconut Milk 13.5oz",
+   "brand": "Parrot",
+   "desc": "Coconut Milk",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 36.0,
+   "par": 30.0,
+   "onsite_par": 4.0
+  },
+  {
+   "name": "Parrot Coconut Cream 13.5oz",
+   "brand": "Parrot",
+   "desc": "Coconut Cream",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 6.0,
+   "par": 3.0,
+   "onsite_par": 2.0
+  },
+  {
+   "name": "Chaokoh Coconut Milk 13.5oz",
+   "brand": "Chaokoh",
+   "desc": "Coconut Milk",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 74.0,
+   "par": 20.0,
+   "onsite_par": 12.0
+  },
+  {
+   "name": "Chaokoh Coconut Milk 19oz",
+   "brand": "Chaokoh",
+   "desc": "Coconut Milk",
+   "size": "19oz",
+   "category": "COCONUT MILK",
+   "qty": 1.0,
+   "par": 2.0
+  },
+  {
+   "name": "Chaokoh Coconut Milk 96oz",
+   "brand": "Chaokoh",
+   "desc": "Coconut Milk",
+   "size": "96oz",
+   "category": "COCONUT MILK",
+   "qty": 0,
+   "par": 3.0,
+   "onsite_par": 2.0
+  },
+  {
+   "name": "AROY-D Coconut Milk 13.5oz",
+   "brand": "AROY-D",
+   "desc": "Coconut Milk",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 69.0,
+   "par": 20.0,
+   "onsite_par": 5.0
+  },
+  {
+   "name": "AROY-D Coconut Milk 96oz",
+   "brand": "AROY-D",
+   "desc": "Coconut Milk",
+   "size": "96oz",
+   "category": "COCONUT MILK",
+   "qty": 13.0,
+   "par": 3.0
+  },
+  {
+   "name": "Savoy Coconut Cream 13.5oz",
+   "brand": "Savoy",
+   "desc": "Coconut Cream",
+   "size": "13.5oz",
+   "category": "COCONUT MILK",
+   "qty": 0,
+   "par": 5.0
+  },
+  {
+   "name": "Savoy Coconut Cream 17.8oz",
+   "brand": "Savoy",
+   "desc": "Coconut Cream",
+   "size": "17.8oz",
+   "category": "COCONUT MILK",
+   "qty": 0,
+   "par": 3.0
+  },
+  {
+   "name": "Kara Coconut Cream 400ml",
+   "brand": "Kara",
+   "desc": "Coconut Cream",
+   "size": "400ml",
+   "category": "COCONUT MILK",
+   "qty": 3.0,
+   "par": 3.0
+  },
+  {
+   "name": "SKY FLAKES Sky Flakes",
+   "brand": "SKY FLAKES",
+   "desc": "Sky Flakes",
+   "category": "COCONUT MILK",
+   "qty": 15.0,
+   "par": 15.0
+  },
+  {
+   "name": "Special Chicken",
+   "desc": "Special Chicken",
+   "category": "INDOMIE Noodles",
+   "qty": 18.0,
+   "par": 16.0
+  },
+  {
+   "name": "Chicken Curry",
+   "desc": "Chicken Curry",
+   "category": "INDOMIE Noodles",
+   "qty": 29.0,
+   "par": 28.0
+  },
+  {
+   "name": "Onion Chicken",
+   "desc": "Onion Chicken",
+   "category": "INDOMIE Noodles",
+   "qty": 19.0,
+   "par": 25.0
+  },
+  {
+   "name": "Vegetable",
+   "desc": "Vegetable",
+   "category": "INDOMIE Noodles",
+   "qty": 0,
+   "par": 5.0
+  },
+  {
+   "name": "BBQ Chicken",
+   "desc": "BBQ Chicken",
+   "category": "INDOMIE Noodles",
+   "qty": 7.0,
+   "par": 10.0
+  },
+  {
+   "name": "Hot & Spicy",
+   "desc": "Hot & Spicy",
+   "category": "INDOMIE Noodles",
+   "qty": 20.0,
+   "par": 22.0
+  },
+  {
+   "name": "Original Fried Noodles",
+   "desc": "Original Fried Noodles",
+   "category": "INDOMIE Noodles",
+   "qty": 23.0,
+   "par": 15.0
+  },
+  {
+   "name": "White Beans in Syrup 12oz",
+   "desc": "White Beans in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 22.0
+  },
+  {
+   "name": "Red Mung Beans in Syrup 12oz",
+   "desc": "Red Mung Beans in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 1.0
+  },
+  {
+   "name": "Sugar Palm Fruit in Syrup 12oz",
+   "desc": "Sugar Palm Fruit in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 19.0
+  },
+  {
+   "name": "Sugar Palm Fruit in Syrup(kaong) 24oz",
+   "desc": "Sugar Palm Fruit in Syrup(kaong)",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 11.0
+  },
+  {
+   "name": "Pineapple Gel In Syrup 12oz",
+   "desc": "Pineapple Gel In Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 2.0
+  },
+  {
+   "name": "Pineapple Gel in Syrup 24oz",
+   "desc": "Pineapple Gel in Syrup",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 9.0
+  },
+  {
+   "name": "Purple Yam Jam 12oz",
+   "desc": "Purple Yam Jam",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 6.0
+  },
+  {
+   "name": "Coconut Sport Strings in Syrup(macapuno strings) 12oz",
+   "desc": "Coconut Sport Strings in Syrup(macapuno strings)",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 13.0
+  },
+  {
+   "name": "Coconut Sport Strings in Syrup 24oz",
+   "desc": "Coconut Sport Strings in Syrup",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 11.0
+  },
+  {
+   "name": "Coconut Sport Strings in Syrup 32oz",
+   "desc": "Coconut Sport Strings in Syrup",
+   "size": "32oz",
+   "category": "TROPICS",
+   "qty": 12.0
+  },
+  {
+   "name": "WHITE Coconut Gel in Syrup 12oz",
+   "desc": "WHITE Coconut Gel in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 9.0
+  },
+  {
+   "name": "Coconut Gel in Syrup 12oz",
+   "desc": "Coconut Gel in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 0
+  },
+  {
+   "name": "Coconut Gel in Syrup 24oz",
+   "desc": "Coconut Gel in Syrup",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 9.0
+  },
+  {
+   "name": "Coconut Jam (Matamis Na Bao) 12oz",
+   "desc": "Coconut Jam (Matamis Na Bao)",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 14.0
+  },
+  {
+   "name": "Fruit Mixture in Syrup 12oz",
+   "desc": "Fruit Mixture in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 23.0
+  },
+  {
+   "name": "Fruit Mixture in Syrup 24oz",
+   "desc": "Fruit Mixture in Syrup",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 8.0
+  },
+  {
+   "name": "Chick Peas in Syrup 12oz",
+   "desc": "Chick Peas in Syrup",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 8.0
+  },
+  {
+   "name": "Kapuso Macapuno Strings 32oz",
+   "brand": "Kapuso",
+   "desc": "Macapuno Strings",
+   "size": "32oz",
+   "category": "TROPICS",
+   "qty": 17.0
+  },
+  {
+   "name": "Kayumanggi Coconut Gelatin 12oz",
+   "brand": "Kayumanggi",
+   "desc": "Coconut Gelatin",
+   "size": "12oz",
+   "category": "TROPICS",
+   "qty": 24.0
+  },
+  {
+   "name": "Kayumanggi Coconut Sport Strings 32oz",
+   "brand": "Kayumanggi",
+   "desc": "Coconut Sport Strings",
+   "size": "32oz",
+   "category": "TROPICS",
+   "qty": 0
+  },
+  {
+   "name": "SUNLEE",
+   "desc": "SUNLEE",
+   "category": "TROPICS",
+   "qty": 0
+  },
+  {
+   "name": "Lotus Rootlets 24oz",
+   "desc": "Lotus Rootlets",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 0
+  },
+  {
+   "name": "golden Koi lotus rootlets in brine 24oz",
+   "desc": "golden Koi lotus rootlets in brine",
+   "size": "24oz",
+   "category": "TROPICS",
+   "qty": 0
+  },
+  {
+   "name": "OF Crab Paste With Bean Oil 7oz",
+   "brand": "OF",
+   "desc": "Crab Paste With Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 44.0
+  },
+  {
+   "name": "OF Shrimp Paste In Soybean Oil 7oz",
+   "brand": "OF",
+   "desc": "Shrimp Paste In Soybean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 43.0
+  },
+  {
+   "name": "OF Tom Yum Paste 8oz",
+   "brand": "OF",
+   "desc": "Tom Yum Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 34.0
+  },
+  {
+   "name": "OF Minced Crab In Spices 7oz",
+   "brand": "OF",
+   "desc": "Minced Crab In Spices",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 3.0
+  },
+  {
+   "name": "OF Minced Prawns In Spices 7oz",
+   "brand": "OF",
+   "desc": "Minced Prawns In Spices",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "OF Instant Beef Flavor Paste 8oz",
+   "brand": "OF",
+   "desc": "Instant Beef Flavor Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 12.0
+  },
+  {
+   "name": "Lee Shrimp Paste With Bean Oil 7oz",
+   "brand": "Lee",
+   "desc": "Shrimp Paste With Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 35.0
+  },
+  {
+   "name": "Lee Tom Yum Paste 8oz",
+   "brand": "Lee",
+   "desc": "Tom Yum Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 62.0
+  },
+  {
+   "name": "Lee Tom Yum Paste 16oz",
+   "brand": "Lee",
+   "desc": "Tom Yum Paste",
+   "size": "16oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Lee Vietnamese Beef Flavor Paste 8oz",
+   "brand": "Lee",
+   "desc": "Vietnamese Beef Flavor Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Lee Crab Paste With Bean Oil 7oz",
+   "brand": "Lee",
+   "desc": "Crab Paste With Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 24.0
+  },
+  {
+   "name": "Lee Spicy Crab Paste Bun Rieu Cua 8oz",
+   "brand": "Lee",
+   "desc": "Spicy Crab Paste Bun Rieu Cua",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 26.0
+  },
+  {
+   "name": "Lee Gia Vi Bo Kho 7oz",
+   "brand": "Lee",
+   "desc": "Gia Vi Bo Kho",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Lee Spicy Stewed Beef Flavor Paste 8oz",
+   "brand": "Lee",
+   "desc": "Spicy Stewed Beef Flavor Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 45.0
+  },
+  {
+   "name": "Lee Sate Trieu Chau 7oz",
+   "brand": "Lee",
+   "desc": "Sate Trieu Chau",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Lee Spicy Beef Flavor Paste 7oz",
+   "brand": "Lee",
+   "desc": "Spicy Beef Flavor Paste",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 24.0
+  },
+  {
+   "name": "Lee Fried Chili Paste 7oz",
+   "brand": "Lee",
+   "desc": "Fried Chili Paste",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 11.0
+  },
+  {
+   "name": "Lee Chili Paste 7oz",
+   "brand": "Lee",
+   "desc": "Chili Paste",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 12.0
+  },
+  {
+   "name": "Por Kwan Crab Paste With Bean Oil 7oz",
+   "brand": "Por Kwan",
+   "desc": "Crab Paste With Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Ground Chili With Fried Garlic 7oz",
+   "brand": "Por Kwan",
+   "desc": "Ground Chili With Fried Garlic",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Minced Crab In Spices 7oz",
+   "brand": "Por Kwan",
+   "desc": "Minced Crab In Spices",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Fried Chili Paste 7oz",
+   "brand": "Por Kwan",
+   "desc": "Fried Chili Paste",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 20.0
+  },
+  {
+   "name": "Por Kwan Instant Hot And Sour Paste 8oz",
+   "brand": "Por Kwan",
+   "desc": "Instant Hot And Sour Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Minced Prawns In Spices 7oz",
+   "brand": "Por Kwan",
+   "desc": "Minced Prawns In Spices",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Tom Yum Paste 16oz",
+   "brand": "Por Kwan",
+   "desc": "Tom Yum Paste",
+   "size": "16oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Por Kwan Pad Thai Sauce 8oz",
+   "brand": "Por Kwan",
+   "desc": "Pad Thai Sauce",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Dragonfly Fried Chili Paste 7oz",
+   "brand": "Dragonfly",
+   "desc": "Fried Chili Paste",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 5.0
+  },
+  {
+   "name": "Richin Tom Yam Paste 8oz",
+   "brand": "Richin",
+   "desc": "Tom Yam Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 11.0
+  },
+  {
+   "name": "Richin Pad Thai Sauce 8.4",
+   "brand": "Richin",
+   "desc": "Pad Thai Sauce",
+   "size": "8.4",
+   "category": "CHILI PASTE",
+   "qty": 4.0
+  },
+  {
+   "name": "Nang Fah Sate Trieu-Chau 7oz",
+   "brand": "Nang Fah",
+   "desc": "Sate Trieu-Chau",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 14.0
+  },
+  {
+   "name": "Nang Fah Pepper Sa-Te Sauce 7oz",
+   "brand": "Nang Fah",
+   "desc": "Pepper Sa-Te Sauce",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Sunlee Instant Tom Yum Paste 8oz",
+   "brand": "Sunlee",
+   "desc": "Instant Tom Yum Paste",
+   "size": "8oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Sunlee Instant Tom Yum Paste 16oz",
+   "brand": "Sunlee",
+   "desc": "Instant Tom Yum Paste",
+   "size": "16oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Sunlee Sate Trieu-Chau Sauce 7oz",
+   "brand": "Sunlee",
+   "desc": "Sate Trieu-Chau Sauce",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 44.0
+  },
+  {
+   "name": "Sunlee Sate Trieu-Chau Sauce 16oz",
+   "brand": "Sunlee",
+   "desc": "Sate Trieu-Chau Sauce",
+   "size": "16oz",
+   "category": "CHILI PASTE",
+   "qty": 0
+  },
+  {
+   "name": "Pantai Shrimp Paste With Soya Bean Oil 7oz",
+   "brand": "Pantai",
+   "desc": "Shrimp Paste With Soya Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 37.0
+  },
+  {
+   "name": "Pantai Crab Paste With Soya Bean Oil 7oz",
+   "brand": "Pantai",
+   "desc": "Crab Paste With Soya Bean Oil",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 48.0
+  },
+  {
+   "name": "Golden Koi Pepper Sa-T\u00e9 Sauce 7oz",
+   "brand": "Golden Koi",
+   "desc": "Pepper Sa-T\u00e9 Sauce",
+   "size": "7oz",
+   "category": "CHILI PASTE",
+   "qty": 23.0
+  },
+  {
+   "name": "Cot Pho Bo",
+   "desc": "Cot Pho Bo",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 24.0
+  },
+  {
+   "name": "Cot Pho Ga",
+   "desc": "Cot Pho Ga",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 12.0
+  },
+  {
+   "name": "Cot Sup Ga",
+   "desc": "Cot Sup Ga",
+   "category": "QUOC VIET",
+   "qty": 12.0,
+   "par": 6.0
+  },
+  {
+   "name": "Cot Hu Tieu",
+   "desc": "Cot Hu Tieu",
+   "category": "QUOC VIET",
+   "qty": 20.0,
+   "par": 12.0
+  },
+  {
+   "name": "Cot Bun Bo Hue",
+   "desc": "Cot Bun Bo Hue",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 12.0
+  },
+  {
+   "name": "Cot Bun Rieu",
+   "desc": "Cot Bun Rieu",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 12.0
+  },
+  {
+   "name": "Cot Sup Chay",
+   "desc": "Cot Sup Chay",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 6.0
+  },
+  {
+   "name": "Cot Xao Pad Thai",
+   "desc": "Cot Xao Pad Thai",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 4.0
+  },
+  {
+   "name": "Cot Lau Thai Lan",
+   "desc": "Cot Lau Thai Lan",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 4.0
+  },
+  {
+   "name": "Cot Canh Chua",
+   "desc": "Cot Canh Chua",
+   "category": "QUOC VIET",
+   "qty": 7.0,
+   "par": 4.0
+  },
+  {
+   "name": "Cot Bo Kho",
+   "desc": "Cot Bo Kho",
+   "category": "QUOC VIET",
+   "qty": 9.0,
+   "par": 12.0
+  },
+  {
+   "name": "Cot Bo Kho Chay",
+   "desc": "Cot Bo Kho Chay",
+   "category": "QUOC VIET",
+   "qty": 0,
+   "par": 6.0
+  },
+  {
+   "name": "GE SING KUNG (White Bags)",
+   "brand": "GE SING KUNG",
+   "desc": "(White Bags)",
+   "category": "QUOC VIET",
+   "qty": 0
+  },
+  {
+   "name": "Pha Lau (oriental mixed soy sauce) 2oz",
+   "brand": "Pha Lau",
+   "desc": "(oriental mixed soy sauce)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 72.0
+  },
+  {
+   "name": "Gia Vi Nau Bun Bo Hue (oriental flavor mixed chili) 2oz",
+   "brand": "Gia Vi Nau Bun Bo Hue",
+   "desc": "(oriental flavor mixed chili)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 0
+  },
+  {
+   "name": "Ca Ri Ni An Do (madras curry powder) 2oz",
+   "brand": "Ca Ri Ni An Do",
+   "desc": "(madras curry powder)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 141.0
+  },
+  {
+   "name": "Gia Vi Thit & Ca Kho To (spices for catfish sauce) 2oz",
+   "brand": "Gia Vi Thit & Ca Kho To",
+   "desc": "(spices for catfish sauce)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 17.0
+  },
+  {
+   "name": "Thinh Sai-Gon (roast rice powder) 2oz",
+   "brand": "Thinh Sai-Gon",
+   "desc": "(roast rice powder)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 289.0
+  },
+  {
+   "name": "Ca Ri Bo (\u00edt cay) (curry powder/mild) 2oz",
+   "brand": "Ca Ri Bo (\u00edt cay)",
+   "desc": "(curry powder/mild)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 110.0
+  },
+  {
+   "name": "Gia Vi Nau Bo Kho (oriental beef spices) 2oz",
+   "brand": "Gia Vi Nau Bo Kho",
+   "desc": "(oriental beef spices)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 34.0
+  },
+  {
+   "name": "Ngu Vi Huong (oriental fice spices) 2oz",
+   "brand": "Ngu Vi Huong",
+   "desc": "(oriental fice spices)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 6.0
+  },
+  {
+   "name": "Gia Vi Uop Nuong (roast pork, rib, beef, chicken) 2oz",
+   "brand": "Gia Vi Uop Nuong",
+   "desc": "(roast pork, rib, beef, chicken)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 20.0
+  },
+  {
+   "name": "Gia Vi Lam Canh Ga & Ech Chien Bo (chicken wings butter fry) 2oz",
+   "brand": "Gia Vi Lam Canh Ga & Ech Chien Bo",
+   "desc": "(chicken wings butter fry)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 10.0
+  },
+  {
+   "name": "Gia Vi Tom Rang Muoi (frying salty shrimp mix) 2oz",
+   "brand": "Gia Vi Tom Rang Muoi",
+   "desc": "(frying salty shrimp mix)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 39.0
+  },
+  {
+   "name": "Gia Vi Nau Pho (chinese special spices) 2oz",
+   "brand": "Gia Vi Nau Pho",
+   "desc": "(chinese special spices)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 58.0
+  },
+  {
+   "name": "Gia Vi Nau Mi Quang Phan Tiet (spices for vietnamese noodle) 2oz",
+   "brand": "Gia Vi Nau Mi Quang Phan Tiet",
+   "desc": "(spices for vietnamese noodle)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 90.0
+  },
+  {
+   "name": "(Red Bags)",
+   "desc": "(Red Bags)",
+   "category": "QUOC VIET",
+   "qty": 0
+  },
+  {
+   "name": "Tieu Hoi (fennel seed) 2oz",
+   "brand": "Tieu Hoi",
+   "desc": "(fennel seed)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 68.0
+  },
+  {
+   "name": "Ot Mieng (crushed chili) 2oz",
+   "brand": "Ot Mieng",
+   "desc": "(crushed chili)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 20.0
+  },
+  {
+   "name": "Bot Nghe (turmeric powder) 2oz",
+   "brand": "Bot Nghe",
+   "desc": "(turmeric powder)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 104.0
+  },
+  {
+   "name": "La Thom (whole bay leaves) 2oz",
+   "brand": "La Thom",
+   "desc": "(whole bay leaves)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 0
+  },
+  {
+   "name": "Ngo Om Nau Canh Chua (cumin) 2oz",
+   "brand": "Ngo Om Nau Canh Chua",
+   "desc": "(cumin)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 52.0
+  },
+  {
+   "name": "Ot Mau (paprika) 2oz",
+   "brand": "Ot Mau",
+   "desc": "(paprika)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 86.0
+  },
+  {
+   "name": "Ngo Om Nau Canh Chua (ground cumin seed) 2oz",
+   "brand": "Ngo Om Nau Canh Chua",
+   "desc": "(ground cumin seed)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 30.0
+  },
+  {
+   "name": "Hot Dieu Mau (annato seed) 2oz",
+   "brand": "Hot Dieu Mau",
+   "desc": "(annato seed)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 25.0
+  },
+  {
+   "name": "Hot Ngo (coriander) 2oz",
+   "brand": "Hot Ngo",
+   "desc": "(coriander)",
+   "size": "2oz",
+   "category": "QUOC VIET",
+   "qty": 0
+  },
+  {
+   "name": "Chaokoh Coconut Water 33.8oz",
+   "brand": "Chaokoh",
+   "desc": "Coconut Water",
+   "size": "33.8oz",
+   "category": "COCONUT WATER",
+   "qty": 22.0
+  },
+  {
+   "name": "Goya Agua de Coco con trocitos 17.6",
+   "brand": "Goya",
+   "desc": "Agua de Coco con trocitos",
+   "size": "17.6",
+   "category": "COCONUT WATER",
+   "qty": 2.0
+  },
+  {
+   "name": "Sunrite Ackee in Saltwater 19oz",
+   "brand": "Sunrite",
+   "desc": "Ackee in Saltwater",
+   "size": "19oz",
+   "category": "ACKEE",
+   "qty": 12.0
+  },
+  {
+   "name": "Grace Ackees in Saltwater 19oz",
+   "brand": "Grace",
+   "desc": "Ackees in Saltwater",
+   "size": "19oz",
+   "category": "ACKEE",
+   "qty": 11.0
+  },
+  {
+   "name": "Ashman's Ackees in Brine 19oz",
+   "brand": "Ashman's",
+   "desc": "Ackees in Brine",
+   "size": "19oz",
+   "category": "ACKEE",
+   "qty": 1.0
+  },
+  {
+   "name": "Double Duce Ackee in Brine 15oz",
+   "brand": "Double Duce",
+   "desc": "Ackee in Brine",
+   "size": "15oz",
+   "category": "ACKEE",
+   "qty": 14.0
+  },
+  {
+   "name": "Grace Callaloo Garden Vegetable 19oz",
+   "brand": "Grace",
+   "desc": "Callaloo Garden Vegetable",
+   "size": "19oz",
+   "category": "CALLALOO",
+   "qty": 8.0
+  },
+  {
+   "name": "Lee Vegetable Broth 28oz",
+   "brand": "Lee",
+   "desc": "Vegetable Broth",
+   "size": "28oz",
+   "category": "VEGETABLE BROTH",
+   "qty": 36.0
+  },
+  {
+   "name": "New Choice Chicken Broth NO MSG! 14oz",
+   "brand": "New Choice",
+   "desc": "Chicken Broth NO MSG!",
+   "size": "14oz",
+   "category": "VEGETABLE BROTH",
+   "qty": 8.0
+  },
+  {
+   "name": "New Choice Chicken Broth 14oz",
+   "brand": "New Choice",
+   "desc": "Chicken Broth",
+   "size": "14oz",
+   "category": "VEGETABLE BROTH",
+   "qty": 9.0
+  },
+  {
+   "name": "New Choice Flavored Beef Broth 14oz",
+   "brand": "New Choice",
+   "desc": "Flavored Beef Broth",
+   "size": "14oz",
+   "category": "VEGETABLE BROTH",
+   "qty": 2.0
+  },
+  {
+   "name": "New Choice Vegetable Broth 14oz",
+   "brand": "New Choice",
+   "desc": "Vegetable Broth",
+   "size": "14oz",
+   "category": "VEGETABLE BROTH",
+   "qty": 10.0
+  },
+  {
+   "name": "Milo Black - 6x1.4kg 1.4kg",
+   "brand": "Milo",
+   "desc": "Black - 6x1.4kg",
+   "size": "1.4kg",
+   "category": "MILO",
+   "qty": 27.0
+  },
+  {
+   "name": "Milo Green - 24x400g 400g",
+   "brand": "Milo",
+   "desc": "Green - 24x400g",
+   "size": "400g",
+   "category": "MILO",
+   "qty": 4.0
+  },
+  {
+   "name": "Boruto Ramune Grape 6.6oz",
+   "brand": "Boruto",
+   "desc": "Ramune Grape",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 2.0
+  },
+  {
+   "name": "Boruto Ramune Zakuro/pomogranite 6.6oz",
+   "brand": "Boruto",
+   "desc": "Ramune Zakuro/pomogranite",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 3.0
+  },
+  {
+   "name": "Aggretzuko Ramune Bloody Grapefruit 6.6oz",
+   "brand": "Aggretzuko",
+   "desc": "Ramune Bloody Grapefruit",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Naruto Ramune Lychee Flavor 6.6oz",
+   "brand": "Naruto",
+   "desc": "Ramune Lychee Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Naruto Ramune Raspberry Flavor 6.6oz",
+   "brand": "Naruto",
+   "desc": "Ramune Raspberry Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Naruto Ramune Melon Flavor 6.6oz",
+   "brand": "Naruto",
+   "desc": "Ramune Melon Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Naruto Ramune Blueberry Flavor 6.6oz",
+   "brand": "Naruto",
+   "desc": "Ramune Blueberry Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 2.0
+  },
+  {
+   "name": "Hello Kitty Ramune Pineapple Flavor 6.6oz",
+   "brand": "Hello Kitty",
+   "desc": "Ramune Pineapple Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 6.0
+  },
+  {
+   "name": "Hello Kitty Ramune Strawberry Flavor 6.6oz",
+   "brand": "Hello Kitty",
+   "desc": "Ramune Strawberry Flavor",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 2.0
+  },
+  {
+   "name": "Hello Kitty Ramune Soda w/ Marble 6.6oz",
+   "brand": "Hello Kitty",
+   "desc": "Ramune Soda w/ Marble",
+   "size": "6.6oz",
+   "category": "JAPANESE SODAS",
+   "qty": 4.0
+  },
+  {
+   "name": "Shinnippai Collagen Top 1.66oz",
+   "brand": "Shinnippai",
+   "desc": "Collagen Top",
+   "size": "1.66oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Tasty Melon Cream Soda 16.56oz",
+   "brand": "Tasty",
+   "desc": "Melon Cream Soda",
+   "size": "16.56oz",
+   "category": "JAPANESE SODAS",
+   "qty": 1.0
+  },
+  {
+   "name": "Maggi Seasoning (Liquid Glass bottle)(Black) 27oz",
+   "brand": "Maggi Seasoning",
+   "desc": "(Liquid Glass bottle)(Black)",
+   "size": "27oz",
+   "category": "MAGGI",
+   "qty": 1.0
+  },
+  {
+   "name": "Maggi Seasoning (Red and Yellow Label)(small) 6.7oz",
+   "brand": "Maggi Seasoning",
+   "desc": "(Red and Yellow Label)(small)",
+   "size": "6.7oz",
+   "category": "MAGGI",
+   "qty": 1.0
+  },
+  {
+   "name": "Mae Ploy Green Curry Paste 14oz",
+   "brand": "Mae Ploy",
+   "desc": "Green Curry Paste",
+   "size": "14oz",
+   "category": "MAE PLOY",
+   "qty": 0
+  },
+  {
+   "name": "Hereford Corned Beef 12oz",
+   "brand": "Hereford",
+   "desc": "Corned Beef",
+   "size": "12oz",
+   "category": "HEREFORD",
+   "qty": 9.0
+  },
+  {
+   "name": "Sunbird Hot & Spicy Szechwan Seasoning Mix 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Hot & Spicy Szechwan Seasoning Mix",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 6.0
+  },
+  {
+   "name": "Sunbird Hot & Spicy Kung Pao Chicken 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Hot & Spicy Kung Pao Chicken",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 5.0
+  },
+  {
+   "name": "Sunbird Stir Fry 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Stir Fry",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 4.0
+  },
+  {
+   "name": "Sunbird Fried Rice 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Fried Rice",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 4.0
+  },
+  {
+   "name": "Sunbird Beef & Broccoli 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Beef & Broccoli",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 2.0
+  },
+  {
+   "name": "Sunbird Chow Mein 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Chow Mein",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 2.0
+  },
+  {
+   "name": "Sunbird Sweet & Sour 0.75oz",
+   "brand": "Sunbird",
+   "desc": "Sweet & Sour",
+   "size": "0.75oz",
+   "category": "SUNBIRD",
+   "qty": 5.0
+  },
+  {
+   "name": "LOBO Nam Powder Seasoning Mix 2.4oz",
+   "brand": "LOBO",
+   "desc": "Nam Powder Seasoning Mix",
+   "size": "2.4oz",
+   "category": "SUNBIRD",
+   "qty": 1.0
+  },
+  {
+   "name": "Healthy Drink Instant Turmeric Drink 20g",
+   "brand": "Healthy Drink",
+   "desc": "Instant Turmeric Drink",
+   "size": "20g",
+   "category": "TEAS",
+   "qty": 7.0
+  },
+  {
+   "name": "Healthy Drink Instant Ginger Crystal 20g",
+   "brand": "Healthy Drink",
+   "desc": "Instant Ginger Crystal",
+   "size": "20g",
+   "category": "TEAS",
+   "qty": 20.0
+  },
+  {
+   "name": "Singabera Lemongrass ginger 5.1oz",
+   "brand": "Singabera",
+   "desc": "Lemongrass ginger",
+   "size": "5.1oz",
+   "category": "TEAS",
+   "qty": 12.0
+  },
+  {
+   "name": "Tea pot brand ginkgo biloba tea 1.40oz",
+   "brand": "Tea pot brand",
+   "desc": "ginkgo biloba tea",
+   "size": "1.40oz",
+   "category": "TEAS",
+   "qty": 18.0
+  },
+  {
+   "name": "Tea pot brand super relaxing tea 1.4oz",
+   "brand": "Tea pot brand",
+   "desc": "super relaxing tea",
+   "size": "1.4oz",
+   "category": "TEAS",
+   "qty": 3.0
+  },
+  {
+   "name": "Tea pot brand Herbal Drink-extra strenght 3.67oz",
+   "brand": "Tea pot brand",
+   "desc": "Herbal Drink-extra strenght",
+   "size": "3.67oz",
+   "category": "TEAS",
+   "qty": 40.0
+  },
+  {
+   "name": "Tea pot brand American Ultra herbal drink-extra strenght 1.83oz",
+   "brand": "Tea pot brand",
+   "desc": "American Ultra herbal drink-extra strenght",
+   "size": "1.83oz",
+   "category": "TEAS",
+   "qty": 28.0
+  },
+  {
+   "name": "Gold Kili natural ginger bag 2.2oz",
+   "brand": "Gold Kili",
+   "desc": "natural ginger bag",
+   "size": "2.2oz",
+   "category": "TEAS",
+   "qty": 4.0
+  },
+  {
+   "name": "Fortuna instant Honey Ginger Tea 12.6oz",
+   "brand": "Fortuna",
+   "desc": "instant Honey Ginger Tea",
+   "size": "12.6oz",
+   "category": "TEAS",
+   "qty": 0
+  },
+  {
+   "name": "Goldwili Instant Ginger tea 6.4oz",
+   "brand": "Goldwili",
+   "desc": "Instant Ginger tea",
+   "size": "6.4oz",
+   "category": "TEAS",
+   "qty": 28.0
+  },
+  {
+   "name": "T.A.S. Instant Ginger 0.60oz",
+   "brand": "T.A.S.",
+   "desc": "Instant Ginger",
+   "size": "0.60oz",
+   "category": "TEAS",
+   "qty": 28.0
+  },
+  {
+   "name": "Hung Phat bitter gourd tea 50g",
+   "brand": "Hung Phat",
+   "desc": "bitter gourd tea",
+   "size": "50g",
+   "category": "TEAS",
+   "qty": 6.0
+  },
+  {
+   "name": "Hung Phat corn tea 50g",
+   "brand": "Hung Phat",
+   "desc": "corn tea",
+   "size": "50g",
+   "category": "TEAS",
+   "qty": 3.0
+  },
+  {
+   "name": "Hung Phat noni tea 50g",
+   "brand": "Hung Phat",
+   "desc": "noni tea",
+   "size": "50g",
+   "category": "TEAS",
+   "qty": 2.0
+  }
+ ]
+}

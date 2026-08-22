@@ -345,6 +345,21 @@ export async function initDb() {
   // it belongs to the pallet rather than to the app.
   await pool.query('ALTER TABLE warehouse_pallets ADD COLUMN IF NOT EXISTS levels INTEGER NOT NULL DEFAULT 6');
 
+  // Angel's sheet names a thing with three fields, not one: Lee and Por Kwan both
+  // sell Tom Yum Paste, and Lee sells it in 8oz and 16oz. Description alone
+  // collides twenty-three ways across his list, so brand and size are kept as
+  // their own columns. The composed name stays the key -- it is unique across all
+  // 215 rows -- which leaves every existing route addressing items by name alone.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS brand TEXT');
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS size TEXT');
+  // What the storage unit should hold. Below it, the item wants reordering from
+  // the vendor -- the same arithmetic his spreadsheet does in column G.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS par NUMERIC');
+  // How much the onsite warehouse next door should hold. Angel restocks it from
+  // offsite twice a week, and this is how he knows how much to bring back. It is
+  // a different question from ordering, so it is a different number.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS onsite_par NUMERIC');
+
   // A container has floor space for eight pallets and no more, but the first
   // version of this let people add as many as they liked, so some containers
   // still carry a ninth and tenth from back then. An empty one is a leftover

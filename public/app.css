@@ -421,7 +421,10 @@ table.grid th{position:sticky;top:0;z-index:1;background:var(--card);
 table.grid td{padding:0;border-bottom:1px solid var(--line)}
 table.grid tr:last-child td{border-bottom:0}
 /* Widths in the header so the body rows inherit them and the columns line up. */
-table.grid th:nth-child(1){width:58%}
+table.grid th:nth-child(1){width:56%}
+td.gtext{padding:9px 8px 9px 6px;font-size:14px;line-height:1.3;color:var(--ink);
+  overflow-wrap:anywhere}
+tr.gshort td.gtext{font-weight:600}
 table.grid th:nth-child(2){width:18%}
 table.grid th:nth-child(3){width:24%}
 /* The pallet is a heading, not a column, so the row reads as one line. */
@@ -475,3 +478,25 @@ input.g::placeholder{color:var(--muted);opacity:.55}
   color:var(--muted);font-weight:600}
 .addfold{margin-top:14px}
 .addfold .listlink{display:block;width:100%;text-align:center;margin-top:2px}
+
+/* ---- pars: what the warehouse should hold, and what it is short of ---- */
+.brandline{font-size:12px;letter-spacing:.04em;color:var(--muted);margin-top:-1px}
+.parline{font-size:12px;letter-spacing:.03em;color:var(--muted);margin-top:2px}
+.parline.short{color:var(--accent);font-weight:600}
+.shelftrust b.short{color:var(--accent)}
+.whrow.short{border-left:4px solid var(--accent)}
+.orderbtn{display:block;width:100%;margin:0 0 12px;padding:13px 14px;font:inherit;
+  font-size:15px;text-align:left;cursor:pointer;color:#fff;background:var(--accent);
+  border:0;border-radius:12px}
+.orderbtn b{font-size:19px}
+table.grid th:nth-child(1){width:56%}
+td.gtext{padding:9px 8px 9px 6px;font-size:14px;line-height:1.3;color:var(--ink);
+  overflow-wrap:anywhere}
+tr.gshort td.gtext{font-weight:600}
+table.grid th:nth-child(2){width:17%}
+table.grid th:nth-child(3){width:17%}
+table.grid th:nth-child(4){width:8%}
+input.gpar{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+input.gbrand{font-size:13px;color:var(--muted)}
+td.gflag{font-size:13px;color:var(--accent);text-align:center;padding:0 4px}
+tr.gshort input.gqty{color:var(--accent);font-weight:700}

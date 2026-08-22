@@ -1224,6 +1224,25 @@ function whGroups(shown){
 // first question there is "which box is it in" and you cannot see inside one from
 // the door. Tapping a container drops into its contents.
 // "Container 2 · P3, stacked · on top" — the answer to where exactly is it.
+// Angel's spreadsheet says ORDER NOW when the storage unit is below its PAR.
+// Same sum here, with the shortfall spelled out so nobody has to work it out.
+function shortOf(row){
+  if (row.par === null || row.par === undefined) return null;
+  const par = Number(row.par), have = Number(row.qty) || 0;
+  return have < par ? { par, have, short: Math.round((par - have) * 100) / 100 } : null;
+}
+function parLine(row){
+  const s = shortOf(row);
+  if (s) return `<div class="parline short">Order now &mdash; ${fmtQty(s.short)} under a par of ${fmtQty(s.par)}</div>`;
+  if (row.par !== null && row.par !== undefined) return `<div class="parline">par ${fmtQty(row.par)}</div>`;
+  return '';
+}
+// Brand and size are what tell six Tom Yum Pastes apart.
+function brandLine(row){
+  const bits = [row.brand, row.size].filter(Boolean).map(htmlEsc);
+  return bits.length ? `<div class="brandline">${bits.join(' &middot; ')}</div>` : '';
+}
+
 function whereLine(row){
   // Offsite only needs this when the pallet is not already obvious from the
   // screen you are on — searching, or the flat table of everything.
@@ -1480,6 +1499,17 @@ async function whMakeSpots(){
   await showWarehouse();
 }
 
+async function whSetPar(name){
+  const box = [...document.querySelectorAll('.whrow')]
+    .find(d => d.querySelector('.whname')?.textContent === name)?.querySelector('.whpar');
+  const res = await fetch(`/api/place/${whLoc}/item/${encodeURIComponent(name)}/par`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ par: box ? box.value : '' })
+  });
+  if (!res.ok){ alert((await res.json().catch(() => ({}))).error || 'Could not save that.'); return; }
+  await showWarehouse();
+}
+
 async function whDropSpot(id){
   const p = whPals.find(x => Number(x.id) === Number(id));
   const n = whStock.filter(r => Number(r.pallet_id) === Number(id)).length;
@@ -1554,19 +1584,32 @@ function renderTable(){
   let i = 0;
   const line = (r, cat) => {
     const n = i++;
-    return `<tr>
-      <td><input class="g gname" data-i="${n}" data-cat="${htmlEsc(cat)}"
-                 data-was="${htmlEsc(r ? r.item_name : '')}" value="${htmlEsc(r ? r.item_name : '')}"
-                 ${edit ? '' : 'disabled'} placeholder="${r ? '' : '+ add an item here'}"></td>
+    const under = r && shortOf(r);
+    // No brand column: the name already starts with it, and on a phone the two
+    // together clipped both. It stays editable on the item's own card.
+    //
+    // An existing name is text, not a box. Angel's names run to thirty characters
+    // and an input cannot wrap, so half of them were cut off mid-word; as text it
+    // wraps and stays whole while the two boxes he is actually typing in keep
+    // their place. A blank line still gets a box, because that one needs typing.
+    return `<tr class="${under ? 'gshort' : ''}">
+      ${r
+        ? `<td class="gtext">${htmlEsc(r.item_name)}
+             <input type="hidden" class="g gname" data-i="${n}" data-cat="${htmlEsc(cat)}"
+                    data-was="${htmlEsc(r.item_name)}" value="${htmlEsc(r.item_name)}"></td>`
+        : `<td><input class="g gname" data-i="${n}" data-cat="${htmlEsc(cat)}" data-was=""
+                     ${edit ? '' : 'disabled'} placeholder="+ add an item here"></td>`}
       <td><input class="g gqty" data-i="${n}" inputmode="decimal"
                  value="${r ? fmtQty(r.qty) : ''}" ${edit ? '' : 'disabled'}></td>
-      <td><input class="g gunit" data-i="${n}" value="${htmlEsc(r ? (r.unit || '') : '')}"
-                 ${edit ? '' : 'disabled'} placeholder="cases"></td>
+      <td><input class="g gpar" data-i="${n}" inputmode="decimal"
+                 value="${r && r.par !== null && r.par !== undefined ? fmtQty(r.par) : ''}"
+                 ${edit ? '' : 'disabled'} placeholder="–"></td>
+      <td class="gflag">${under ? '\u25cf' : ''}</td>
     </tr>`;
   };
 
   const section = g => `
-    <tr class="ghead"><th colspan="3">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</th></tr>
+    <tr class="ghead"><th colspan="4">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</th></tr>
     ${g.rows.sort((a, b) => a.item_name.localeCompare(b.item_name)).map(r => line(r, g.name)).join('')}
     ${edit && !searching ? [line(null, g.name), line(null, g.name)].join('') : ''}`;
 
@@ -1574,7 +1617,7 @@ function renderTable(){
     ${whViewToggle()}
     <div class="gridwrap">
       <table class="grid">
-        <thead><tr><th>Item</th><th>Qty</th><th>Unit</th></tr></thead>
+        <thead><tr><th>Item</th><th>Qty</th><th>Par</th><th></th></tr></thead>
         <tbody>${groups.map(section).join('')}</tbody>
       </table>
     </div>
@@ -1603,17 +1646,18 @@ async function whSaveTable(){
       r.was = el.dataset.was || '';
       r.category = el.dataset.cat || '';   // the section it was typed under
     }
-    if (el.classList.contains('gqty'))  r.qty = el.value.trim();
-    if (el.classList.contains('gunit')) r.unit = el.value.trim();
+    if (el.classList.contains('gqty'))   r.qty = el.value.trim();
+    if (el.classList.contains('gpar'))   r.par = el.value.trim();
   });
   // Only what actually changed, so a save is not 200 pointless writes.
   const rows = Object.values(byIndex).filter(r => {
     if (!r.name) return false;
     const before = whStock.find(x => x.item_name === (r.was || r.name));
     if (!before) return true;
+    const wasPar = before.par === null || before.par === undefined ? '' : fmtQty(before.par);
     return r.name !== before.item_name
       || r.qty !== fmtQty(before.qty)
-      || r.unit !== (before.unit || '')
+      || r.par !== wasPar
       || r.category !== (before.category || '');
   });
   if (!rows.length){ msg.textContent = 'Nothing changed.'; return; }
@@ -1626,6 +1670,67 @@ async function whSaveTable(){
   await showWarehouse();
   const m = $('gridMsg');
   if (m) m.textContent = `Saved. ${body.added} added, ${body.changed} updated.`;
+}
+
+// Everything the storage unit is short of, which is the job Angel's column G
+// does and the reason he kept the spreadsheet. Grouped and copyable in the same
+// shape as the other tabs, so an order goes out the same way everywhere.
+let whOrderView = false;
+function whShowOrder(){ whOrderView = true; window.scrollTo(0, 0); renderWarehouse(); }
+function whHideOrder(){ whOrderView = false; renderWarehouse(); }
+
+function shortList(){
+  return whStock.map(r => ({ row: r, s: shortOf(r) })).filter(x => x.s)
+    .sort((a, b) => (a.row.category || '~').localeCompare(b.row.category || '~')
+                 || a.row.item_name.localeCompare(b.row.item_name));
+}
+
+function renderOrder(){
+  const wrap = $('whWrap');
+  whSummaryLine();
+  const list = shortList();
+  const withPar = whStock.filter(r => r.par !== null && r.par !== undefined).length;
+
+  if (!list.length){
+    wrap.innerHTML = `<div class="whsync"><button class="vorilink" onclick="whHideOrder()">&larr; ${place().sections}</button></div>
+      <div class="emptystate">${withPar
+        ? 'Nothing is under its par. Nothing to order.'
+        : 'No pars set yet, so nothing can be short. Open an item and set how many the warehouse should keep.'}</div>`;
+    return;
+  }
+  let last = null;
+  const rows = list.map(({ row, s }) => {
+    const head = row.category !== last
+      ? `<div class="palhead"><div class="palname">${htmlEsc(row.category || 'No pallet')}</div></div>` : '';
+    last = row.category;
+    return head + `<div class="whrow short">
+      <div class="whtop">
+        <span class="whname">${htmlEsc(row.item_name)}</span>
+        <span class="whqty"><b>${fmtQty(s.short)}</b> <span class="whunit">short</span></span>
+      </div>
+      ${brandLine(row)}
+      <div class="parline short">have ${fmtQty(s.have)} &middot; par ${fmtQty(s.par)}</div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="whsync"><button class="vorilink" onclick="whHideOrder()">&larr; ${place().sections}</button></div>
+    <div class="hint"><b>${list.length}</b> of ${withPar} items with a par are under it.</div>
+    <button class="addbtn" style="width:100%;margin-bottom:10px;" onclick="whCopyOrder()">Copy this order</button>
+    <div class="hint" id="whOrderMsg"></div>${rows}`;
+}
+
+function whCopyOrder(){
+  const d = new Date();
+  const lines = [`Dat Moi Warehouse Order - ${d.getMonth() + 1}/${d.getDate()}`];
+  let last = null;
+  shortList().forEach(({ row, s }) => {
+    if (row.category !== last){ lines.push('', row.category || 'No pallet'); last = row.category; }
+    lines.push(`${row.item_name}: ${fmtQty(s.short)}`);
+  });
+  const text = lines.join('\n');
+  const done = ok => { const m = $('whOrderMsg'); if (m) m.textContent = ok ? 'Copied.' : text; };
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+  else done(false);
 }
 
 // The front of Offsite: the pallets, what is on each, and whether those numbers
@@ -1646,6 +1751,7 @@ function renderShelfList(){
       : stale ? `<b>${stale}</b> not counted in a month`
       : aging ? `<b>${aging}</b> counted over a week ago`
       : 'all counted this week';
+    const under = g.rows.filter(r => shortOf(r)).length;
     const names = g.rows.slice(0, 4).map(r => htmlEsc(r.item_name)).join(', ')
       + (g.rows.length > 4 ? `, and ${g.rows.length - 4} more` : '');
     return `<button class="shelf ${band}" onclick="whOpenGroup('${esc(g.name)}')">
@@ -1653,12 +1759,17 @@ function renderShelfList(){
         <span class="shelfname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</span>
         <span class="shelfcount">${g.rows.length}</span>
       </div>
-      <div class="shelftrust ${band}">${trust}</div>
+      <div class="shelftrust ${band}">${trust}${under ? ` &middot; <b class="short">${under} under par</b>` : ''}</div>
       ${names ? `<div class="shelfnames">${names}</div>` : ''}
     </button>`;
   };
 
+  const short = shortList().length;
   wrap.innerHTML = whViewToggle()
+    + (short
+        ? `<button class="orderbtn" onclick="whShowOrder()">
+             <b>${short}</b> item${short === 1 ? '' : 's'} under par &mdash; see what to order</button>`
+        : '')
     + `<div class="hint">Tap a pallet to see what is on it. Or search above for one thing.</div>`
     + `<div class="shelves">${groups.map(card).join('')}</div>`
     + (edit ? `<button class="listlink" style="margin-top:12px;" onclick="whShowPallets()">Add or rename a pallet</button>` : '')
@@ -1673,6 +1784,7 @@ function renderWarehouse(){
   // Offsite opens on its pallets, the way Monkish opens on its containers: the
   // tab is for finding out what is out there, and a wall of every item at once
   // never answered that. Searching skips the pallets and answers straight.
+  if (!place().diagram && whOrderView && !searching) return renderOrder();
   if (!place().diagram && whGroup === null && !searching) return renderShelfList();
   if (place().diagram && whContainer === null && !searching) return renderDiagram();
   if (place().diagram && whContainer && whContainer !== '*' && !searching){
@@ -1751,7 +1863,9 @@ function renderWarehouse(){
         <span class="whname">${htmlEsc(row.item_name)}</span>
         <span class="whqty">${stockLine(row)}</span>
       </div>
+      ${brandLine(row)}
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
+      ${parLine(row)}
       ${whereLine(row)}
       ${row.pack_size ? `<div class="whtotal">${totalLine(row)}</div>` : ''}
       ${voriBlock(row)}
@@ -1767,6 +1881,13 @@ function renderWarehouse(){
           <button onclick="whMove('${esc(row.item_name)}','added')">Dropped off</button>
           <button onclick="whMove('${esc(row.item_name)}','taken')">Took some</button>
         </div>
+        ${place().diagram ? '' : `
+        <div class="whpick" style="margin-top:9px;padding-left:0;">How many should the warehouse keep?</div>
+        <div class="whform">
+          <input type="tel" inputmode="decimal" class="whpar" placeholder="par"
+                 value="${row.par === null || row.par === undefined ? '' : fmtQty(row.par)}">
+          <button class="whpackset" onclick="whSetPar('${esc(row.item_name)}')">Set</button>
+        </div>`}
         <div class="whpick" style="margin-top:9px;padding-left:0;">Which ${place().section} is this in?</div>
         <div class="whform">
           <input type="text" class="whcat" list="whCatList" value="${htmlEsc(row.category || '')}" placeholder="category">

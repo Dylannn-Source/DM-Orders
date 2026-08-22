@@ -627,6 +627,42 @@ app.delete('/api/place/:loc/pallet/:id', async (req, res) => {
   }
 });
 
+// What the storage unit should hold, and what the onsite warehouse next door
+// should hold. Two different jobs -- one says order more from the vendor, the
+// other says how much to bring back on the twice-weekly run -- so they are set
+// and cleared independently. Blank means "no target", which is not the same as
+// a target of zero.
+app.put('/api/place/:loc/item/:name/par', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const read = v => {
+    if (v === undefined) return undefined;               // not mentioned, leave it
+    if (v === null || String(v).trim() === '') return null;
+    const n = Number(v);
+    return isFinite(n) && n >= 0 ? n : NaN;
+  };
+  const par = read(req.body?.par);
+  const onsite = read(req.body?.onsite_par);
+  if (Number.isNaN(par) || Number.isNaN(onsite)) {
+    return res.status(400).json({ error: 'A PAR has to be a number, or blank for no target.' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warehouse_stock
+          SET par        = CASE WHEN $3::boolean THEN $4::numeric ELSE par END,
+              onsite_par = CASE WHEN $5::boolean THEN $6::numeric ELSE onsite_par END,
+              updated_at = NOW()
+        WHERE location = $1::text AND item_name = $2::text
+        RETURNING par, onsite_par`,
+      [loc, req.params.name, par !== undefined, par ?? null, onsite !== undefined, onsite ?? null]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true, ...rows[0] });
+  } catch (e) {
+    console.error('par update failed', e);
+    res.status(500).json({ error: 'could not save that target' });
+  }
+});
+
 // Put an item on a pallet, and say which end of it.
 app.put('/api/place/:loc/item/:name/pallet', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
@@ -713,8 +749,17 @@ app.put('/api/place/:loc/bulk', async (req, res) => {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: `"${name}" needs a number, not "${r.qty}".` });
       }
-      const unit = String(r.unit || '').trim() || null;
+      // Fields the caller did not send are left as they are, not blanked: the
+      // grid shows a subset of the columns and must not wipe the rest.
+      const unit = r.unit === undefined ? undefined : (String(r.unit || '').trim() || null);
       const cat = String(r.category || '').trim() || null;
+      const brand = r.brand === undefined ? undefined : (String(r.brand || '').trim() || null);
+      const par = r.par === undefined || String(r.par ?? '').trim() === ''
+        ? null : Number(r.par);
+      if (par !== null && (!isFinite(par) || par < 0)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `The PAR for "${name}" needs a number, not "${r.par}".` });
+      }
       if (cat) await ensureCategory(loc, cat, client);
 
       if (was && was !== name) {
@@ -740,18 +785,23 @@ app.put('/api/place/:loc/bulk', async (req, res) => {
       if (cur[0]) {
         await client.query(
           `UPDATE warehouse_stock
-              SET qty = COALESCE($3::numeric, qty), unit = $4::text, category = $5::text,
+              SET qty = COALESCE($3::numeric, qty),
+                  unit = CASE WHEN $11::boolean THEN $4::text ELSE unit END,
+                  category = $5::text,
+                  par = $8::numeric,
+                  brand = CASE WHEN $9::boolean THEN $10::text ELSE brand END,
                   counted_at = CASE WHEN $6::boolean THEN NOW() ELSE counted_at END,
                   counted_by = CASE WHEN $6::boolean THEN $7::text ELSE counted_by END,
                   updated_at = NOW()
             WHERE location=$1 AND item_name=$2`,
-          [loc, name, qty, unit, cat, counted, req.employee.name]);
+          [loc, name, qty, unit ?? null, cat, counted, req.employee.name,
+           par, brand !== undefined, brand ?? null, unit !== undefined]);
         changed++;
       } else {
         await client.query(
-          `INSERT INTO warehouse_stock (location, item_name, qty, unit, category, counted_at, counted_by)
-           VALUES ($1,$2,$3::numeric,$4::text,$5::text,NOW(),$6::text)`,
-          [loc, name, qty ?? 0, unit, cat, req.employee.name]);
+          `INSERT INTO warehouse_stock (location, item_name, qty, unit, category, par, brand, counted_at, counted_by)
+           VALUES ($1,$2,$3::numeric,$4::text,$5::text,$6::numeric,$7::text,NOW(),$8::text)`,
+          [loc, name, qty ?? 0, unit ?? 'cases', cat, par, brand ?? null, req.employee.name]);
         added++;
       }
 
