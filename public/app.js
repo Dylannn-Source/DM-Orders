@@ -1672,6 +1672,45 @@ async function whSaveTable(){
   if (m) m.textContent = `Saved. ${body.added} added, ${body.changed} updated.`;
 }
 
+// Folded shut under whatever is on screen: you come to Offsite to look far more
+// often than to add, but there always has to be a way in.
+function addFoldHtml(edit, target){
+  if (!edit) return '';
+  return whAddOpen
+    ? `<div class="addfold">${addFormHtml(target)}
+         <button class="listlink" onclick="whToggleAdd()">Never mind</button></div>`
+    : `<button class="listlink addfoldbtn" onclick="whToggleAdd()">+ Add something${
+         target ? ' to ' + htmlEsc(target) : ' to the warehouse'}</button>`;
+}
+
+// The one add form, used by whichever screen is offering it. It takes the
+// pallet it should land on, which is blank on the front screen where no pallet
+// is implied and the person has to say.
+function addFormHtml(target){
+  return `
+    <div class="vgroup">
+      <div class="vgroup-head" style="cursor:default;"><div class="oldname">${
+        target ? `Add to ${htmlEsc(target)}` : 'Add something'}</div></div>
+      <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
+        <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
+      </div>
+      <div class="vitem">
+        <input type="text" class="textinput" id="whNewCat" list="whCatList"
+               value="${htmlEsc(target || '')}" placeholder="Which ${place().section}?">
+        <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
+      </div>
+      <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
+      <div class="vitem">
+        <input type="tel" inputmode="decimal" class="textinput" id="whNewPack" placeholder="e.g. 24">
+        <input type="text" class="textinput" id="whNewUnitName" placeholder="bottles / packs">
+      </div>
+    </div>
+    <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
+    <div class="hint" id="whMsg"></div>`;
+}
+
 // Everything the storage unit is short of, which is the job Angel's column G
 // does and the reason he kept the spreadsheet. Grouped and copyable in the same
 // shape as the other tabs, so an order goes out the same way everywhere.
@@ -1764,6 +1803,23 @@ function renderShelfList(){
     </button>`;
   };
 
+  // An empty warehouse used to be fine, because the add form sat on this screen.
+  // Once it moved onto a pallet, a warehouse with no pallets had nothing to tap
+  // and no way in -- the screen just said "tap a pallet" at somebody who had
+  // none. So say what is actually going on, and offer the way forward.
+  if (!whStock.length && !groups.length){
+    wrap.innerHTML = whViewToggle() + `
+      <div class="emptystate">
+        <b>Nothing in the offsite warehouse yet.</b>
+        <div>${edit
+          ? 'Add the first thing below, or set up your pallets first and add onto them.'
+          : 'Somebody with warehouse access needs to put the first items in.'}</div>
+      </div>`
+      + (edit ? `<button class="listlink" style="margin-top:12px;" onclick="whShowPallets()">Set up pallets</button>` : '')
+      + addFoldHtml(edit, '');
+    return;
+  }
+
   const short = shortList().length;
   wrap.innerHTML = whViewToggle()
     + (short
@@ -1773,6 +1829,7 @@ function renderShelfList(){
     + `<div class="hint">Tap a pallet to see what is on it. Or search above for one thing.</div>`
     + `<div class="shelves">${groups.map(card).join('')}</div>`
     + (edit ? `<button class="listlink" style="margin-top:12px;" onclick="whShowPallets()">Add or rename a pallet</button>` : '')
+    + addFoldHtml(edit, '')
     + moveLogHtml(6);
 }
 
@@ -1817,28 +1874,7 @@ function renderWarehouse(){
   // "which pallet?" anyway.
   const lookingUp = !place().diagram && (!!q || whGroup === null);
   const offerAdd = whEdit && !lookingUp;
-  const addForm = !offerAdd ? '' : `
-    <div class="vgroup">
-      <div class="vgroup-head" style="cursor:default;"><div class="oldname">${
-        inContainer || inShelf ? `Add to ${htmlEsc(inContainer || inShelf)}` : 'Add something'}</div></div>
-      <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
-      <div class="vitem">
-        <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
-        <input type="tel" inputmode="decimal" class="textinput" id="whNewQty" placeholder="How many">
-      </div>
-      <div class="vitem">
-        <input type="text" class="textinput" id="whNewCat" list="whCatList"
-               value="${htmlEsc(inContainer || inShelf || '')}" placeholder="Which ${place().section}?">
-        <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
-      </div>
-      <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
-      <div class="vitem">
-        <input type="tel" inputmode="decimal" class="textinput" id="whNewPack" placeholder="e.g. 24">
-        <input type="text" class="textinput" id="whNewUnitName" placeholder="bottles / packs">
-      </div>
-    </div>
-    <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
-    <div class="hint" id="whMsg"></div>`;
+  const addForm = offerAdd ? addFormHtml(inContainer || inShelf) : '';
 
   // Offsite puts the form under the boxes and folded shut: you open a pallet to
   // see what is on it far more often than to put something new on it. Monkish
@@ -1926,13 +1962,7 @@ function renderWarehouse(){
     });
   }
 
-  if (foldAdd && offerAdd){
-    wrap.insertAdjacentHTML('beforeend', whAddOpen
-      ? `<div class="addfold">${addForm}
-           <button class="listlink" onclick="whToggleAdd()">Never mind</button></div>`
-      : `<button class="listlink addfoldbtn" onclick="whToggleAdd()">+ Add something to
-           ${whGroup ? htmlEsc(whGroup) : 'the warehouse'}</button>`);
-  }
+  if (foldAdd && offerAdd) wrap.insertAdjacentHTML('beforeend', addFoldHtml(true, inShelf || ''));
   if (!q) wrap.insertAdjacentHTML('beforeend', moveLogHtml(25));
 }
 
