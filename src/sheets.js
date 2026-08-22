@@ -56,8 +56,21 @@ async function fetchTab(tab) {
   if (!res.ok) {
     const msg = body?.error?.message || `HTTP ${res.status}`;
     // Google's own wording is accurate but not actionable, so say what to do.
+    // These are all 403s and they need completely different fixes, so the
+    // catch-all must not be the sharing one -- an unenabled API told you to go
+    // and change a sharing setting that was already correct.
+    const reason = body?.error?.details?.find(d => d.reason)?.reason || '';
+    if (res.status === 403 && (reason === 'SERVICE_DISABLED' || /has not been used in project|is disabled/i.test(msg))) {
+      throw new Error('The Google Sheets API is not switched on for this Google Cloud project. '
+        + 'Enable it at https://console.cloud.google.com/apis/library/sheets.googleapis.com '
+        + 'and try again. Until it is on, it will not appear in the key\u2019s API-restriction list either.');
+    }
     if (res.status === 403 && /consumer|unregistered/i.test(msg)) {
       throw new Error('GOOGLE_API_KEY is missing or not allowed to use the Sheets API.');
+    }
+    if (res.status === 403 && /API_KEY_SERVICE_BLOCKED|blocked/i.test(msg + reason)) {
+      throw new Error('This key is restricted and the Sheets API is not on its allowed list. '
+        + 'Edit the key, API restrictions, tick Google Sheets API.');
     }
     if (res.status === 403) {
       throw new Error('The sheet is not shared. Open it, Share, "Anyone with the link" → Viewer.');
