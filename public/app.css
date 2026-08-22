@@ -523,7 +523,8 @@ table.grid tr.picked input.pcase{color:var(--accent)}
 /* ---- simple mode: one job, big targets, no keyboard ---- */
 body.simple #deptBar,
 body.simple #footerBar,
-body.simple .searchrow { display:none !important; }
+body.simple .searchrow,
+body.picking .searchrow { display:none !important; }
 body.simple .whhead { padding-bottom:6px; }
 
 .bigask{font-size:27px;font-weight:600;letter-spacing:-.02em;margin:16px 0 2px;color:var(--ink)}

@@ -1229,7 +1229,7 @@ async function showWarehouse(loc){
     b.classList.toggle('active', b.dataset.dept === whLoc));
   const cfg = place();
   $('whEyebrow').innerHTML = cfg.eyebrow;
-  $('whTitle').textContent = me?.simple_mode ? 'Taking things' : cfg.title;
+  $('whTitle').textContent = cfg.title;
   $('whSearch').placeholder = cfg.search;
   $('warehouseView').style.display = 'block';
   $('footerBar').style.display = 'none';
@@ -1357,7 +1357,7 @@ function whereLine(row){
 function whSummaryLine(){
   // None of this means anything to somebody whose only job is to say what he
   // carried out of the door.
-  if (me?.simple_mode){ $('whSummary').innerHTML = ''; return; }
+  if (me?.simple_mode || whPicking){ $('whSummary').innerHTML = ''; return; }
   const stale = whStock.filter(r => ageOf(r).band === 'stale').length;
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
   const linked = whStock.filter(r => r.vori_product_id).length;
@@ -1888,6 +1888,10 @@ function simpleSrc(){
 
 function renderSimple(){
   const wrap = $('whWrap');
+  // Cleared here rather than trusted to whSummaryLine, which this screen never
+  // calls -- the item counts and the two "not connected" notices were simply
+  // left behind by whatever screen came before.
+  $('whSummary').innerHTML = '';
   if (simpleSaved !== null){
     wrap.innerHTML = `<div class="bigdoneview">
       <div class="tick">&#10003;</div>
@@ -1895,6 +1899,8 @@ function renderSimple(){
       <p class="bigsub">${simpleSaved} thing${simpleSaved === 1 ? '' : 's'} written down.
         Nothing else to do.</p>
       <button class="bigrestart" onclick="simpleRestart()">Take something else</button>
+      ${me?.simple_mode ? '' :
+        `<div><button class="listlink" style="margin-top:14px;" onclick="whStopPick()">Back to the warehouse</button></div>`}
     </div>`;
     return;
   }
@@ -1936,6 +1942,8 @@ function renderSimple(){
       </button>`;
     }).join('');
     wrap.innerHTML = basket
+      + (me?.simple_mode ? ''
+         : `<button class="bigback" onclick="whStopPick()">&larr; Back to ${place().sections}</button>`)
       + `<h2 class="bigask">What did you take?</h2>
          <p class="bigsub">Tap the pallet you took it from.</p>
          <div class="ptiles">${tiles}</div>
@@ -2138,7 +2146,7 @@ const PICK_DRAFT = 'dm_pick_draft';    // what has been typed but not yet sent
 
 let whPicking = false;
 function whStartPick(){ whPicking = true; whGroup = null; window.scrollTo(0,0); renderWarehouse(); }
-function whStopPick(){ whPicking = false; renderWarehouse(); }
+function whStopPick(){ whPicking = false; simplePallet = null; simpleReveal = null; renderWarehouse(); }
 
 function pickDraft(){
   try { return JSON.parse(localStorage.getItem(PICK_DRAFT) || 'null') || newDraft(); }
@@ -2170,137 +2178,12 @@ function cachedList(){
   try { return JSON.parse(localStorage.getItem(PICK_LIST) || 'null'); } catch { return null; }
 }
 
-function renderPick(){
-  const wrap = $('whWrap');
-  whSummaryLine();
-  const draft = pickDraft();
-  // Live data when we have it, the cached copy when we do not.
-  const cache = cachedList();
-  const live = whStock.length ? { items: whStock, cats: whCats.map(c => c.name), at: null } : null;
-  const src = live || (cache ? { items: cache.items, cats: cache.cats, at: cache.at } : null);
-
-  if (!src){
-    wrap.innerHTML = `<div class="whsync"><button class="vorilink" onclick="whStopPick()">&larr; back</button></div>
-      <div class="emptystate"><b>No list on this phone yet.</b>
-      <div>Open Offsite once somewhere with signal, then it will work out here.</div></div>`;
-    return;
-  }
-
-  const filled = Object.values(draft.lines).filter(v => Number(v.cases) > 0 || Number(v.units) > 0).length;
-  // Two hundred rows is a long scroll for twenty items, and the search box above
-  // is already there. Filtering is done here on the phone's own copy, so it works
-  // with no signal like everything else on this screen.
-  const q = ($('whSearch').value || '').trim().toLowerCase();
-  const hit = r => !q || r.item_name.toLowerCase().includes(q)
-                      || (r.category || '').toLowerCase().includes(q);
-  const shown = src.items.filter(r => hit(r) || draft.lines[r.item_name]);
-  const groups = [];
-  for (const c of src.cats){
-    const rows = shown.filter(r => r.category === c);
-    if (rows.length) groups.push({ name: c, rows });
-  }
-  const loose = shown.filter(r => !r.category || !src.cats.includes(r.category));
-  if (loose.length) groups.push({ name: '', rows: loose });
-
-  const partCats = new Set(whCats.filter(c => c.part_cases).map(c => c.name));
-  const line = r => {
-    const v = draft.lines[r.item_name] || {};
-    return `<tr class="${Number(v.cases) > 0 || Number(v.units) > 0 ? 'picked' : ''}">
-      <td class="gtext">${htmlEsc(r.item_name)}
-        <span class="pickhave">${fmtQty(r.qty)} on the pallet</span></td>
-      <td><input class="g pcase" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
-                 value="${v.cases ?? ''}"></td>
-      ${partCats.has(r.category) || r.pack_size
-          ? `<td><input class="g punit" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
-                 value="${v.units ?? ''}"></td>`
-          : '<td class="gflag"></td>'}
-    </tr>`;
-  };
-
-  wrap.innerHTML = `
-    <div class="whsync"><button class="vorilink" onclick="whStopPick()">&larr; ${place().sections}</button>
-      <b>Loading the van</b></div>
-    ${src.at ? `<div class="pickold">Working from the list saved
-       ${new Date(src.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
-       &mdash; no signal right now. Everything you type is kept.</div>` : ''}
-    <div class="picktotal"><b id="pickN">${filled}</b> item${filled === 1 ? '' : 's'} on the van${
-      q ? ` &middot; showing ${shown.length} of ${src.items.length}` : ''}</div>
-    <div class="gridwrap">
-      <table class="grid">
-        <thead><tr><th>Item</th><th>Cases</th><th>Loose</th></tr></thead>
-        <tbody>${groups.map(g => `
-          <tr class="ghead"><th colspan="3">${g.name ? htmlEsc(g.name) : 'Not on a pallet'}</th></tr>
-          ${g.rows.map(line).join('')}`).join('')}</tbody>
-      </table>
-    </div>
-    <button class="addbtn" style="width:100%;margin-top:14px;" onclick="whSendPick()">Save this pickup</button>
-    <button class="listlink" style="display:block;width:100%;margin-top:8px;" onclick="whScrapPick()">Throw this run away</button>
-    <div class="hint" id="pickMsg">Type what you put on the van. It is kept on this phone
-      until you save, signal or not.</div>`;
-
-  wrap.querySelectorAll('.pcase, .punit').forEach(el => {
-    el.addEventListener('input', () => {
-      const d = pickDraft();
-      const name = el.dataset.name;
-      const cur = d.lines[name] || {};
-      cur[el.classList.contains('pcase') ? 'cases' : 'units'] = el.value.trim();
-      if (!String(cur.cases || '').trim() && !String(cur.units || '').trim()) delete d.lines[name];
-      else d.lines[name] = cur;
-      saveDraft(d);
-      const n = Object.values(d.lines).filter(v => Number(v.cases) > 0 || Number(v.units) > 0).length;
-      $('pickN').textContent = n;
-      el.closest('tr').classList.toggle('picked', Number(cur.cases) > 0 || Number(cur.units) > 0);
-    });
-  });
-}
-
 function whScrapPick(){
   const d = pickDraft();
   const n = Object.keys(d.lines).length;
   if (n && !confirm(`Throw away ${n} line${n === 1 ? '' : 's'}? Nothing has been taken off the warehouse yet.`)) return;
-  clearDraft(); whStopPick();
-}
-
-async function whSendPick(){
-  const msg = $('pickMsg');
-  const d = pickDraft();
-  const items = Object.entries(d.lines)
-    .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: Number(v.units) || 0 }))
-    .filter(x => x.cases > 0 || x.units > 0);
-  if (!items.length){ msg.textContent = 'Nothing filled in yet.'; return; }
-  msg.textContent = 'Saving...';
-  let res;
-  try {
-    res = await fetch(`/api/place/${whLoc}/pickup`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ run_id: d.run_id, items })
-    });
-  } catch {
-    // Out of range. The draft is already on the phone; say so plainly and stop.
-    msg.innerHTML = `<b>No signal.</b> Your ${items.length} lines are saved on this phone.
-      Press Save again when you are back at the store.`;
-    return;
-  }
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok){ msg.textContent = body.error || 'Could not save that pickup.'; return; }
-
   clearDraft();
-  whPicking = false;
-  await showWarehouse();
-  const notes = [];
-  if (body.already_recorded) notes.push('This run was already saved — nothing was taken twice.');
-  else notes.push(`Saved. ${body.lines} item${body.lines === 1 ? '' : 's'} off the warehouse.`);
-  if (body.short?.length) notes.push('The app thought there was less on the pallet than you took: '
-    + body.short.map(x => {
-        const bits = [];
-        if (Number(x.took) > Number(x.thought)) bits.push(`thought ${fmtQty(x.thought)} cases, took ${fmtQty(x.took)}`);
-        if (Number(x.took_loose) > Number(x.thought_loose)) bits.push(`took ${fmtQty(x.took_loose)} loose off a pallet with ${fmtQty(x.thought_loose)} recorded`);
-        return `${x.name} (${bits.join(', ')})`;
-      }).join('; ')
-    + '. Worth a recount.');
-  if (body.missing?.length) notes.push('Not on the warehouse list, so skipped: ' + body.missing.join(', '));
-  if (notes.length > 1) alert(notes.join('\n\n'));
-  const m = $('whSheetMsg'); if (m) m.textContent = '';
+  if (me?.simple_mode){ simplePallet = null; renderSimple(); } else whStopPick();
 }
 
 // Everything the storage unit is short of, which is the job Angel's column G
@@ -2441,6 +2324,12 @@ function renderShelfList(){
 }
 
 function renderWarehouse(){
+  // Set on every render, not on load: starting a pickup only re-renders, so
+  // doing this in showWarehouse left the search box on screen through the whole
+  // pickup and then hid it again afterwards.
+  const picking = !place().diagram && (whPicking || !!me?.simple_mode);
+  document.body.classList.toggle('picking', picking);
+  $('whTitle').textContent = picking ? 'Taking things' : place().title;
   if (whLinking) return renderLinkPanel();
   if (whPallets) return renderPallets();
   if (whView === 'table' && !place().diagram) return renderTable();
@@ -2448,8 +2337,11 @@ function renderWarehouse(){
   // Offsite opens on its pallets, the way Monkish opens on its containers: the
   // tab is for finding out what is out there, and a wall of every item at once
   // never answered that. Searching skips the pallets and answers straight.
-  if (me?.simple_mode) return renderSimple();
-  if (!place().diagram && whPicking) return renderPick();
+  // One pickup screen, and it is Andy's. Simple mode is not a cut-down version
+  // for him -- it is the same screen with the rest of the app taken away. If it
+  // is easy enough for somebody who does not use computers it is easy for
+  // everyone, and there is one thing to build, teach and get wrong instead of two.
+  if (!place().diagram && (whPicking || me?.simple_mode)) return renderSimple();
   if (!place().diagram && whOrderView && !searching) return renderOrder();
   if (!place().diagram && whGroup === null && !searching) return renderShelfList();
   if (place().diagram && whContainer === null && !searching) return renderDiagram();
