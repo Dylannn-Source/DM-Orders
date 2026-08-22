@@ -7,6 +7,7 @@ import {
   lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
 } from './auth.js';
 import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
+import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -293,7 +294,7 @@ function checkPlace(req, res) {
 app.get('/api/place/:loc', async (req, res) => {
   const loc = checkPlace(req, res); if (!loc) return;
   try {
-    const [stock, moves, vori, cats] = await Promise.all([
+    const [stock, moves, vori, sheet, cats] = await Promise.all([
       pool.query(`SELECT w.*,
                          EXTRACT(EPOCH FROM (NOW() - w.counted_at))/86400 AS days_since_count,
                          v.on_hand      AS vori_on_hand,
@@ -322,11 +323,12 @@ app.get('/api/place/:loc', async (req, res) => {
                    ORDER BY w.item_name`, [loc]),
       pool.query(`SELECT * FROM warehouse_moves WHERE location=$1 ORDER BY moved_at DESC LIMIT 60`, [loc]),
       voriStatus().catch(() => ({ configured: false })),
+      loc === 'warehouse' ? sheetStatus().catch(() => ({ configured: false })) : Promise.resolve(null),
       pool.query('SELECT * FROM warehouse_categories WHERE location=$1 ORDER BY position, name', [loc])
     ]);
     const pallets = await pool.query(
       'SELECT * FROM warehouse_pallets WHERE location=$1 ORDER BY container, slot, level', [loc]);
-    res.json({ location: loc, stock: stock.rows, moves: moves.rows, vori,
+    res.json({ location: loc, stock: stock.rows, moves: moves.rows, vori, sheet,
                categories: cats.rows, pallets: pallets.rows });
   } catch (e) {
     console.error('place fetch failed', e);
@@ -974,6 +976,23 @@ app.get('/api/vori/search', async (req, res) => {
   }
 });
 
+// Pull Angel's sheet in now rather than waiting for the timer. A dry run says
+// what it would do and writes nothing, which is what the button offers first.
+app.post('/api/place/warehouse/sheet-sync', async (req, res) => {
+  if (!canWrite(req, res, 'warehouse')) return;
+  if (!sheetsConfigured()) {
+    return res.status(400).json({ error: 'No sheet connected. Set GOOGLE_API_KEY and WAREHOUSE_SHEET_ID in Railway.' });
+  }
+  try {
+    const out = await syncSheet({ dryRun: !!req.body?.dry_run });
+    if (!out.dry_run) await noteSheetError('');
+    res.json(out);
+  } catch (e) {
+    console.error('sheet sync failed', e);
+    await noteSheetError(e.message).catch(() => {});
+    res.status(502).json({ error: e.message });
+  }
+});
 
 const DEPTS = new Set(['produce', 'meat', 'fish']);
 function checkDept(req, res) {
@@ -1271,10 +1290,38 @@ function startVoriPolling() {
   console.log(`Vori sync every ${minutes} minutes.`);
 }
 
+// Pull the sheet on a timer so Angel's additions show up without anyone asking.
+// Only the catalogue moves; counts are never touched, so a sync landing in the
+// middle of somebody counting cannot undo their work.
+function startSheetPolling() {
+  if (!sheetsConfigured()) {
+    console.log('No Google Sheet connected — set GOOGLE_API_KEY and WAREHOUSE_SHEET_ID to sync one.');
+    return;
+  }
+  const minutes = Math.max(15, Number(process.env.WAREHOUSE_SHEET_MINUTES) || 180);
+  const run = () => syncSheet()
+    .then(r => {
+      console.log(`Sheet sync: ${r.items} items, ${r.added} new, ${r.changed} changed`
+        + (r.gone ? `, ${r.gone} in the app but no longer in the sheet (kept)` : ''));
+      r.problems.forEach(p => console.warn('  sheet: ' + p));
+      return noteSheetError('');
+    })
+    // A failed pull leaves the last catalogue in place, aged and labelled. It is
+    // never a reason to take the tab down.
+    .catch(e => {
+      console.error('Sheet sync failed:', e.message);
+      return noteSheetError(e.message).catch(() => {});
+    });
+  setTimeout(run, 15_000);
+  setInterval(run, minutes * 60_000);
+  console.log(`Sheet sync every ${minutes} minutes.`);
+}
+
 initDb()
   .then(() => {
     app.listen(PORT, () => console.log(`Dat Moi ordering running on :${PORT}`));
     startVoriPolling();
+    startSheetPolling();
   })
   .catch(err => {
     console.error('DB init failed', err);

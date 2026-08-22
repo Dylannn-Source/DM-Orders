@@ -13,6 +13,55 @@ counts into one order ticket per vendor that you can copy and send.
 | Meat | 37 | single count | Mon–Sat |
 | Fish & Seafood | 139 | single count | Wed, Sun |
 
+## Offsite warehouse from Google Sheets
+
+Angel keeps the warehouse product list in a Google Sheet. The app reads it,
+read-only, on a timer.
+
+The split is the whole design: **the sheet owns the catalogue, the app owns the
+counts.** A sync brings in items, names, pallets and pars. It never touches a
+quantity, who counted it, or when — except the first time an item appears, when
+the app holds no count of its own and the sheet's figure is the only one that
+exists. So a sync landing while somebody is counting cannot undo their work.
+
+Items in the app but no longer in the sheet are reported and kept, never
+deleted: a row vanishing from a spreadsheet is as often a mis-drag as a
+decision.
+
+### Setting it up
+
+1. Open the sheet → **Share** → *Anyone with the link* → **Viewer**.
+2. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials),
+   create an **API key**, then restrict it to the **Google Sheets API**. A key
+   cannot write and cannot reach anything the link does not already expose.
+3. In Railway, set:
+
+   | Variable | Value |
+   |---|---|
+   | `GOOGLE_API_KEY` | the restricted key |
+   | `WAREHOUSE_SHEET_ID` | the sheet id, or just paste its whole URL |
+   | `WAREHOUSE_SHEET_TABS` | optional, default `Inventory,Teas` |
+   | `WAREHOUSE_SHEET_MINUTES` | optional, default `180`, minimum `15` |
+
+The Offsite tab then says where its product list came from and when. **Check for
+changes** shows what a sync would do — new items, changed pars, anything gone —
+and applies nothing until you say so.
+
+### The layout it expects
+
+Row 1 is a header. A row with only column A is a pallet heading, and every row
+below it belongs to that heading. Columns:
+
+`Brand | Description | Size | Need @ Store | Storage Unit | PAR | Order | Next Door W.H. | Stocked W.H.`
+
+An item's identity is Brand + Description + Size joined together, because
+Description alone is not unique — five brands sell Tom Yum Paste. Renaming any
+of those three in the sheet makes a new item rather than renaming the old one,
+and the old one is reported as gone.
+
+A read that comes back empty is refused rather than applied, since an empty
+sheet is far more likely to be broken than genuinely emptied.
+
 ## Deploying to Railway
 
 1. **Put this folder in a GitHub repo** (new repo, push these files).

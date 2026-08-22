@@ -500,3 +500,4 @@ input.gpar{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)
 input.gbrand{font-size:13px;color:var(--muted)}
 td.gflag{font-size:13px;color:var(--accent);text-align:center;padding:0 4px}
 tr.gshort input.gqty{color:var(--accent);font-weight:700}
+.sheetbad{margin-top:4px;font-size:12px;letter-spacing:.03em;color:var(--accent);font-weight:600}

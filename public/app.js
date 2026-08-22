@@ -1081,6 +1081,7 @@ async function setEmployeeActive(id, active){
 // this one, so the screen has to say how old each number is and let a stale one
 // look like the guess it is.
 let whStock = [], whMoves = [], whOpen = null, whVori = { configured: false }, whLinking = null;
+let whSheet = null;
 let whCats = [], whPallets = false, whAreas = ['produce','meat','fish','warehouse','coldstorage'];
 // The stored area names stay as they are; only what a manager reads changes, so
 // the tick matches the tab it grants.
@@ -1162,7 +1163,7 @@ async function showWarehouse(loc){
   const r = await fetch('/api/place/' + whLoc).then(x => x.json()).catch(() => null);
   if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
   whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
-  whCats = r.categories || []; whPals = r.pallets || [];
+  whCats = r.categories || []; whPals = r.pallets || []; whSheet = r.sheet || null;
   renderWarehouse();
 }
 
@@ -1265,6 +1266,28 @@ function whSummaryLine(){
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
   const linked = whStock.filter(r => r.vori_product_id).length;
   const whEdit = canEdit(whLoc);
+  // Where the list of products comes from, and whether that link is healthy. A
+  // stale or broken sheet is worth saying out loud: the counts are still right,
+  // but anything Angel added since would be missing.
+  const sheetLine = (() => {
+    if (place().diagram || !whSheet) return '';
+    if (!whSheet.configured) {
+      return me.role === 'manager'
+        ? '<div class="whsync">No Google Sheet connected. Set GOOGLE_API_KEY and WAREHOUSE_SHEET_ID in Railway.</div>'
+        : '';
+    }
+    const when = whSheet.last_sync
+      ? new Date(whSheet.last_sync).toLocaleString('en-US',
+          { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
+      : 'never';
+    const err = whSheet.last_error
+      ? `<div class="sheetbad">Last sheet pull failed: ${htmlEsc(whSheet.last_error.replace(/^\S+\s/, ''))}</div>`
+      : '';
+    return `<div class="whsync">Product list from Angel's sheet &middot; pulled ${when}
+        ${whEdit ? '<button class="vorilink" onclick="whSyncSheet(true)">Check for changes</button>' : ''}
+        <span id="whSheetMsg"></span></div>${err}`;
+  })();
+
   // Nobody counting boxes can act on a missing API key, so it is only worth
   // saying to whoever can go and set one.
   const voriLine = !whVori.configured
@@ -1298,7 +1321,7 @@ function whSummaryLine(){
       : '');
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
-    : `Nothing here yet.${canEdit(whLoc) ? '' : ' ' + place().noEdit}`) + backLine + sectionLine + voriLine;
+    : `Nothing here yet.${canEdit(whLoc) ? '' : ' ' + place().noEdit}`) + backLine + sectionLine + sheetLine + voriLine;
 }
 
 function renderDiagram(){
@@ -1497,6 +1520,38 @@ async function whMakeSpots(){
     body: JSON.stringify({ container: whContainer })
   });
   await showWarehouse();
+}
+
+// Always a dry run first. Angel's sheet is the catalogue, and seeing "12 new,
+// 3 gone" before anything happens is the difference between a sync and a
+// surprise.
+async function whSyncSheet(dry){
+  const msg = $('whSheetMsg');
+  if (msg) msg.textContent = dry ? ' checking...' : ' pulling...';
+  const res = await fetch('/api/place/warehouse/sheet-sync', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dry_run: !!dry })
+  });
+  const r = await res.json().catch(() => ({}));
+  if (!res.ok){ if (msg) msg.textContent = ''; alert(r.error || 'Could not read the sheet.'); return; }
+
+  if (!dry){
+    if (msg) msg.textContent = '';
+    await showWarehouse();
+    return;
+  }
+  if (!r.added && !r.changed && !r.gone && !r.problems.length){
+    if (msg) msg.textContent = ' — nothing new.';
+    return;
+  }
+  const bits = [];
+  if (r.added)   bits.push(`${r.added} new item${r.added === 1 ? '' : 's'}:\n  ` + r.added_names.join('\n  '));
+  if (r.changed) bits.push(`${r.changed} with a changed pallet, par or size`);
+  if (r.gone)    bits.push(`${r.gone} in the app but not in the sheet — these are KEPT, not deleted:\n  `
+                            + r.gone_names.join('\n  '));
+  if (r.problems.length) bits.push('Problems in the sheet:\n  ' + r.problems.join('\n  '));
+  if (msg) msg.textContent = '';
+  if (confirm(bits.join('\n\n') + '\n\nPull these in? Counts are never changed.')) whSyncSheet(false);
 }
 
 async function whSetPar(name){
