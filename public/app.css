@@ -551,8 +551,10 @@ body.simple .whhead { padding-bottom:6px; }
 .ptile.other{grid-column:1 / -1;margin-top:10px;border-style:dashed;min-height:0}
 
 .bigrows{display:flex;flex-direction:column;gap:9px}
-.bigrow{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+/* The row stacks: name and stepper on one line, the part-of-a-box chips under
+   them. Left as a flex row they sat beside the stepper and ran off the screen. */
+.bigrow{display:block;padding:12px 14px;border-radius:12px;
+  background:var(--card);border:1px solid var(--line)}
 .bigrow.on{border-color:var(--accent);border-width:2px}
 .bigname{font-size:16px;line-height:1.25;flex:1}
 .bigrow.on .bigname{font-weight:600}
@@ -572,3 +574,36 @@ body.simple .whhead { padding-bottom:6px; }
 .simplewarn{padding:20px;border-radius:12px;background:var(--accent-soft);
   border:1px solid var(--accent);font-size:16px;line-height:1.5}
 .vihint{display:block;font-size:11px;letter-spacing:.02em;color:var(--muted);font-weight:400}
+
+/* ---- half cases and opened boxes, on buttons ---- */
+.bigtop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bigparts{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;font:inherit;
+  font-size:14px;font-weight:600;cursor:pointer;border-radius:999px;
+  border:1px solid var(--line);background:var(--bg);color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.loose{cursor:default;background:var(--accent-soft);border-color:var(--accent);
+  color:var(--ink);padding:4px 6px}
+.chip.loose b{font-variant-numeric:tabular-nums;min-width:16px;text-align:center}
+.chip.loose button{width:34px;height:34px;font:inherit;font-size:19px;font-weight:600;
+  cursor:pointer;border-radius:999px;border:1px solid var(--accent);
+  background:#fff;color:var(--accent);line-height:1}
+
+/* ---- a trip, rather than eight lines that share a minute ---- */
+.runrow{border:1px solid var(--line);border-radius:11px;background:var(--card);margin-top:8px;
+  overflow:hidden}
+.runhead{display:flex;align-items:baseline;gap:10px;width:100%;padding:12px 14px;
+  font:inherit;font-size:15px;text-align:left;cursor:pointer;background:none;border:0;
+  color:var(--ink)}
+.runwhen{font-family:var(--mono, ui-monospace, monospace);font-size:12px;letter-spacing:.04em;
+  color:var(--muted);flex:0 0 auto}
+.runwho{font-weight:600;flex:1}
+.runn{color:var(--muted);font-size:13px;flex:0 0 auto}
+.runrow.open{border-color:var(--accent)}
+.runnote{padding:0 14px 11px;font-size:14px;line-height:1.45;color:var(--accent)}
+.runlines{border-top:1px solid var(--line)}
+.runline{display:flex;justify-content:space-between;gap:14px;padding:9px 14px;font-size:14px;
+  border-bottom:1px solid var(--rule, var(--line))}
+.runline:last-child{border-bottom:0}
+.runline b{font-variant-numeric:tabular-nums;flex:0 0 auto;color:var(--ink)}
+.runline span{color:var(--muted)}

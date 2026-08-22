@@ -523,14 +523,27 @@ app.post('/api/place/:loc/pickup', async (req, res) => {
       const pack = rows[0].pack_size === null ? null : Number(rows[0].pack_size);
       const beforeC = Number(rows[0].qty), beforeU = Number(rows[0].qty_units);
       let afterC = beforeC - cases;
-      let afterU = pack ? beforeU - units : 0;
+      // Loose is recorded whether or not anybody has said how many are in a case.
+      // "Three cases and six packs" is a true statement about the pallet on its
+      // own; the pack size is only needed to turn it into one number, and
+      // throwing the six away to avoid an arithmetic we cannot do yet loses the
+      // only record that somebody opened a box.
+      let afterU = beforeU - units;
       // No loose left and somebody wants three bottles: open a case, which is
       // exactly what happens out there.
       while (pack && afterU < 0 && afterC > 0) { afterC -= 1; afterU += pack; }
       // Taking more than the app knew about means the count was stale, not that
-      // the pickup was wrong. Record what was taken, floor the shelf at nothing,
-      // and say which ones so somebody can look.
-      if (afterC < 0 || afterU < 0) short.push({ name, thought: beforeC, took: cases });
+      // the pickup was wrong. Say which ones so somebody can go and look.
+      if (afterC < 0 || afterU < 0) {
+        short.push({ name, thought: beforeC, took: cases,
+                     thought_loose: beforeU, took_loose: units });
+      }
+      // The shelf cannot hold less than nothing, but the ledger records what was
+      // actually carried out of the door. Deriving the delta from the floored
+      // figure instead threw the difference away: six packs out of a box on a
+      // pallet with no loose recorded came back as "took 0", which is the one
+      // number we know to be false. The stock is an estimate until the next
+      // count; the move is the fact.
       afterC = Math.max(afterC, 0); afterU = Math.max(afterU, 0);
 
       await client.query(
@@ -540,7 +553,7 @@ app.post('/api/place/:loc/pickup', async (req, res) => {
         `INSERT INTO warehouse_moves
            (location, item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by, run_id)
          VALUES ($1,$2,'taken',$3,$4,$5,$6,$7,$8,$9)`,
-        [loc, name, afterC - beforeC, afterU - beforeU, afterC, afterU, note, req.employee.name, runId]);
+        [loc, name, -cases, -units, afterC, afterU, note, req.employee.name, runId]);
       taken++;
     }
 

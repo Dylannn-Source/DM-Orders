@@ -1272,9 +1272,14 @@ const fmtQty = n => String(Math.round(Number(n) * 100) / 100);
 // "5 cases + 9 bottles" is what is on the shelf. A single decimal is not.
 function stockLine(row){
   const cases = `${fmtQty(row.qty)}<span class="whunit"> ${htmlEsc(row.unit || 'cases')}</span>`;
-  if (!row.pack_size) return cases;
   const u = Number(row.qty_units) || 0;
   if (!u) return cases;
+  // Loose ones are shown even with no pack size set. What cannot be worked out
+  // without one is the single total, not the fact that six packs are sitting
+  // there out of a box.
+  if (!row.pack_size) {
+    return `${cases} <span class="whplus">+</span> ${fmtQty(u)}<span class="whunit"> loose</span>`;
+  }
   return `${cases} <span class="whplus">+</span> ${fmtQty(u)}<span class="whunit"> ${htmlEsc(row.unit_name || 'units')}</span>`;
 }
 function totalLine(row){
@@ -1895,7 +1900,9 @@ function renderSimple(){
   }
   const src = simpleSrc();
   const draft = pickDraft();
-  const total = Object.values(draft.lines).reduce((n, v) => n + (Number(v.cases) || 0), 0);
+  // Counting lines, not cases: "half a case and six packs" is one thing taken,
+  // and a basket reading 0.5 would look like a mistake.
+  const total = Object.keys(draft.lines).length;
 
   if (!src){
     wrap.innerHTML = `<div class="simplewarn">This phone has not loaded the warehouse yet.
@@ -1913,7 +1920,7 @@ function renderSimple(){
     Object.entries(draft.lines).forEach(([name, v]) => {
       const it = src.items.find(x => x.item_name === name);
       const k = it?.category || '';
-      counts[k] = (counts[k] || 0) + (Number(v.cases) || 0);
+      counts[k] = (counts[k] || 0) + 1;
     });
     const tiles = src.cats.map(c => {
       const n = src.items.filter(r => r.category === c).length;
@@ -1940,27 +1947,71 @@ function renderSimple(){
     + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
        <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
        <p class="bigsub">How many did you take?</p>
-       <div class="bigrows">${rows.map(r => {
-         const n = Number((draft.lines[r.item_name] || {}).cases) || 0;
-         return `<div class="bigrow ${n ? 'on' : ''}">
-           <div class="bigname">${htmlEsc(r.item_name)}</div>
-           <div class="bigstep">
-             <button class="minus" ${n ? '' : 'disabled'} onclick="simpleBump('${esc(r.item_name)}',-1)">&minus;</button>
-             <span class="bignum">${n}</span>
-             <button class="plus" onclick="simpleBump('${esc(r.item_name)}',1)">+</button>
-           </div>
-         </div>`;
-       }).join('')}</div>`;
+       <div class="bigrows">${rows.map(r => bigRow(r, draft)).join('')}</div>`;
+}
+
+// One item, and the three ways a case actually leaves a pallet: whole ones, half
+// of one, and loose packs out of an opened box. All of it on buttons, because the
+// moment a keyboard appears this stops being Andy's screen.
+function bigRow(r, draft){
+  const line = draft.lines[r.item_name] || {};
+  const n = Number(line.cases) || 0;
+  const u = Number(line.units) || 0;
+  const whole = Math.floor(n);
+  const half = n - whole >= 0.5;
+  const name = esc(r.item_name);
+  return `<div class="bigrow ${n || u ? 'on' : ''}">
+    <div class="bigtop">
+      <div class="bigname">${htmlEsc(r.item_name)}</div>
+      <div class="bigstep">
+        <button class="minus" ${n ? '' : 'disabled'} onclick="simpleBump('${name}',-1)">&minus;</button>
+        <span class="bignum">${n ? fmtQty(n) : 0}</span>
+        <button class="plus" onclick="simpleBump('${name}',1)">+</button>
+      </div>
+    </div>
+    <div class="bigparts">
+      <button class="chip ${half ? 'on' : ''}" onclick="simpleHalf('${name}')">
+        ${half ? '&#10003; ' : ''}half a case</button>
+      ${u ? `<span class="chip loose">
+               <button onclick="simpleLoose('${name}',-1)">&minus;</button>
+               <b>${fmtQty(u)}</b> loose
+               <button onclick="simpleLoose('${name}',1)">+</button></span>`
+          : `<button class="chip" onclick="simpleLoose('${name}',1)">opened a box</button>`}
+    </div>
+  </div>`;
 }
 
 function simpleOpen(cat){ simplePallet = cat; window.scrollTo(0,0); renderSimple(); }
 function simpleBack(){ simplePallet = null; window.scrollTo(0,0); renderSimple(); }
 
+// Whole cases. A half already on the line is kept: three and a half plus one is
+// four and a half, which is what pressing + next to "half a case" should mean.
 function simpleBump(name, by){
   const d = pickDraft();
   const cur = Number((d.lines[name] || {}).cases) || 0;
   const next = Math.max(0, cur + by);
-  if (next) d.lines[name] = { ...(d.lines[name] || {}), cases: String(next) };
+  simpleSet(d, name, next, Number((d.lines[name] || {}).units) || 0);
+}
+
+// Half of one case, on and off. Soy sauce and fish sauce come back like this.
+function simpleHalf(name){
+  const d = pickDraft();
+  const cur = Number((d.lines[name] || {}).cases) || 0;
+  const whole = Math.floor(cur);
+  const next = cur - whole >= 0.5 ? whole : whole + 0.5;
+  simpleSet(d, name, next, Number((d.lines[name] || {}).units) || 0);
+}
+
+// Packs pulled out of an opened box. Counted as themselves, not guessed at as a
+// fraction of a case nobody has measured.
+function simpleLoose(name, by){
+  const d = pickDraft();
+  const cur = Number((d.lines[name] || {}).units) || 0;
+  simpleSet(d, name, Number((d.lines[name] || {}).cases) || 0, Math.max(0, cur + by));
+}
+
+function simpleSet(d, name, cases, units){
+  if (cases > 0 || units > 0) d.lines[name] = { cases: String(cases), units: String(units) };
   else delete d.lines[name];
   saveDraft(d);
   renderSimple();
@@ -1981,8 +2032,8 @@ function simpleOther(){
 async function simpleDone(){
   const d = pickDraft();
   const items = Object.entries(d.lines)
-    .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: 0 }))
-    .filter(x => x.cases > 0);
+    .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: Number(v.units) || 0 }))
+    .filter(x => x.cases > 0 || x.units > 0);
   if (!items.length && !d.note){ alert('Nothing to save yet.'); return; }
 
   let res;
@@ -2000,7 +2051,7 @@ async function simpleDone(){
   if (!res.ok){ alert(body.error || 'Could not save that. Try again in a moment.'); return; }
   clearDraft();
   simplePallet = null;
-  simpleSaved = items.reduce((a, x) => a + x.cases, 0);
+  simpleSaved = items.length;
   // Refresh underneath, but the flag keeps the confirmation on screen until he
   // says he is doing something else.
   await showWarehouse('warehouse').catch(() => {});
@@ -2174,7 +2225,12 @@ async function whSendPick(){
   if (body.already_recorded) notes.push('This run was already saved — nothing was taken twice.');
   else notes.push(`Saved. ${body.lines} item${body.lines === 1 ? '' : 's'} off the warehouse.`);
   if (body.short?.length) notes.push('The app thought there was less on the pallet than you took: '
-    + body.short.map(x => `${x.name} (thought ${fmtQty(x.thought)}, took ${fmtQty(x.took)})`).join('; ')
+    + body.short.map(x => {
+        const bits = [];
+        if (Number(x.took) > Number(x.thought)) bits.push(`thought ${fmtQty(x.thought)} cases, took ${fmtQty(x.took)}`);
+        if (Number(x.took_loose) > Number(x.thought_loose)) bits.push(`took ${fmtQty(x.took_loose)} loose off a pallet with ${fmtQty(x.thought_loose)} recorded`);
+        return `${x.name} (${bits.join(', ')})`;
+      }).join('; ')
     + '. Worth a recount.');
   if (body.missing?.length) notes.push('Not on the warehouse list, so skipped: ' + body.missing.join(', '));
   if (notes.length > 1) alert(notes.join('\n\n'));
@@ -2311,6 +2367,7 @@ function renderShelfList(){
     + `<div class="shelves">${groups.map(card).join('')}</div>`
     + (edit ? `<button class="listlink" style="margin-top:12px;" onclick="whShowPallets()">Add or rename a pallet</button>` : '')
     + addFoldHtml(edit, '')
+    + runsHtml(5)
     + moveLogHtml(6);
 }
 
@@ -2446,18 +2503,65 @@ function renderWarehouse(){
   }
 
   if (foldAdd && offerAdd) wrap.insertAdjacentHTML('beforeend', addFoldHtml(true, inShelf || ''));
-  if (!q) wrap.insertAdjacentHTML('beforeend', moveLogHtml(25));
+  if (!q){
+    wrap.insertAdjacentHTML('beforeend', runsHtml(8));
+    wrap.insertAdjacentHTML('beforeend', moveLogHtml(25));
+  }
 }
 
 // Who changed what, most recent first. Short on the pallet list, longer once you
 // are inside a pallet and actually chasing a number.
+// A pickup is a trip, so it is shown as one. Before this the ledger listed eight
+// separate "Andy took two cases" lines and you had to notice they shared a
+// minute; the run id means it can say what it is.
+function runsHtml(limit){
+  const runs = new Map();
+  whMoves.filter(m => m.run_id).forEach(m => {
+    const r = runs.get(m.run_id) || { id: m.run_id, who: m.moved_by, at: m.moved_at, note: m.note, lines: [] };
+    if (new Date(m.moved_at) < new Date(r.at)) r.at = m.moved_at;
+    r.note = r.note || m.note;
+    r.lines.push(m);
+    runs.set(m.run_id, r);
+  });
+  if (!runs.size) return '';
+  const list = [...runs.values()]
+    .sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, limit);
+  return `<div class="vsummarybar" style="margin-top:20px;">
+      <div class="vs-title">Brought back to the store</div>
+      <div class="vs-sub">each trip, most recent first</div></div>`
+    + list.map(r => {
+        const when = new Date(r.at).toLocaleDateString('en-US',
+          { weekday: 'short', month: 'short', day: 'numeric' });
+        const open = whOpenRun === r.id;
+        return `<div class="runrow ${open ? 'open' : ''}">
+          <button class="runhead" onclick="whToggleRun('${esc(r.id)}')">
+            <span class="runwhen">${when}</span>
+            <span class="runwho">${htmlEsc(r.who || 'someone')}</span>
+            <span class="runn">${r.lines.length} item${r.lines.length === 1 ? '' : 's'}</span>
+          </button>
+          ${r.note ? `<div class="runnote"><b>Note:</b> ${htmlEsc(r.note)}</div>` : ''}
+          ${open ? `<div class="runlines">${r.lines.map(m => {
+              const c = Math.abs(Number(m.delta) || 0), u = Math.abs(Number(m.delta_units) || 0);
+              const bits = [c ? `${fmtQty(c)} case${c === 1 ? '' : 's'}` : null,
+                            u ? `${fmtQty(u)} loose` : null].filter(Boolean).join(' + ') || 'nothing';
+              return `<div class="runline"><span>${htmlEsc(m.item_name)}</span><b>${bits}</b></div>`;
+            }).join('')}</div>` : ''}
+        </div>`;
+      }).join('');
+}
+
+function whToggleRun(id){ whOpenRun = whOpenRun === id ? null : id; renderWarehouse(); }
+let whOpenRun = null;
+
 function moveLogHtml(limit){
   if (!whMoves.length) return '';
   const amount = (c, u) => [
     Number(c) ? `${fmtQty(Math.abs(c))} case${Math.abs(Number(c)) === 1 ? '' : 's'}` : null,
     Number(u) ? `${fmtQty(Math.abs(u))} loose` : null
   ].filter(Boolean).join(' and ') || 'nothing';
-  const lines = whMoves.slice(0, limit).map(m => {
+  const loose = whMoves.filter(m => !m.run_id);
+  if (!loose.length) return '';
+  const lines = loose.slice(0, limit).map(m => {
     const when = new Date(m.moved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const left = `now ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`;
     const what = m.kind === 'counted'
@@ -2468,8 +2572,8 @@ function moveLogHtml(limit){
     return `<div class="whmove">${when} &middot; ${htmlEsc(m.moved_by || 'someone')} ${what}</div>`;
   }).join('');
   return `<div class="vsummarybar" style="margin-top:20px;">
-      <div class="vs-title">Recent movement</div>
-      <div class="vs-sub">who changed what, most recent first</div></div>${lines}`;
+      <div class="vs-title">Everything else</div>
+      <div class="vs-sub">counts and one-off changes, most recent first</div></div>${lines}`;
 }
 
 // The three numbers, with the age of each. A difference is only as trustworthy
