@@ -1225,7 +1225,14 @@ function whGroups(shown){
 // the door. Tapping a container drops into its contents.
 // "Container 2 · P3, stacked · on top" — the answer to where exactly is it.
 function whereLine(row){
-  if (!place().diagram) return '';
+  // Offsite only needs this when the pallet is not already obvious from the
+  // screen you are on — searching, or the flat table of everything.
+  if (!place().diagram){
+    if (whGroup !== null) return '';
+    return row.category
+      ? `<div class="whwhere">on the <b>${htmlEsc(row.category)}</b> pallet</div>`
+      : '<div class="whwhere">not on a pallet yet</div>';
+  }
   const bits = [];
   if (row.category) bits.push(htmlEsc(row.category));
   const p = whPals.find(x => Number(x.id) === Number(row.pallet_id));
@@ -1239,14 +1246,21 @@ function whSummaryLine(){
   const fresh = whStock.filter(r => ageOf(r).band === 'fresh').length;
   const linked = whStock.filter(r => r.vori_product_id).length;
   const whEdit = canEdit(whLoc);
+  // Nobody counting boxes can act on a missing API key, so it is only worth
+  // saying to whoever can go and set one.
   const voriLine = !whVori.configured
-    ? '<div class="whsync">Vori is not connected. Add a read-only API key as VORI_API_KEY in Railway.</div>'
+    ? (me.role === 'manager'
+        ? '<div class="whsync">Vori is not connected. Add a read-only API key as VORI_API_KEY in Railway.</div>'
+        : '')
     : `<div class="whsync">Vori: ${whVori.products || 0} products,
         ${whVori.last_sync ? 'synced ' + new Date(whVori.last_sync).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : 'never synced'}
         &middot; ${linked} of ${whStock.length} linked
         <button class="vorilink" onclick="whSync()">Sync now</button>
         <span id="whSyncMsg"></span></div>`;
-  const sectionLine = `<div class="whsync">${whCats.length} ${place().sections}
+  // Offsite puts this on its front screen instead, where there is room for it.
+  const sectionLine = (!place().diagram)
+    ? ''
+    : `<div class="whsync">${whCats.length} ${place().sections}
       ${whEdit ? `<button class="vorilink" onclick="whShowPallets()">Manage ${place().sections}</button>` : ''}</div>`;
   const pal = whPals.find(x => Number(x.id) === Number(whPallet));
   const backLine = place().diagram && whContainer !== null
@@ -1257,10 +1271,15 @@ function whSummaryLine(){
           ? `<button class="vorilink" onclick="whBackToContainer()">&larr; the plan</button>
              <b>${htmlEsc(pal ? (pal.label || 'Pallet') : 'not on a pallet')}</b>` : ''}
        </div>`
-    : '';
+    : (!place().diagram && whGroup !== null
+      ? `<div class="whsync">
+          <button class="vorilink" onclick="whBackToShelf()">&larr; ${place().sections}</button>
+          <b>${whGroup ? htmlEsc(whGroup) : 'Not on a pallet yet'}</b>
+         </div>`
+      : '');
   $('whSummary').innerHTML = (whStock.length
     ? `${whStock.length} items &middot; <b>${stale}</b> not checked in a month &middot; ${fresh} checked this week`
-    : 'Nothing here yet.') + backLine + sectionLine + voriLine;
+    : `Nothing here yet.${canEdit(whLoc) ? '' : ' ' + place().noEdit}`) + backLine + sectionLine + voriLine;
 }
 
 function renderDiagram(){
@@ -1311,6 +1330,17 @@ function renderDiagram(){
 
 function whOpenContainer(name){ whContainer = name; whPallet = null; renderWarehouse(); }
 function whOpenPallet(id){ whPallet = id; renderWarehouse(); }
+// Offsite's equivalent of opening a container: which pallet you are standing at.
+// null is the pallet list, '' the pile that is not on a pallet yet.
+let whGroup = null;
+function whOpenGroup(name){ whGroup = name; whOpen = null; whAddOpen = false; window.scrollTo(0, 0); renderWarehouse(); }
+let whAddOpen = false;
+function whToggleAdd(){
+  whAddOpen = !whAddOpen;
+  renderWarehouse();
+  if (whAddOpen) $('whNewName')?.focus();
+}
+function whBackToShelf(){ whGroup = null; whOpen = null; whAddOpen = false; window.scrollTo(0, 0); renderWarehouse(); }
 function whBackToContainer(){ whPallet = null; renderWarehouse(); }
 
 // The plan of one container: each slot is a column, stacked pallets sit above
@@ -1598,11 +1628,52 @@ async function whSaveTable(){
   if (m) m.textContent = `Saved. ${body.added} added, ${body.changed} updated.`;
 }
 
+// The front of Offsite: the pallets, what is on each, and whether those numbers
+// are worth believing. No form, no ledger -- somebody opening this tab wants to
+// know whether the warehouse has something, and this is the shortest way there.
+function renderShelfList(){
+  const wrap = $('whWrap');
+  whSummaryLine();
+  const edit = canEdit(whLoc);
+  const groups = whGroups(whStock);
+
+  const card = g => {
+    const stale = g.rows.filter(r => ageOf(r).band === 'stale').length;
+    const aging = g.rows.filter(r => ageOf(r).band === 'aging').length;
+    // A pallet is only as trustworthy as its worst-counted item.
+    const band = !g.rows.length ? 'open' : stale ? 'stale' : aging ? 'aging' : 'fresh';
+    const trust = !g.rows.length ? 'nothing on it yet'
+      : stale ? `<b>${stale}</b> not counted in a month`
+      : aging ? `<b>${aging}</b> counted over a week ago`
+      : 'all counted this week';
+    const names = g.rows.slice(0, 4).map(r => htmlEsc(r.item_name)).join(', ')
+      + (g.rows.length > 4 ? `, and ${g.rows.length - 4} more` : '');
+    return `<button class="shelf ${band}" onclick="whOpenGroup('${esc(g.name)}')">
+      <div class="shelftop">
+        <span class="shelfname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</span>
+        <span class="shelfcount">${g.rows.length}</span>
+      </div>
+      <div class="shelftrust ${band}">${trust}</div>
+      ${names ? `<div class="shelfnames">${names}</div>` : ''}
+    </button>`;
+  };
+
+  wrap.innerHTML = whViewToggle()
+    + `<div class="hint">Tap a pallet to see what is on it. Or search above for one thing.</div>`
+    + `<div class="shelves">${groups.map(card).join('')}</div>`
+    + (edit ? `<button class="listlink" style="margin-top:12px;" onclick="whShowPallets()">Add or rename a pallet</button>` : '')
+    + moveLogHtml(6);
+}
+
 function renderWarehouse(){
   if (whLinking) return renderLinkPanel();
   if (whPallets) return renderPallets();
   if (whView === 'table' && !place().diagram) return renderTable();
   const searching = !!($('whSearch').value || '').trim();
+  // Offsite opens on its pallets, the way Monkish opens on its containers: the
+  // tab is for finding out what is out there, and a wall of every item at once
+  // never answered that. Searching skips the pallets and answers straight.
+  if (!place().diagram && whGroup === null && !searching) return renderShelfList();
   if (place().diagram && whContainer === null && !searching) return renderDiagram();
   if (place().diagram && whContainer && whContainer !== '*' && !searching){
     if (whPallet === null) return renderContainerPlan();
@@ -1614,18 +1685,30 @@ function renderWarehouse(){
   // '*' is the flat list, null is the unassigned pile — neither is a container
   // to add into.
   const inContainer = (place().diagram && whContainer && whContainer !== '*') ? whContainer : null;
+  // On Offsite the open pallet plays the same part: what you add here lands on it.
+  const inShelf = (!place().diagram && whGroup !== null && whGroup !== '') ? whGroup : null;
   whSummaryLine();
 
   let shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
+  if (!place().diagram && whGroup !== null && !q){
+    shown = whGroup === ''
+      ? shown.filter(r => !r.category || !whCats.some(c => c.name === r.category))
+      : shown.filter(r => r.category === whGroup);
+  }
   if (place().diagram && whContainer !== null && whContainer !== '*' && !q){
     shown = shown.filter(r => (r.category || null) === whContainer);
     if (whPallet === 'none') shown = shown.filter(r => !r.pallet_id);
     else if (whPallet !== null) shown = shown.filter(r => Number(r.pallet_id) === Number(whPallet));
   }
-  wrap.innerHTML = (place().diagram ? '' : whViewToggle()) + (!whEdit ? `<div class="rowarn">${place().noEdit}</div>` : `
+  // Looking something up is not the moment to be shown a blank form. On Offsite
+  // the form belongs on one pallet, which is the only place it has an answer for
+  // "which pallet?" anyway.
+  const lookingUp = !place().diagram && (!!q || whGroup === null);
+  const offerAdd = whEdit && !lookingUp;
+  const addForm = !offerAdd ? '' : `
     <div class="vgroup">
       <div class="vgroup-head" style="cursor:default;"><div class="oldname">${
-        inContainer ? `Add to ${htmlEsc(inContainer)}` : 'Add something'}</div></div>
+        inContainer || inShelf ? `Add to ${htmlEsc(inContainer || inShelf)}` : 'Add something'}</div></div>
       <div class="vitem"><input type="text" class="textinput" id="whNewName" placeholder="What is it?"></div>
       <div class="vitem">
         <input type="text" class="textinput" id="whNewUnit" placeholder="cases / boxes">
@@ -1633,7 +1716,7 @@ function renderWarehouse(){
       </div>
       <div class="vitem">
         <input type="text" class="textinput" id="whNewCat" list="whCatList"
-               value="${htmlEsc(inContainer || '')}" placeholder="Which ${place().section}?">
+               value="${htmlEsc(inContainer || inShelf || '')}" placeholder="Which ${place().section}?">
         <datalist id="whCatList">${whCats.map(c => `<option value="${htmlEsc(c.name)}">`).join('')}</datalist>
       </div>
       <div class="whpick">Picked at? Say what is inside one and people can log single ones.</div>
@@ -1643,7 +1726,16 @@ function renderWarehouse(){
       </div>
     </div>
     <button class="addbtn" style="width:100%;margin-bottom:6px;" onclick="whAdd()">Add to the warehouse</button>
-    <div class="hint" id="whMsg"></div>`);
+    <div class="hint" id="whMsg"></div>`;
+
+  // Offsite puts the form under the boxes and folded shut: you open a pallet to
+  // see what is on it far more often than to put something new on it. Monkish
+  // keeps its own order, which people are already used to.
+  const foldAdd = !place().diagram;
+  wrap.innerHTML = (!place().diagram && whGroup === null ? whViewToggle() : '')
+    + (lookingUp ? '' : !whEdit ? `<div class="rowarn">${place().noEdit}</div>` : '')
+    + (q ? `<div class="hint">${shown.length} match${shown.length === 1 ? '' : 'es'} for &ldquo;${htmlEsc(q)}&rdquo;.</div>` : '')
+    + (foldAdd ? '' : addForm);
 
   if (!shown.length && q){
     wrap.insertAdjacentHTML('beforeend', '<div class="emptystate">Nothing matches that.</div>');
@@ -1693,8 +1785,9 @@ function renderWarehouse(){
     return div;
   };
 
-  // Searching flattens the groups — you want the item, not the tour.
-  if (q){
+  // Searching flattens the groups — you want the item, not the tour. So does
+  // standing on one pallet, where every heading would say the same thing.
+  if (q || (!place().diagram && whGroup !== null)){
     shown.forEach(row => wrap.appendChild(renderRow(row)));
   } else {
     whGroups(shown).forEach(g => {
@@ -1712,30 +1805,37 @@ function renderWarehouse(){
     });
   }
 
-  if (whMoves.length){
-    const h = document.createElement('div');
-    h.innerHTML = `<div class="vsummarybar" style="margin-top:20px;">
-      <div class="vs-title">Recent movement</div>
-      <div class="vs-sub">who changed what, most recent first</div></div>`;
-    whMoves.slice(0, 25).forEach(m => {
-      const when = new Date(m.moved_at).toLocaleDateString('en-US', { month:'short', day:'numeric' });
-      const amount = (c, u) => [
-        Number(c) ? `${fmtQty(Math.abs(c))} case${Math.abs(Number(c)) === 1 ? '' : 's'}` : null,
-        Number(u) ? `${fmtQty(Math.abs(u))} loose` : null
-      ].filter(Boolean).join(' and ') || 'nothing';
-      const left = `now ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`;
-      const what = m.kind === 'counted'
-          ? `counted <b>${htmlEsc(m.item_name)}</b> at ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`
-        : m.kind === 'added' ? `dropped off ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
-        : m.kind === 'taken' ? `took ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
-        : `removed <b>${htmlEsc(m.item_name)}</b>`;
-      const d = document.createElement('div');
-      d.className = 'whmove';
-      d.innerHTML = `${when} &middot; ${htmlEsc(m.moved_by || 'someone')} ${what}`;
-      h.appendChild(d);
-    });
-    wrap.appendChild(h);
+  if (foldAdd && offerAdd){
+    wrap.insertAdjacentHTML('beforeend', whAddOpen
+      ? `<div class="addfold">${addForm}
+           <button class="listlink" onclick="whToggleAdd()">Never mind</button></div>`
+      : `<button class="listlink addfoldbtn" onclick="whToggleAdd()">+ Add something to
+           ${whGroup ? htmlEsc(whGroup) : 'the warehouse'}</button>`);
   }
+  if (!q) wrap.insertAdjacentHTML('beforeend', moveLogHtml(25));
+}
+
+// Who changed what, most recent first. Short on the pallet list, longer once you
+// are inside a pallet and actually chasing a number.
+function moveLogHtml(limit){
+  if (!whMoves.length) return '';
+  const amount = (c, u) => [
+    Number(c) ? `${fmtQty(Math.abs(c))} case${Math.abs(Number(c)) === 1 ? '' : 's'}` : null,
+    Number(u) ? `${fmtQty(Math.abs(u))} loose` : null
+  ].filter(Boolean).join(' and ') || 'nothing';
+  const lines = whMoves.slice(0, limit).map(m => {
+    const when = new Date(m.moved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const left = `now ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`;
+    const what = m.kind === 'counted'
+        ? `counted <b>${htmlEsc(m.item_name)}</b> at ${fmtQty(m.qty_after)}${Number(m.units_after) ? ` + ${fmtQty(m.units_after)}` : ''}`
+      : m.kind === 'added' ? `dropped off ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
+      : m.kind === 'taken' ? `took ${amount(m.delta, m.delta_units)} of <b>${htmlEsc(m.item_name)}</b> (${left})`
+      : `removed <b>${htmlEsc(m.item_name)}</b>`;
+    return `<div class="whmove">${when} &middot; ${htmlEsc(m.moved_by || 'someone')} ${what}</div>`;
+  }).join('');
+  return `<div class="vsummarybar" style="margin-top:20px;">
+      <div class="vs-title">Recent movement</div>
+      <div class="vs-sub">who changed what, most recent first</div></div>${lines}`;
 }
 
 // The three numbers, with the age of each. A difference is only as trustworthy

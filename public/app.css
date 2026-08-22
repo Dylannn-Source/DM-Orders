@@ -449,3 +449,29 @@ input.g::placeholder{color:var(--muted);opacity:.55}
 .listlink.danger{color:var(--accent);font-weight:600}
 /* Long enough to be a sentence, so it is read rather than shouted. */
 .overflow .palmeta{text-transform:none;letter-spacing:0;line-height:1.45}
+
+/* ---- Offsite's front screen: the pallets, not the items ---- */
+.shelves{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.shelf{display:block;width:100%;text-align:left;cursor:pointer;
+  padding:13px 14px;border-radius:12px;background:var(--card);
+  border:1px solid var(--line);border-left:5px solid var(--line);font:inherit}
+.shelf.fresh{border-left-color:var(--good)}
+.shelf.aging{border-left-color:#C08A2E}
+.shelf.stale{border-left-color:var(--accent)}
+.shelf.open{border-left-style:dashed;opacity:.72}
+.shelftop{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.shelfname{font-size:19px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.shelfcount{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--ink);flex:0 0 auto}
+.shelftrust{margin-top:2px;font-size:12px;letter-spacing:.03em;color:var(--muted)}
+.shelftrust.stale{color:var(--accent);font-weight:600}
+.shelftrust.aging{color:#8A6316}
+.shelfnames{margin-top:7px;font-size:13px;line-height:1.4;color:var(--muted);
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* Which pallet a search result is on — the whole point of searching. */
+.whwhere b{color:var(--ink)}
+.addfoldbtn{display:block;width:100%;margin-top:14px;padding:11px 0;
+  border:1px dashed var(--line);border-radius:10px;text-decoration:none;
+  color:var(--muted);font-weight:600}
+.addfold{margin-top:14px}
+.addfold .listlink{display:block;width:100%;text-align:center;margin-top:2px}
