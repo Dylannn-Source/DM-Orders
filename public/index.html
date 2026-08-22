@@ -162,5 +162,12 @@
 </div>
 
 <script src="/app.js"></script>
+<script>
+// Registered late and failures ignored: the app has always worked without it,
+// and a browser that refuses service workers should still get the app.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+</script>
 </body>
 </html>

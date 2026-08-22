@@ -13,6 +13,32 @@ counts into one order ticket per vendor that you can copy and send.
 | Meat | 37 | single count | Mon–Sat |
 | Fish & Seafood | 139 | single count | Wed, Sun |
 
+## Logging a pickup from the offsite warehouse
+
+Bulk pickups are typed at the storage unit while the van is being loaded, on one
+screen listing everything in walk order &mdash; no drilling into items.
+
+**It assumes there is no signal out there.** The app shell is cached by a service
+worker, the item list is kept from the last time the phone had a connection, and
+what gets typed is written to the phone on every keystroke. A phone that reloads
+or locks out of range still opens, still shows the list, and still has the run.
+Pressing Save with no signal says so and keeps everything; pressing it again back
+at the store sends it.
+
+The whole run posts as one request, in one transaction, under a run id the phone
+generated. Posting the same run twice is answered with `already_recorded` rather
+than taking the stock a second time, so a retry after a dropped connection is
+safe.
+
+Taking more than the app thought was on a pallet is recorded as taken, the shelf
+is floored at nothing, and the reply names the items so somebody can recount.
+Items no longer on the warehouse list are skipped and named rather than silently
+dropped.
+
+A run that has been typed but not sent is shown at the top of the Offsite tab
+until it is saved &mdash; that stock has left the building while the app still
+counts it, which is the one thing worth interrupting for.
+
 ## Offsite warehouse from Google Sheets
 
 Angel keeps the warehouse product list in a Google Sheet. The app reads it,

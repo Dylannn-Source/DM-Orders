@@ -360,6 +360,13 @@ export async function initDb() {
   // a different question from ordering, so it is a different number.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS onsite_par NUMERIC');
 
+  // A pickup is one trip, not twenty unrelated subtractions. Stamping every line
+  // of a run with the same id is what lets the ledger say "Tuesday, Angel, 14
+  // items back to the store" instead of fourteen lines that happen to share a
+  // date, and it is what makes a whole run undoable if somebody fat-fingers it.
+  await pool.query('ALTER TABLE warehouse_moves ADD COLUMN IF NOT EXISTS run_id TEXT');
+  await pool.query('CREATE INDEX IF NOT EXISTS warehouse_moves_run ON warehouse_moves (run_id)');
+
   // A container has floor space for eight pallets and no more, but the first
   // version of this let people add as many as they liked, so some containers
   // still carry a ninth and tenth from back then. An empty one is a leftover

@@ -501,3 +501,21 @@ input.gbrand{font-size:13px;color:var(--muted)}
 td.gflag{font-size:13px;color:var(--accent);text-align:center;padding:0 4px}
 tr.gshort input.gqty{color:var(--accent);font-weight:700}
 .sheetbad{margin-top:4px;font-size:12px;letter-spacing:.03em;color:var(--accent);font-weight:600}
+
+/* ---- loading the van ---- */
+.pickbtn{display:block;width:100%;margin:0 0 12px;padding:13px 14px;font:inherit;
+  font-size:15px;font-weight:600;text-align:left;cursor:pointer;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:12px}
+.orderbtn.unsent{background:#8A6316}
+.picktotal{margin:2px 0 12px;font-size:15px;color:var(--muted)}
+.picktotal b{font-size:24px;color:var(--ink);font-variant-numeric:tabular-nums}
+.pickold{margin:0 0 12px;padding:12px 14px;border-radius:10px;font-size:14px;
+  line-height:1.45;color:var(--ink);background:var(--accent-soft);
+  border:1px solid var(--accent)}
+.pickhave{display:block;font-size:11px;letter-spacing:.04em;color:var(--muted);margin-top:2px}
+input.pcase, input.punit{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+table.grid tr.picked td.gtext{font-weight:600}
+table.grid tr.picked input.pcase{color:var(--accent)}
+.offbar{position:sticky;top:0;z-index:50;padding:9px 14px;font-size:13px;line-height:1.4;
+  color:#fff;background:#8A6316}
+.offbar b{font-weight:700}

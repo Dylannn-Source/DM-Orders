@@ -12,6 +12,9 @@ import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './shee
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: '2mb' }));
+// The worker itself is never cached by the browser. A stale sw.js would pin the
+// app to an old build indefinitely, which is the classic way this goes wrong.
+app.use('/sw.js', (req, res, next) => { res.set('Cache-Control', 'no-cache'); next(); });
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---- who is signed in ------------------------------------------------------
@@ -457,6 +460,92 @@ async function ensureCategory(loc, name, db = pool) {
     `INSERT INTO warehouse_categories (location, name, position) VALUES ($1,$2,$3)
      ON CONFLICT (location, name) DO NOTHING`, [loc, name, rows[0].n]);
 }
+
+// A whole pickup in one request: everything loaded onto the van, in one
+// transaction, stamped with one run id.
+//
+// It arrives as a batch rather than a line at a time because the phone doing the
+// typing may have had no signal for the last twenty minutes. Whoever loaded the
+// van types the run out there, and it is posted whenever the phone next reaches
+// the network -- so this has to be replayable and it has to be all-or-nothing.
+// The client sends a run id it generated itself; posting the same one twice
+// returns the first result rather than taking the stock twice.
+app.post('/api/place/:loc/pickup', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+
+  const runId = String(req.body?.run_id || '').trim();
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(runId)) return res.status(400).json({ error: 'run_id required' });
+  const lines = Array.isArray(req.body?.items) ? req.body.items : null;
+  if (!lines) return res.status(400).json({ error: 'items required' });
+  if (lines.length > 600) return res.status(400).json({ error: 'too many lines in one pickup' });
+  const note = String(req.body?.note || '').trim() || null;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // A phone that lost the connection mid-post will send the same run again.
+    const { rows: already } = await client.query(
+      'SELECT COUNT(*)::int AS n FROM warehouse_moves WHERE run_id=$1', [runId]);
+    if (already[0].n) {
+      await client.query('ROLLBACK');
+      return res.json({ ok: true, already_recorded: true, lines: already[0].n });
+    }
+
+    const short = [];      // wanted more than the app thought was on the pallet
+    const missing = [];    // no longer in the warehouse list at all
+    let taken = 0;
+
+    for (const line of lines) {
+      const name = String(line?.name || '').trim();
+      const cases = Number(line?.cases) || 0;
+      const units = Number(line?.units) || 0;
+      if (!name || (cases <= 0 && units <= 0)) continue;
+      if (![cases, units].every(n => isFinite(n) && n >= 0)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `"${name}" needs a number.` });
+      }
+
+      const { rows } = await client.query(
+        `SELECT qty, qty_units, pack_size FROM warehouse_stock
+          WHERE location=$1 AND item_name=$2 FOR UPDATE`, [loc, name]);
+      if (!rows[0]) { missing.push(name); continue; }
+
+      const pack = rows[0].pack_size === null ? null : Number(rows[0].pack_size);
+      const beforeC = Number(rows[0].qty), beforeU = Number(rows[0].qty_units);
+      let afterC = beforeC - cases;
+      let afterU = pack ? beforeU - units : 0;
+      // No loose left and somebody wants three bottles: open a case, which is
+      // exactly what happens out there.
+      while (pack && afterU < 0 && afterC > 0) { afterC -= 1; afterU += pack; }
+      // Taking more than the app knew about means the count was stale, not that
+      // the pickup was wrong. Record what was taken, floor the shelf at nothing,
+      // and say which ones so somebody can look.
+      if (afterC < 0 || afterU < 0) short.push({ name, thought: beforeC, took: cases });
+      afterC = Math.max(afterC, 0); afterU = Math.max(afterU, 0);
+
+      await client.query(
+        `UPDATE warehouse_stock SET qty=$3, qty_units=$4, updated_at=NOW()
+          WHERE location=$1 AND item_name=$2`, [loc, name, afterC, afterU]);
+      await client.query(
+        `INSERT INTO warehouse_moves
+           (location, item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by, run_id)
+         VALUES ($1,$2,'taken',$3,$4,$5,$6,$7,$8,$9)`,
+        [loc, name, afterC - beforeC, afterU - beforeU, afterC, afterU, note, req.employee.name, runId]);
+      taken++;
+    }
+
+    if (!taken) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Nothing was filled in.' }); }
+    await client.query('COMMIT');
+    res.json({ ok: true, run_id: runId, lines: taken, short, missing });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    console.error('pickup failed', e);
+    res.status(500).json({ error: 'could not record that pickup' });
+  } finally {
+    client.release();
+  }
+});
 
 // Describes the item rather than its quantity, so it is kept apart from moves.
 app.put('/api/place/:loc/item/:name', async (req, res) => {

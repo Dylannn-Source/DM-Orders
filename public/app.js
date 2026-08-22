@@ -429,6 +429,20 @@ function showSettingsHub(){
   $('routeHubCount').textContent = routes.length ? (notRouted ? `${notRouted} not placed` : 'all set') : 'not set up';
 }
 
+// Nothing here is live: every number came off this phone, and the only thing
+// worth doing is typing a pickup. Say that rather than letting stale counts pass
+// as current.
+function goOffline(){
+  document.body.classList.add('offline');
+  const bar = document.createElement('div');
+  bar.className = 'offbar';
+  bar.innerHTML = `<b>No signal.</b> Showing what this phone last saw.
+    A pickup you type is kept and saved when you are back in range.`;
+  document.body.prepend(bar);
+  whPicking = true;
+  showWarehouse('warehouse').catch(() => {});
+}
+
 // ---- order summary ----
 function showSummary(){
   hideAll();
@@ -803,16 +817,50 @@ const LAST_KEY = 'dm_last_employee';
 function rememberDevice(emp){
   try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: emp.id, name: emp.name })); } catch {}
 }
+// Signing out forgets the offline identity too, or the next person on this
+// phone would inherit it when the signal drops.
+function forgetDeviceAndMe(){ forgetDevice(); cacheMe(null); }
 function forgetDevice(){ try { localStorage.removeItem(LAST_KEY); } catch {} }
 function rememberedDevice(){
   try { return JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch { return null; }
 }
 
+// Who this phone last signed in as. Only ever used when the network is gone --
+// the cookie is what actually authenticates, and the server checks it on every
+// write, so this cannot let anybody in. It exists because somebody standing in
+// the storage unit with a reloaded phone should still reach their pickup.
+const ME_CACHE = 'dm_me';
+function cacheMe(m){
+  try { m ? localStorage.setItem(ME_CACHE, JSON.stringify(m)) : localStorage.removeItem(ME_CACHE); }
+  catch {}
+}
+function cachedMe(){
+  try { return JSON.parse(localStorage.getItem(ME_CACHE) || 'null'); } catch { return null; }
+}
+
 async function boot(){
-  const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => null);
-  if (!r) { showAuth('who'); authError('Cannot reach the app. Check your connection.'); return; }
+  let offline = false;
+  const r = await fetch('/api/auth/whoami').then(x => x.json())
+    .catch(() => { offline = true; return null; });
+
+  if (!r) {
+    // Signed in here before and simply out of range: carry on with what the
+    // phone remembers rather than showing a login nobody can complete. Anything
+    // that reaches the server will still be checked properly when it does.
+    const known = offline && cachedMe();
+    // Straight to the warehouse, not through startApp: that loads a department
+    // over the network, and its reply would land after this and take the screen
+    // back to an empty Produce list.
+    if (known) { me = known; authNames = []; $('authView').style.display = 'none'; return goOffline(); }
+    showAuth('who');
+    authError(offline
+      ? 'No signal, and this phone has not been signed into yet.'
+      : 'Cannot reach the app. Check your connection.');
+    return;
+  }
   authNames = r.names || [];
   me = r.employee;
+  cacheMe(me);
   if (r.needs_setup) return showAuth('setup');
   if (me) return me.must_change_pin ? showAuth('change') : startApp();
 
@@ -916,6 +964,7 @@ async function tryLogin(showErrors){
   const body = await res.json().catch(() => ({}));
   if (res.ok){
     me = body.employee;
+    cacheMe(me);
     authPin = '';
     rememberDevice(me);
     if (me.must_change_pin) return showAuth('change');
@@ -938,6 +987,7 @@ async function doSetup(){
   const body = await res.json().catch(() => ({}));
   if (!res.ok) return authError(body.error || 'Could not set that up.');
   me = body.employee;
+  cacheMe(me);
   rememberDevice(me);
   startApp();
 }
@@ -957,7 +1007,7 @@ async function doChangePin(){
 
 async function doLogout(){
   await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-  forgetDevice();
+  forgetDeviceAndMe();
   me = null; authPick = null; authPin = '';
   const r = await fetch('/api/auth/whoami').then(x => x.json()).catch(() => ({ names: [] }));
   authNames = r.names || [];
@@ -1161,9 +1211,23 @@ async function showWarehouse(loc){
   $('footerBar').style.display = 'none';
   $('whWrap').innerHTML = '<div class="hint">Loading...</div>';
   const r = await fetch('/api/place/' + whLoc).then(x => x.json()).catch(() => null);
-  if (!r || r.error){ $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>'; return; }
+  if (!r || r.error){
+    // Out of range at the storage unit. Fall back to the copy this phone kept,
+    // so a pickup can still be typed. Everything else on the tab is stale and
+    // the banner across the top says so.
+    const cache = whLoc === 'warehouse' ? cachedList() : null;
+    if (!cache){
+      $('whWrap').innerHTML = '<div class="hint">Could not load the warehouse.</div>';
+      return;
+    }
+    whStock = cache.items; whMoves = []; whVori = { configured: false };
+    whCats = cache.cats.map(name => ({ name })); whPals = []; whSheet = null;
+    renderWarehouse();
+    return;
+  }
   whStock = r.stock; whMoves = r.moves; whVori = r.vori || { configured: false };
   whCats = r.categories || []; whPals = r.pallets || []; whSheet = r.sheet || null;
+  if (whLoc === 'warehouse') cacheList();
   renderWarehouse();
 }
 
@@ -1766,6 +1830,175 @@ function addFormHtml(target){
     <div class="hint" id="whMsg"></div>`;
 }
 
+// Loading the van. One screen, every item in walk order, a box for how many you
+// took -- no drilling into cards, because a bulk pickup is thirty of them.
+//
+// All of it assumes there is no signal at the storage unit. The item list is
+// kept from the last time the phone had a connection, what you type is written
+// to the phone on every keystroke, and the run is posted whenever the network
+// comes back. Nothing is lost by walking out of range mid-pickup.
+const PICK_LIST = 'dm_pick_list';      // the last good copy of the warehouse
+const PICK_DRAFT = 'dm_pick_draft';    // what has been typed but not yet sent
+
+let whPicking = false;
+function whStartPick(){ whPicking = true; whGroup = null; window.scrollTo(0,0); renderWarehouse(); }
+function whStopPick(){ whPicking = false; renderWarehouse(); }
+
+function pickDraft(){
+  try { return JSON.parse(localStorage.getItem(PICK_DRAFT) || 'null') || newDraft(); }
+  catch { return newDraft(); }
+}
+function newDraft(){
+  // The id is made here, not by the server: the phone may be posting this run
+  // for the first time long after it was typed, and it has to be the same id on
+  // a retry so a second attempt cannot take the stock twice.
+  return { run_id: 'run-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8),
+           started: new Date().toISOString(), lines: {} };
+}
+function saveDraft(d){ try { localStorage.setItem(PICK_DRAFT, JSON.stringify(d)); } catch {} }
+function clearDraft(){ try { localStorage.removeItem(PICK_DRAFT); } catch {} }
+
+// Whatever the warehouse looked like last time we could reach it.
+function cacheList(){
+  try {
+    localStorage.setItem(PICK_LIST, JSON.stringify({
+      at: new Date().toISOString(),
+      items: whStock.map(r => ({ item_name: r.item_name, brand: r.brand, size: r.size,
+                                 category: r.category, qty: r.qty, unit: r.unit,
+                                 pack_size: r.pack_size, unit_name: r.unit_name })),
+      cats: whCats.map(c => c.name)
+    }));
+  } catch {}
+}
+function cachedList(){
+  try { return JSON.parse(localStorage.getItem(PICK_LIST) || 'null'); } catch { return null; }
+}
+
+function renderPick(){
+  const wrap = $('whWrap');
+  whSummaryLine();
+  const draft = pickDraft();
+  // Live data when we have it, the cached copy when we do not.
+  const cache = cachedList();
+  const live = whStock.length ? { items: whStock, cats: whCats.map(c => c.name), at: null } : null;
+  const src = live || (cache ? { items: cache.items, cats: cache.cats, at: cache.at } : null);
+
+  if (!src){
+    wrap.innerHTML = `<div class="whsync"><button class="vorilink" onclick="whStopPick()">&larr; back</button></div>
+      <div class="emptystate"><b>No list on this phone yet.</b>
+      <div>Open Offsite once somewhere with signal, then it will work out here.</div></div>`;
+    return;
+  }
+
+  const filled = Object.values(draft.lines).filter(v => Number(v.cases) > 0 || Number(v.units) > 0).length;
+  // Two hundred rows is a long scroll for twenty items, and the search box above
+  // is already there. Filtering is done here on the phone's own copy, so it works
+  // with no signal like everything else on this screen.
+  const q = ($('whSearch').value || '').trim().toLowerCase();
+  const hit = r => !q || r.item_name.toLowerCase().includes(q)
+                      || (r.category || '').toLowerCase().includes(q);
+  const shown = src.items.filter(r => hit(r) || draft.lines[r.item_name]);
+  const groups = [];
+  for (const c of src.cats){
+    const rows = shown.filter(r => r.category === c);
+    if (rows.length) groups.push({ name: c, rows });
+  }
+  const loose = shown.filter(r => !r.category || !src.cats.includes(r.category));
+  if (loose.length) groups.push({ name: '', rows: loose });
+
+  const line = r => {
+    const v = draft.lines[r.item_name] || {};
+    return `<tr class="${Number(v.cases) > 0 || Number(v.units) > 0 ? 'picked' : ''}">
+      <td class="gtext">${htmlEsc(r.item_name)}
+        <span class="pickhave">${fmtQty(r.qty)} on the pallet</span></td>
+      <td><input class="g pcase" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
+                 value="${v.cases ?? ''}"></td>
+      ${r.pack_size ? `<td><input class="g punit" inputmode="decimal" data-name="${htmlEsc(r.item_name)}"
+                 value="${v.units ?? ''}"></td>` : '<td class="gflag"></td>'}
+    </tr>`;
+  };
+
+  wrap.innerHTML = `
+    <div class="whsync"><button class="vorilink" onclick="whStopPick()">&larr; ${place().sections}</button>
+      <b>Loading the van</b></div>
+    ${src.at ? `<div class="pickold">Working from the list saved
+       ${new Date(src.at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+       &mdash; no signal right now. Everything you type is kept.</div>` : ''}
+    <div class="picktotal"><b id="pickN">${filled}</b> item${filled === 1 ? '' : 's'} on the van${
+      q ? ` &middot; showing ${shown.length} of ${src.items.length}` : ''}</div>
+    <div class="gridwrap">
+      <table class="grid">
+        <thead><tr><th>Item</th><th>Cases</th><th>Loose</th></tr></thead>
+        <tbody>${groups.map(g => `
+          <tr class="ghead"><th colspan="3">${g.name ? htmlEsc(g.name) : 'Not on a pallet'}</th></tr>
+          ${g.rows.map(line).join('')}`).join('')}</tbody>
+      </table>
+    </div>
+    <button class="addbtn" style="width:100%;margin-top:14px;" onclick="whSendPick()">Save this pickup</button>
+    <button class="listlink" style="display:block;width:100%;margin-top:8px;" onclick="whScrapPick()">Throw this run away</button>
+    <div class="hint" id="pickMsg">Type what you put on the van. It is kept on this phone
+      until you save, signal or not.</div>`;
+
+  wrap.querySelectorAll('.pcase, .punit').forEach(el => {
+    el.addEventListener('input', () => {
+      const d = pickDraft();
+      const name = el.dataset.name;
+      const cur = d.lines[name] || {};
+      cur[el.classList.contains('pcase') ? 'cases' : 'units'] = el.value.trim();
+      if (!String(cur.cases || '').trim() && !String(cur.units || '').trim()) delete d.lines[name];
+      else d.lines[name] = cur;
+      saveDraft(d);
+      const n = Object.values(d.lines).filter(v => Number(v.cases) > 0 || Number(v.units) > 0).length;
+      $('pickN').textContent = n;
+      el.closest('tr').classList.toggle('picked', Number(cur.cases) > 0 || Number(cur.units) > 0);
+    });
+  });
+}
+
+function whScrapPick(){
+  const d = pickDraft();
+  const n = Object.keys(d.lines).length;
+  if (n && !confirm(`Throw away ${n} line${n === 1 ? '' : 's'}? Nothing has been taken off the warehouse yet.`)) return;
+  clearDraft(); whStopPick();
+}
+
+async function whSendPick(){
+  const msg = $('pickMsg');
+  const d = pickDraft();
+  const items = Object.entries(d.lines)
+    .map(([name, v]) => ({ name, cases: Number(v.cases) || 0, units: Number(v.units) || 0 }))
+    .filter(x => x.cases > 0 || x.units > 0);
+  if (!items.length){ msg.textContent = 'Nothing filled in yet.'; return; }
+  msg.textContent = 'Saving...';
+  let res;
+  try {
+    res = await fetch(`/api/place/${whLoc}/pickup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: d.run_id, items })
+    });
+  } catch {
+    // Out of range. The draft is already on the phone; say so plainly and stop.
+    msg.innerHTML = `<b>No signal.</b> Your ${items.length} lines are saved on this phone.
+      Press Save again when you are back at the store.`;
+    return;
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){ msg.textContent = body.error || 'Could not save that pickup.'; return; }
+
+  clearDraft();
+  whPicking = false;
+  await showWarehouse();
+  const notes = [];
+  if (body.already_recorded) notes.push('This run was already saved — nothing was taken twice.');
+  else notes.push(`Saved. ${body.lines} item${body.lines === 1 ? '' : 's'} off the warehouse.`);
+  if (body.short?.length) notes.push('The app thought there was less on the pallet than you took: '
+    + body.short.map(x => `${x.name} (thought ${fmtQty(x.thought)}, took ${fmtQty(x.took)})`).join('; ')
+    + '. Worth a recount.');
+  if (body.missing?.length) notes.push('Not on the warehouse list, so skipped: ' + body.missing.join(', '));
+  if (notes.length > 1) alert(notes.join('\n\n'));
+  const m = $('whSheetMsg'); if (m) m.textContent = '';
+}
+
 // Everything the storage unit is short of, which is the job Angel's column G
 // does and the reason he kept the spreadsheet. Grouped and copyable in the same
 // shape as the other tabs, so an order goes out the same way everywhere.
@@ -1876,7 +2109,18 @@ function renderShelfList(){
   }
 
   const short = shortList().length;
+  // A run typed at the warehouse and never sent is the one thing worth
+  // interrupting for: the stock has left the building but the app still counts it.
+  const draft = pickDraft();
+  const unsent = Object.values(draft.lines).filter(v => Number(v.cases) > 0 || Number(v.units) > 0).length;
   wrap.innerHTML = whViewToggle()
+    + (edit && unsent
+        ? `<button class="orderbtn unsent" onclick="whStartPick()">
+             <b>${unsent}</b> item${unsent === 1 ? '' : 's'} loaded but not saved &mdash; finish the pickup</button>`
+        : '')
+    + (edit && !unsent
+        ? `<button class="pickbtn" onclick="whStartPick()">Loading the van &mdash; log a pickup</button>`
+        : '')
     + (short
         ? `<button class="orderbtn" onclick="whShowOrder()">
              <b>${short}</b> item${short === 1 ? '' : 's'} under par &mdash; see what to order</button>`
@@ -1896,6 +2140,7 @@ function renderWarehouse(){
   // Offsite opens on its pallets, the way Monkish opens on its containers: the
   // tab is for finding out what is out there, and a wall of every item at once
   // never answered that. Searching skips the pallets and answers straight.
+  if (!place().diagram && whPicking) return renderPick();
   if (!place().diagram && whOrderView && !searching) return renderOrder();
   if (!place().diagram && whGroup === null && !searching) return renderShelfList();
   if (place().diagram && whContainer === null && !searching) return renderDiagram();
