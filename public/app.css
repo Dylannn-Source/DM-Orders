@@ -612,3 +612,17 @@ body.simple .whhead { padding-bottom:6px; }
   border-radius:12px}
 .ptile .ppart{font-size:11px;letter-spacing:.05em;color:var(--muted);font-style:italic}
 .toomany{display:block;margin-top:3px;font-size:12px;font-weight:600;color:var(--accent)}
+
+/* ---- a row shows only what the product needs ---- */
+.bysub{display:block;margin-top:3px;font-size:12px;letter-spacing:.03em;color:var(--accent);
+  font-weight:600}
+.bigrow.picked{border-left:4px solid var(--accent)}
+.rollup{margin-top:9px;padding:9px 12px;border-radius:9px;font-size:13.5px;line-height:1.4;
+  background:var(--accent-soft);color:var(--ink)}
+.chip.cases{cursor:default;background:var(--bg);border-color:var(--line);color:var(--ink);
+  padding:4px 6px}
+.chip.cases b{font-variant-numeric:tabular-nums;min-width:14px;text-align:center}
+.chip.cases button{width:34px;height:34px;font:inherit;font-size:19px;font-weight:600;
+  cursor:pointer;border-radius:999px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);line-height:1}
+.chip.cases button:disabled{opacity:.35}

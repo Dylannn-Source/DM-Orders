@@ -379,6 +379,14 @@ export async function initDb() {
   // whole cases until somebody says otherwise, and anyone can say so from the
   // warehouse floor the first time it comes up.
   await pool.query('ALTER TABLE warehouse_categories ADD COLUMN IF NOT EXISTS part_cases BOOLEAN NOT NULL DEFAULT FALSE');
+
+  // Which individual products get picked at. The pallet flag above was too
+  // coarse: Chili Paste holds thirty-eight items and perhaps three of them ever
+  // come back as loose packs, so flagging the pallet put controls on
+  // thirty-five rows that will never use them. This is the real fact -- it is
+  // the product that is sold by the pack, not the pallet it sits on -- and it
+  // sets itself the first time anybody records loose from that item.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pick_loose BOOLEAN NOT NULL DEFAULT FALSE');
   await pool.query('CREATE INDEX IF NOT EXISTS warehouse_moves_run ON warehouse_moves (run_id)');
 
   // A container has floor space for eight pallets and no more, but the first

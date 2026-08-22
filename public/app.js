@@ -1945,37 +1945,37 @@ function renderSimple(){
 
   const rows = src.items.filter(r => r.category === simplePallet)
     .sort((a, b) => a.item_name.localeCompare(b.item_name));
-  const parts = !!(whCats.find(c => c.name === simplePallet) || {}).part_cases;
+  // The pallet flag still works as a way to reveal everything on a mixed pallet,
+  // but it no longer decides a row -- the item does.
+  const reveal = !!(whCats.find(c => c.name === simplePallet) || {}).part_cases
+                 || simpleReveal === simplePallet;
   wrap.innerHTML = basket
     + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
        <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
        <p class="bigsub">How many did you take?</p>
-       <div class="bigrows">${rows.map(r => bigRow(r, draft, parts)).join('')}</div>
-       ${parts ? '' : `<button class="askparts" onclick="simpleAskParts()">
+       <div class="bigrows">${rows.map(r => bigRow(r, draft, reveal)).join('')}</div>
+       ${reveal ? '' : `<button class="askparts" onclick="simpleAskParts()">
           Took half a case, or packs out of a box?</button>`}
        <button class="askparts" onclick="simpleOther()">
          Took something that is not on this list?</button>`;
 }
 
-// Turning it on from where it matters: standing at the pallet, the first time it
-// comes up. Nobody has to have predicted this pallet in a settings screen, and
-// once it is on it stays on.
-async function simpleAskParts(){
-  if (!confirm('Do you take half cases or loose packs from this pallet?\n\n'
-    + 'Saying yes adds those buttons here, for everybody, from now on.')) return;
-  const res = await fetch(`/api/place/warehouse/category/${encodeURIComponent(simplePallet)}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ part_cases: true })
-  });
-  if (!res.ok){ alert('Could not change that. There may be no signal.'); return; }
-  await showWarehouse('warehouse').catch(() => {});
-  renderSimple();
-}
+// Standing at a pallet needing a control the row does not have. Reveals them for
+// this visit only; whichever item he actually uses is marked when the run saves,
+// so the right products end up flagged and every other row stays down to one
+// button. Nothing to configure, and unlike changing a pallet setting it does not
+// need a signal.
+let simpleReveal = null;
+function simpleAskParts(){ simpleReveal = simplePallet; renderSimple(); }
 
-// One item, and the three ways a case actually leaves a pallet: whole ones, half
-// of one, and loose packs out of an opened box. All of it on buttons, because the
-// moment a keyboard appears this stops being Andy's screen.
-function bigRow(r, draft, parts){
+// A row shows only what this product actually needs.
+//
+// Something taken by the case gets one control and nothing else, which is nearly
+// everything. Something people pick at leads with packs, because packs are what
+// he is counting, and keeps whole cases as a smaller control beside it. It is the
+// product that decides, not the pallet it sits on -- thirty-eight things sit on
+// Chili Paste and perhaps three of them ever get opened.
+function bigRow(r, draft, reveal){
   const line = draft.lines[r.item_name] || {};
   const n = Number(line.cases) || 0;
   const u = Number(line.units) || 0;
@@ -1985,30 +1985,48 @@ function bigRow(r, draft, parts){
   const whole = Math.floor(n);
   const half = n - whole >= 0.5;
   const name = esc(r.item_name);
-  return `<div class="bigrow ${n || u ? 'on' : ''}">
-    <div class="bigtop">
-      <div class="bigname">${htmlEsc(r.item_name)}
-        ${n > have && have >= 0 ? `<span class="toomany">the pallet only had ${fmtQty(have)}</span>` : ''}</div>
-      <div class="bigstep">
-        <button class="minus" ${n ? '' : 'disabled'} onclick="simpleBump('${name}',-1)">&minus;</button>
-        <span class="bignum">${n ? fmtQty(n) : 0}</span>
-        <button class="plus" onclick="simpleBump('${name}',1)">+</button>
-      </div>
-    </div>
-    ${parts || half || u ? `<div class="bigparts">
+  const loose = !!r.pick_loose || u > 0;
+  const pack = Number(r.pack_size) || 0;
+  const rolls = pack && u >= pack;
+
+  const nameCell = `<div class="bigname">${htmlEsc(r.item_name)}
+      ${loose ? `<span class="bysub">taken by the pack${pack ? ` &middot; ${fmtQty(pack)} to a case` : ''}</span>` : ''}
+      ${n > have ? `<span class="toomany">the pallet only had ${fmtQty(have)}</span>` : ''}</div>`;
+  const stepper = (val, fn) => `<div class="bigstep">
+      <button class="minus" ${val ? '' : 'disabled'} onclick="${fn}('${name}',-1)">&minus;</button>
+      <span class="bignum">${val ? fmtQty(val) : 0}</span>
+      <button class="plus" onclick="${fn}('${name}',1)">+</button>
+    </div>`;
+
+  if (!loose && !reveal && !half){
+    return `<div class="bigrow ${n ? 'on' : ''}">
+      <div class="bigtop">${nameCell}${stepper(n, 'simpleBump')}</div></div>`;
+  }
+
+  return `<div class="bigrow ${n || u ? 'on' : ''} ${loose ? 'picked' : ''}">
+    <div class="bigtop">${nameCell}${loose ? stepper(u, 'simpleLoose') : stepper(n, 'simpleBump')}</div>
+    ${rolls ? `<div class="rollup">${fmtQty(u)} packs is
+       ${fmtQty(Math.floor(u / pack))} full case${Math.floor(u / pack) === 1 ? '' : 's'}${
+       u % pack ? ` and ${fmtQty(u % pack)} over` : ''} &mdash; it saves that way</div>` : ''}
+    <div class="bigparts">
+      ${loose
+        ? `<span class="chip cases">
+             <button ${n ? '' : 'disabled'} onclick="simpleBump('${name}',-1)">&minus;</button>
+             <b>${n ? fmtQty(n) : 0}</b> whole case${n === 1 ? '' : 's'}
+             <button onclick="simpleBump('${name}',1)">+</button></span>`
+        : u ? `<span class="chip loose">
+                 <button onclick="simpleLoose('${name}',-1)">&minus;</button>
+                 <b>${fmtQty(u)}</b> loose
+                 <button onclick="simpleLoose('${name}',1)">+</button></span>`
+            : `<button class="chip" onclick="simpleLoose('${name}',1)">opened a box</button>`}
       <button class="chip ${half ? 'on' : ''}" onclick="simpleHalf('${name}')">
         ${half ? '&#10003; ' : ''}half a case</button>
-      ${u ? `<span class="chip loose">
-               <button onclick="simpleLoose('${name}',-1)">&minus;</button>
-               <b>${fmtQty(u)}</b> loose
-               <button onclick="simpleLoose('${name}',1)">+</button></span>`
-          : `<button class="chip" onclick="simpleLoose('${name}',1)">opened a box</button>`}
-    </div>` : ''}
+    </div>
   </div>`;
 }
 
-function simpleOpen(cat){ simplePallet = cat; window.scrollTo(0,0); renderSimple(); }
-function simpleBack(){ simplePallet = null; window.scrollTo(0,0); renderSimple(); }
+function simpleOpen(cat){ simplePallet = cat; simpleReveal = null; window.scrollTo(0,0); renderSimple(); }
+function simpleBack(){ simplePallet = null; simpleReveal = null; window.scrollTo(0,0); renderSimple(); }
 
 // Whole cases. A half already on the line is kept: three and a half plus one is
 // four and a half, which is what pressing + next to "half a case" should mean.

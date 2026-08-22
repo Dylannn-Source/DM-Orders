@@ -519,8 +519,8 @@ app.post('/api/place/:loc/pickup', async (req, res) => {
 
     for (const line of lines) {
       const name = String(line?.name || '').trim();
-      const cases = Number(line?.cases) || 0;
-      const units = Number(line?.units) || 0;
+      let cases = Number(line?.cases) || 0;
+      let units = Number(line?.units) || 0;
       if (!name || (cases <= 0 && units <= 0)) continue;
       if (![cases, units].every(n => isFinite(n) && n >= 0)) {
         await client.query('ROLLBACK');
@@ -534,6 +534,16 @@ app.post('/api/place/:loc/pickup', async (req, res) => {
 
       const pack = rows[0].pack_size === null ? null : Number(rows[0].pack_size);
       const beforeC = Number(rows[0].qty), beforeU = Number(rows[0].qty_units);
+      // Twenty-four packs of something that comes twenty-four to a case is one
+      // case. Recording it as twenty-four loose would leave the pallet holding a
+      // case that is not there and a pile of packs that is. Only possible where
+      // somebody has said how many are in a case; where nobody has, the packs
+      // stay packs and stay honest.
+      if (pack && units >= pack) {
+        const whole = Math.floor(units / pack);
+        cases += whole;
+        units -= whole * pack;
+      }
       let afterC = beforeC - cases;
       // Loose is recorded whether or not anybody has said how many are in a case.
       // "Three cases and six packs" is a true statement about the pallet on its
@@ -559,8 +569,14 @@ app.post('/api/place/:loc/pickup', async (req, res) => {
       afterC = Math.max(afterC, 0); afterU = Math.max(afterU, 0);
 
       await client.query(
-        `UPDATE warehouse_stock SET qty=$3, qty_units=$4, updated_at=NOW()
-          WHERE location=$1 AND item_name=$2`, [loc, name, afterC, afterU]);
+        `UPDATE warehouse_stock
+            SET qty=$3, qty_units=$4,
+                -- Anybody taking loose from this product proves it gets picked
+                -- at, so the next person sees a packs control without anyone
+                -- having configured one.
+                pick_loose = pick_loose OR $5::boolean,
+                updated_at=NOW()
+          WHERE location=$1 AND item_name=$2`, [loc, name, afterC, afterU, units > 0]);
       await client.query(
         `INSERT INTO warehouse_moves
            (location, item_name, kind, delta, delta_units, qty_after, units_after, note, moved_by, run_id)
