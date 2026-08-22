@@ -86,6 +86,19 @@ decision.
    | `WAREHOUSE_SHEET_TABS` | optional, default `Inventory,Teas` |
    | `WAREHOUSE_SHEET_MINUTES` | optional, default `180`, minimum `15` |
 
+Then redeploy and check it from the Railway console before trusting it:
+
+```
+node scripts/check-sheet.mjs
+```
+
+It writes nothing. It either names what is wrong &mdash; a key that is not
+enabled for the Sheets API, a sheet that was never shared, a tab that does not
+exist &mdash; or tells you what the first sync would bring in.
+
+You do not need `scripts/import-warehouse.mjs` as well. Connecting the sheet
+populates an empty Offsite by itself on the first sync.
+
 The Offsite tab then says where its product list came from and when. **Check for
 changes** shows what a sync would do — new items, changed pars, anything gone —
 and applies nothing until you say so.
