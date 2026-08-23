@@ -28,6 +28,18 @@ let me = null;           // the signed-in employee
 let authNames = [], authPick = null, authPin = '', authMode = 'who';
 let resetArmed = false, resetArmTimer = null;
 let armedDeleteGroup = null, armedDeleteTimer = null;
+// Produce is counted in two laps of the building: the shelves, then the back
+// room. They are not laid out the same way, so each lap has its own order and
+// each shows only the control that lap is for.
+let pass = 'shelf';
+let walk = {};                 // the saved order for each lap
+let walked = [];               // the order this lap is being done in, as it happens
+const TWO_PASS = () => dept === 'produce';
+function setPass(p){
+  pass = p; walked = [];
+  window.scrollTo(0, 0);
+  renderList();
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/'/g, "\\'");
@@ -115,7 +127,12 @@ function computeOrder(it){
     if (s === null && c === null) return null;
     const shelfNeed = Math.max(shelfTargetFor(it) - (s || 0), 0);
     const coolerNeed = Math.max(parFor(it, day) - (c || 0), 0);
-    return shelfNeed + coolerNeed;
+    // A quarter-full shelf needs three quarters to fill it, and you cannot order
+    // three quarters of anything. Rounded once at the end, so a shelf that is
+    // merely low still asks for one.
+    return Math.ceil((shelfNeed + coolerNeed) * 100) / 100 % 1
+      ? Math.ceil(shelfNeed + coolerNeed)
+      : shelfNeed + coolerNeed;
   }
   const q = (e.qty === null || e.qty === undefined) ? null : Number(e.qty);
   if (q === null) return null;
@@ -132,7 +149,22 @@ function isDone(it){
 }
 
 function orderedItems(){
-  const active = items.filter(i => i.active);
+  let active = items.filter(i => i.active);
+  if (TWO_PASS()){
+    // The back lap only shows what could actually be ordered from the back
+    // today. Eighty produce items have no back par on a Monday; walking past
+    // them is the difference between a lap and an afternoon.
+    if (pass === 'back') active = active.filter(i => parFor(i, day) > 0);
+    const saved = walk[pass];
+    if (saved && saved.length){
+      const byName = {}; active.forEach(i => byName[i.name] = i);
+      const out = [];
+      saved.forEach(n => { if (byName[n]){ out.push({ item: byName[n], group: null }); delete byName[n]; } });
+      Object.values(byName).forEach(i => out.push({ item: i, group: 'Not on the walk yet' }));
+      return out;
+    }
+    return active.map(i => ({ item: i, group: null }));
+  }
   if (!routes.length) return active.map(i => ({ item: i, group: null }));
   const byName = {}; active.forEach(i => byName[i.name] = i);
   const placed = new Set(); const out = [];
@@ -180,6 +212,9 @@ async function bootstrap(){
   }));
   routes = data.routes;
   vendors = data.vendors;
+  walk = data.walk || {};
+  walked = [];
+  pass = 'shelf';
   counts = {};
   data.counts.forEach(c => {
     counts[c.item_name] = {
@@ -209,21 +244,72 @@ async function setDay(d){
 }
 
 // ---- counting list ----
+function passBarHtml(){
+  if (!TWO_PASS()) return '';
+  const active = items.filter(i => i.active);
+  const back = active.filter(i => parFor(i, day) > 0);
+  const doneS = active.filter(i => counts[i.name]?.shelf !== null && counts[i.name]?.shelf !== undefined).length;
+  const doneB = back.filter(i => counts[i.name]?.cooler !== null && counts[i.name]?.cooler !== undefined).length;
+  return `<div class="passbar">
+      <button class="${pass === 'shelf' ? 'on' : ''}" onclick="setPass('shelf')">
+        Shelves <span>${doneS}/${active.length}</span></button>
+      <button class="${pass === 'back' ? 'on' : ''}" onclick="setPass('back')">
+        Back <span>${doneB}/${back.length}</span></button>
+    </div>`;
+}
+
+// Offered once a lap is far enough along to be worth keeping, and only when the
+// order actually differs from the one already saved.
+// Updated on its own rather than by re-rendering: the list must not move under
+// a thumb mid-count, which is the bug that made counting produce miserable once
+// already.
+function refreshWalkOffer(){
+  const el = $('walkOffer');
+  if (el) el.innerHTML = walkOfferHtml();
+}
+function refreshPassBar(){
+  const el = $('passBar');
+  if (el) el.innerHTML = passBarHtml();
+}
+
+function walkOfferHtml(){
+  if (!TWO_PASS() || !canEdit() || walked.length < 8) return '';
+  const saved = walk[pass] || [];
+  const same = saved.length === walked.length && saved.every((n, i) => n === walked[i]);
+  if (same) return '';
+  return `<button class="walksave" onclick="saveWalk()">
+      Save this as the ${pass === 'shelf' ? 'shelf' : 'back room'} order
+      <span>so next time the list follows your feet</span></button>`;
+}
+
+async function saveWalk(){
+  const names = walked.slice();
+  const res = await write('PUT', '/walk-order', { pass, names });
+  if (res === false) return;
+  walk[pass] = names;
+  renderList();
+}
+
 function renderList(){
   const q = $('search').value.trim().toLowerCase();
   const wrap = $('listView');
   wrap.innerHTML = '';
+  wrap.insertAdjacentHTML('beforeend', `<div id="passBar">${passBarHtml()}</div>`);
   let total = 0, lastGroup;
   const shown = [];
 
   orderedItems().forEach(({ item: it, group }) => {
     if (q && !it.name.toLowerCase().includes(q) && !(it.invdesc || '').toLowerCase().includes(q)) return;
     total++;
+    // A heading only where there is something to say. An unnamed group used to
+    // print "Items" above the list, which named nothing.
     if (!q && group !== lastGroup){
-      const l = document.createElement('div');
-      l.className = 'sectionlabel';
-      l.textContent = group || 'Items';
-      wrap.appendChild(l);
+      if (group){
+        const l = document.createElement('div');
+        l.className = 'sectionlabel';
+        l.textContent = group;
+        wrap.appendChild(l);
+      }
       lastGroup = group;
     }
     shown.push(it);
@@ -252,6 +338,7 @@ function renderList(){
     wrap.appendChild(row);
   });
   visibleItems = shown;
+  wrap.insertAdjacentHTML('beforeend', `<div id="walkOffer">${walkOfferHtml()}</div>`);
 
   if (total === 0){
     // An empty list means no search hit, or a department with nothing in it yet.
@@ -278,24 +365,29 @@ function controlsHtml(it){
     let ctl;
     if (it.mode === 'shelf_cooler'){
       const s = e.shelf;
-      ctl = `
+      // One lap, one control. Showing both meant visiting every row twice and
+      // hunting for it the second time, in an order that suited neither lap.
+      const shelfCtl = `
         <div class="mini-stepper-group">
           <span class="lbl">Shelf</span>
           <div class="fetoggle">
-            <button class="${s===0?'sel-empty':''}" onclick="setCount('${esc(it.name)}','shelf',0)">0</button>
+            <button class="${s===0?'sel-empty':''}" onclick="setCount('${esc(it.name)}','shelf',0)">empty</button>
+            <button class="${s===0.25?'sel-qtr':''}" onclick="setCount('${esc(it.name)}','shelf',0.25)">&frac14;</button>
             <button class="${s===0.5?'sel-half':''}" onclick="setCount('${esc(it.name)}','shelf',0.5)">&frac12;</button>
-            <button class="${s===1?'sel-full':''}" onclick="setCount('${esc(it.name)}','shelf',1)">1</button>
-          </div>
-        </div>
-        <div class="mini-stepper-group">
-          <span class="lbl">Cooler</span>
-          <div class="stepper mini">
-            <button onclick="stepCount('${esc(it.name)}','cooler',-0.25)">&minus;</button>
-            <input type="number" inputmode="decimal" step="0.25" value="${e.cooler ?? ''}" placeholder="0"
-                   onchange="setCount('${esc(it.name)}','cooler',this.value)">
-            <button onclick="stepCount('${esc(it.name)}','cooler',0.25)">+</button>
+            <button class="${s===1?'sel-full':''}" onclick="setCount('${esc(it.name)}','shelf',1)">full</button>
           </div>
         </div>`;
+      const backCtl = `
+        <div class="mini-stepper-group">
+          <span class="lbl">Back &middot; par ${fmt(parFor(it, day))}</span>
+          <div class="stepper mini">
+            <button onclick="stepCount('${esc(it.name)}','cooler',-1)">&minus;</button>
+            <input type="number" inputmode="decimal" step="1" value="${e.cooler ?? ''}" placeholder="0"
+                   onchange="setCount('${esc(it.name)}','cooler',this.value)">
+            <button onclick="stepCount('${esc(it.name)}','cooler',1)">+</button>
+          </div>
+        </div>`;
+      ctl = !TWO_PASS() ? shelfCtl + backCtl : (pass === 'shelf' ? shelfCtl : backCtl);
     } else {
       // Meat and fish are counted in half units — half a box, half a case.
       ctl = `
@@ -325,10 +417,20 @@ function refreshRow(name){
 
 function refreshProgress(){
   const total = visibleItems.length;
-  const counted = visibleItems.filter(isDone).length;
-  $('progresslabel').textContent = `${counted} of ${total} counted`;
+  // On a two-lap department this counts the lap you are on. Counting whole items
+  // instead read "0 of 174" next to a pass bar saying 12/174, because nothing is
+  // finished until both laps are, which is true and unhelpful.
+  const done = it => TWO_PASS()
+    ? (counts[it.name] || {})[pass === 'shelf' ? 'shelf' : 'cooler'] != null
+    : isDone(it);
+  const counted = visibleItems.filter(done).length;
+  $('progresslabel').textContent = TWO_PASS()
+    ? `${counted} of ${total} ${pass === 'shelf' ? 'shelves' : 'in the back'}`
+    : `${counted} of ${total} counted`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
-  $('reviewBtn').textContent = `Review Orders (${counted}/${total})`;
+  // The button is about the whole order, so it stays on whole items.
+  const whole = visibleItems.filter(isDone).length;
+  $('reviewBtn').textContent = `Review Orders (${whole}/${total})`;
 }
 
 function ensureCount(name){
@@ -336,14 +438,24 @@ function ensureCount(name){
   return counts[name];
 }
 
+// The order things are being touched in, as they are touched. This is the whole
+// answer to "I would have to scroll up and down for hours": the list is only
+// wrong until somebody walks it once.
+function noteWalked(name){
+  if (!TWO_PASS()) return;
+  if (!walked.includes(name)) walked.push(name);
+}
+
 async function setCount(name, field, val){
+  noteWalked(name);
   const c = ensureCount(name);
   c[field] = (val === '' || val === null) ? null : Number(val);
-  refreshRow(name); refreshProgress();
+  refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
 async function stepCount(name, field, delta){
+  noteWalked(name);
   const c = ensureCount(name);
   const cur = Number(c[field] || 0);
   const next = Math.max(cur + delta, 0);

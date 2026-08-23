@@ -1149,19 +1149,31 @@ function checkDept(req, res) {
 app.get('/api/:dept/bootstrap', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
   try {
-    const [items, routes, counts, session, vendors] = await Promise.all([
+    const [items, routes, counts, session, vendors, order] = await Promise.all([
       pool.query('SELECT * FROM items WHERE dept=$1 ORDER BY sort_order, name', [dept]),
       pool.query('SELECT * FROM routes WHERE dept=$1 ORDER BY position', [dept]),
       pool.query('SELECT * FROM counts WHERE dept=$1', [dept]),
       pool.query('SELECT * FROM session_state WHERE dept=$1', [dept]),
-      pool.query('SELECT name FROM vendors WHERE dept=$1 ORDER BY name', [dept])
+      pool.query('SELECT name FROM vendors WHERE dept=$1 ORDER BY name', [dept]),
+      pool.query(`SELECT key, value FROM app_config WHERE key IN ($1,$2)`,
+                 [`walk_${dept}_shelf`, `walk_${dept}_back`])
     ]);
+    // The order somebody actually walks each pass in. Two of them, because the
+    // shelves and the back room are not arranged the same way, and walking a
+    // list that disagrees with your feet is the thing that turns a count into
+    // an afternoon.
+    const walk = {};
+    for (const r of order.rows) {
+      const pass = r.key.endsWith('_back') ? 'back' : 'shelf';
+      try { walk[pass] = JSON.parse(r.value); } catch { /* a corrupt order is no order */ }
+    }
     res.json({
       items: items.rows,
       routes: routes.rows,
       counts: counts.rows,
       day: session.rows[0]?.day_key || null,
-      vendors: vendors.rows.map(r => r.name)
+      vendors: vendors.rows.map(r => r.name),
+      walk
     });
   } catch (e) {
     console.error('bootstrap failed', e);
@@ -1358,6 +1370,31 @@ app.post('/api/:dept/order', async (req, res) => {
   } catch (e) {
     console.error('order log failed', e);
     res.status(500).json({ error: 'order log failed' });
+  }
+});
+
+// The order a pass was actually walked in, captured by walking it. Setting two
+// orders for 174 items in a settings screen is a job nobody does; doing the
+// count once and pressing yes is not.
+app.put('/api/:dept/walk-order', async (req, res) => {
+  const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
+  const pass = req.body?.pass === 'back' ? 'back' : 'shelf';
+  const names = Array.isArray(req.body?.names) ? req.body.names.filter(n => typeof n === 'string') : null;
+  if (!names) return res.status(400).json({ error: 'names required' });
+  try {
+    if (!names.length) {
+      await pool.query('DELETE FROM app_config WHERE key=$1', [`walk_${dept}_${pass}`]);
+      return res.json({ ok: true, cleared: true });
+    }
+    await pool.query(
+      `INSERT INTO app_config (key, value) VALUES ($1,$2)
+       ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+      [`walk_${dept}_${pass}`, JSON.stringify(names)]);
+    res.json({ ok: true, saved: names.length });
+  } catch (e) {
+    console.error('walk order save failed', e);
+    res.status(500).json({ error: 'could not save that order' });
   }
 });
 
