@@ -72,6 +72,7 @@ let walk = {};                 // the saved order for each lap
 let walked = [];               // the order this lap is being done in, as it happens
 const TWO_PASS = () => dept === 'produce';
 function setPass(p){
+  flushWalk();
   pass = p; walked = [];
   window.scrollTo(0, 0);
   renderList();
@@ -217,6 +218,7 @@ function orderedItems(){
 
 // ---- department switching ----
 async function switchDept(d){
+  flushWalk();
   $('warehouseView').style.display = 'none';
   dept = d;
   localStorage.setItem('dm_dept', d);
@@ -555,7 +557,50 @@ function ensureCount(name){
 // wrong until somebody walks it once.
 function noteWalked(name){
   if (!TWO_PASS()) return;
-  if (!walked.includes(name)) walked.push(name);
+  const first = !walked.includes(name);
+  if (first) walked.push(name);
+  if (first) nudgeOrder(name);
+}
+
+// A saved order that keeps up with the shop.
+//
+// Each item counted moves to sit immediately after the one counted before it.
+// Walk in the saved order and every move is a no-op, because everything is
+// already where it would be put. Search for something out of sequence -- because
+// it has moved, or because the order was wrong -- and it relocates to where it
+// was actually found, and stays there. Nothing else in the order is touched,
+// which is what makes this safe where replacing the whole order was not.
+//
+// A product that is not in the order at all, a new one, slots in beside whatever
+// was counted before it rather than falling to the bottom forever.
+let walkDirty = false, walkTimer = null;
+function nudgeOrder(name){
+  const order = walk[pass];
+  if (!order || !order.length) return;         // nothing to evolve yet
+  const prev = walked[walked.length - 2];      // the one counted before this
+  if (!prev || prev === name) return;          // first of the session: leave it be
+  const at = order.indexOf(name), after = order.indexOf(prev);
+  if (after < 0) return;
+  if (at === after + 1) return;                // already in the right place
+  if (at >= 0) order.splice(at, 1);
+  order.splice(order.indexOf(prev) + 1, 0, name);
+  walkDirty = true;
+  queueWalkSave();
+}
+
+// Saved a moment after the last change rather than on every count: a full lap
+// would otherwise be 174 requests. The list is deliberately not re-rendered --
+// it must not move under a thumb mid-count, so a nudge shows up next time the
+// list is built.
+function queueWalkSave(){
+  clearTimeout(walkTimer);
+  walkTimer = setTimeout(flushWalk, 2500);
+}
+async function flushWalk(){
+  clearTimeout(walkTimer);
+  if (!walkDirty || !walk[pass]) return;
+  walkDirty = false;
+  await write('PUT', '/walk-order', { pass, names: walk[pass].slice() });
 }
 
 async function setCount(name, field, val){
@@ -1062,6 +1107,10 @@ function cacheMe(m){
 function cachedMe(){
   try { return JSON.parse(localStorage.getItem(ME_CACHE) || 'null'); } catch { return null; }
 }
+
+// A phone put in a pocket mid-count would otherwise lose the last few nudges.
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushWalk(); });
+window.addEventListener('pagehide', () => { flushWalk(); });
 
 async function boot(){
   let offline = false;
