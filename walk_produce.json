@@ -1,0 +1,43 @@
+{
+  "_note": "The order each lap is walked in. Section names must match produce_sections.json exactly. Run: node scripts/set-walk.mjs --yes",
+  "shelf": [
+    "Herbs & aromatics",
+    "Asian greens",
+    "Lettuce",
+    "Other vegetables",
+    "Peppers & chillies",
+    "Tomatoes",
+    "Mushrooms",
+    "Squash, gourds & melon",
+    "Onions & garlic",
+    "Roots & tubers",
+    "Bananas & plantains",
+    "Apples & pears",
+    "Citrus",
+    "Grapes, stone fruit & berries",
+    "Mangoes & papaya",
+    "Tropical fruit",
+    "Avocado & kiwi",
+    "Odds and ends"
+  ],
+  "back": [
+    "Herbs & aromatics",
+    "Asian greens",
+    "Lettuce",
+    "Other vegetables",
+    "Peppers & chillies",
+    "Tomatoes",
+    "Mushrooms",
+    "Squash, gourds & melon",
+    "Onions & garlic",
+    "Roots & tubers",
+    "Bananas & plantains",
+    "Apples & pears",
+    "Citrus",
+    "Grapes, stone fruit & berries",
+    "Mangoes & papaya",
+    "Tropical fruit",
+    "Avocado & kiwi",
+    "Odds and ends"
+  ]
+}
