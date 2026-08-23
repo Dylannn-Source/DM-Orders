@@ -677,3 +677,12 @@ body.simple .whhead { padding-bottom:6px; }
   border:1px solid var(--line);background:var(--card);color:var(--ink);text-align:left}
 .setupbtn{display:block;width:100%;margin-top:8px;padding:11px;text-align:center;
   border:1px dashed var(--line);border-radius:10px;text-decoration:none;font-weight:600}
+.ochip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:999px;
+  background:var(--card);color:var(--ink);font-size:12px}
+.ochip.moving{outline:2px solid var(--accent);background:var(--accent);color:#fff}
+.ochip.moving b,.ochip.moving .oname{color:#fff}
+.ochip .oname{font:inherit;font-size:12px;background:none;border:0;padding:2px 2px;cursor:pointer;
+  color:var(--ink)}
+.ochip .odrop{font:inherit;font-size:15px;line-height:1;width:20px;height:20px;cursor:pointer;
+  border:0;border-radius:999px;background:var(--bg);color:var(--muted)}
+.setuplabel b{color:var(--ink)}

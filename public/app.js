@@ -44,7 +44,7 @@ let hideDone = false;
 // hold one, which turns sixteen taps into one.
 let setupOn = false, setupOrder = [], sections = {};
 function setupStart(){ setupOn = true; setupOrder = (walk[pass] || []).slice(); window.scrollTo(0,0); renderList(); }
-function setupQuit(){ setupOn = false; renderList(); }
+function setupQuit(){ setupOn = false; setupMoving = null; renderList(); }
 function setupAdd(name){
   if (!setupOrder.includes(name)) setupOrder.push(name);
   renderSetup();
@@ -56,6 +56,28 @@ function setupAddSection(sec){
   renderSetup();
 }
 function setupUndo(){ setupOrder.pop(); renderSetup(); }
+// Any placed item can be taken back out, not just the last one. Undo alone meant
+// spotting a mistake at number twelve after placing forty left you undoing
+// twenty-eight things or starting over.
+function setupRemove(name){
+  setupOrder = setupOrder.filter(n => n !== name);
+  renderSetup();
+}
+// And moved without taking it out and losing its place: tap it, tap where it
+// belongs, done. Two taps and no dragging, which is the one interaction that
+// never works standing up holding a phone.
+let setupMoving = null;
+function setupTap(name){
+  if (setupMoving === name){ setupMoving = null; return renderSetup(); }
+  if (setupMoving){
+    const moving = setupMoving; setupMoving = null;
+    setupOrder = setupOrder.filter(n => n !== moving);
+    setupOrder.splice(setupOrder.indexOf(name) + 1, 0, moving);
+    return renderSetup();
+  }
+  setupMoving = name;
+  renderSetup();
+}
 function setupClear(){
   if (setupOrder.length && !confirm('Start this order again from nothing?')) return;
   setupOrder = []; renderSetup();
@@ -64,7 +86,7 @@ async function setupSave(){
   const res = await write('PUT', '/walk-order', { pass, names: setupOrder });
   if (res === false) return;
   walk[pass] = setupOrder.slice();
-  setupOn = false;
+  setupOn = false; setupMoving = null;
   renderList();
 }
 function toggleHideDone(){ hideDone = !hideDone; renderList(); }
@@ -342,8 +364,16 @@ function renderSetup(){
         <button class="listlink" onclick="setupQuit()">Cancel</button>
       </div>
     </div>
-    ${setupOrder.length ? `<div class="setupsofar">${setupOrder.map((n, i) =>
-        `<span class="ochip"><b>${i + 1}</b> ${htmlEsc(n)}</span>`).join('')}</div>` : ''}
+    ${setupOrder.length ? `
+      <div class="setuplabel">${setupMoving
+        ? `Moving <b>${htmlEsc(setupMoving)}</b> &mdash; tap what it goes after, or tap it again to stop`
+        : 'In order so far &mdash; tap one to move it, or &times; to take it out'}</div>
+      <div class="setupsofar">${setupOrder.map((n, i) =>
+        `<span class="ochip ${setupMoving === n ? 'moving' : ''}">
+           <b>${i + 1}</b>
+           <button class="oname" onclick="setupTap('${esc(n)}')">${htmlEsc(n)}</button>
+           <button class="odrop" onclick="setupRemove('${esc(n)}')" aria-label="take out">&times;</button>
+         </span>`).join('')}</div>` : ''}
     ${!q && secsLeft.length ? `<div class="setupsecs">
       <div class="setuplabel">Whole groups &mdash; use where a shelf holds one</div>
       ${secsLeft.map(([name, its]) =>
