@@ -37,6 +37,36 @@ let pass = 'shelf';
 // 174 rows towards nothing as you go, which is the difference between hunting
 // and finishing.
 let hideDone = false;
+// Setting the order for a lap. Products are not laid out by product family --
+// similar things sit together but a shelf holds a mixture -- so the only true
+// source for the order is somebody tapping things in the order they pass them.
+// The family groupings are offered as a shortcut for wherever a shelf happens to
+// hold one, which turns sixteen taps into one.
+let setupOn = false, setupOrder = [], sections = {};
+function setupStart(){ setupOn = true; setupOrder = (walk[pass] || []).slice(); window.scrollTo(0,0); renderList(); }
+function setupQuit(){ setupOn = false; renderList(); }
+function setupAdd(name){
+  if (!setupOrder.includes(name)) setupOrder.push(name);
+  renderSetup();
+}
+function setupAddSection(sec){
+  (sections[sec] || []).forEach(n => {
+    if (items.some(i => i.name === n && i.active) && !setupOrder.includes(n)) setupOrder.push(n);
+  });
+  renderSetup();
+}
+function setupUndo(){ setupOrder.pop(); renderSetup(); }
+function setupClear(){
+  if (setupOrder.length && !confirm('Start this order again from nothing?')) return;
+  setupOrder = []; renderSetup();
+}
+async function setupSave(){
+  const res = await write('PUT', '/walk-order', { pass, names: setupOrder });
+  if (res === false) return;
+  walk[pass] = setupOrder.slice();
+  setupOn = false;
+  renderList();
+}
 function toggleHideDone(){ hideDone = !hideDone; renderList(); }
 let walk = {};                 // the saved order for each lap
 let walked = [];               // the order this lap is being done in, as it happens
@@ -220,6 +250,8 @@ async function bootstrap(){
   routes = data.routes;
   vendors = data.vendors;
   walk = data.walk || {};
+  sections = data.sections || {};
+  setupOn = false; setupOrder = [];
   walked = [];
   pass = 'shelf';
   counts = {};
@@ -284,6 +316,44 @@ function refreshPassBar(){
 // The first lap of a pass has no order to follow, so it is done by search: walk
 // the route, type two or three letters, tap. The order writes itself out of that,
 // and from the next lap on the list is already in the right order.
+// The setup screen: what is left, tappable, shrinking as it is placed.
+function renderSetup(){
+  const wrap = $('listView');
+  const q = ($('search').value || '').trim().toLowerCase();
+  const active = items.filter(i => i.active);
+  const placed = new Set(setupOrder);
+  const left = active.filter(i => !placed.has(i.name) && (!q || i.name.toLowerCase().includes(q)));
+  const secsLeft = Object.entries(sections)
+    .map(([name, its]) => [name, its.filter(n => !placed.has(n) && active.some(i => i.name === n))])
+    .filter(([, its]) => its.length);
+
+  wrap.innerHTML = `
+    <div class="setuphead">
+      <div class="setuptitle">Order for the ${pass === 'shelf' ? 'shelves' : 'back room'}</div>
+      <div class="setupsub">Tap things in the order you walk past them.
+        <b>${setupOrder.length}</b> of ${active.length} placed &middot;
+        anything left out goes to the end.</div>
+      <div class="setupacts">
+        <button class="addbtn" onclick="setupSave()">Save this order</button>
+        <button class="listlink" ${setupOrder.length ? '' : 'disabled'} onclick="setupUndo()">Undo last</button>
+        <button class="listlink" onclick="setupClear()">Start again</button>
+        <button class="listlink" onclick="setupQuit()">Cancel</button>
+      </div>
+    </div>
+    ${setupOrder.length ? `<div class="setupsofar">${setupOrder.map((n, i) =>
+        `<span class="ochip"><b>${i + 1}</b> ${htmlEsc(n)}</span>`).join('')}</div>` : ''}
+    ${!q && secsLeft.length ? `<div class="setupsecs">
+      <div class="setuplabel">Whole groups &mdash; use where a shelf holds one</div>
+      ${secsLeft.map(([name, its]) =>
+        `<button class="secchip" onclick="setupAddSection('${esc(name)}')">${htmlEsc(name)}
+           <span>${its.length}</span></button>`).join('')}
+    </div>` : ''}
+    <div class="setuplabel">${left.length} left${q ? ` matching "${htmlEsc(q)}"` : ''}</div>
+    <div class="setupitems">${left.map(i =>
+      `<button class="ichip" onclick="setupAdd('${esc(i.name)}')">${htmlEsc(i.name)}</button>`).join('')
+      || '<div class="hint">Everything is placed. Press Save.</div>'}</div>`;
+}
+
 function lapToolsHtml(){
   const known = (walk[pass] || []).length > 0;
   const total = items.filter(i => i.active).length;
@@ -292,6 +362,8 @@ function lapToolsHtml(){
         <input type="checkbox" ${hideDone ? 'checked' : ''} onchange="toggleHideDone()">
         Hide what I have done
       </label>
+      <button class="listlink setupbtn" onclick="setupStart()">
+        ${known ? 'Change' : 'Set'} the ${pass === 'shelf' ? 'shelf' : 'back room'} order</button>
       ${known ? '' : `<div class="lapnote">No ${pass === 'shelf' ? 'shelf' : 'back room'} order saved yet.
         Walk your route and search for each item as you reach it &mdash; two or three letters is enough.
         The order writes itself, and next time these ${total} will already be in it.</div>`}
@@ -317,6 +389,7 @@ async function saveWalk(){
 }
 
 function renderList(){
+  if (setupOn) return renderSetup();
   const q = $('search').value.trim().toLowerCase();
   const wrap = $('listView');
   wrap.innerHTML = '';

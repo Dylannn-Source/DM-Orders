@@ -650,3 +650,30 @@ body.simple .whhead { padding-bottom:6px; }
 .hidedone input{width:20px;height:20px}
 .lapnote{margin-top:8px;padding:11px 13px;border-radius:10px;font-size:13.5px;line-height:1.5;
   color:var(--ink);background:var(--accent-soft);border:1px solid var(--accent)}
+
+/* ---- setting the order for a lap ---- */
+.setuphead{padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--line);
+  margin-bottom:12px}
+.setuptitle{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.setupsub{margin-top:3px;font-size:13.5px;line-height:1.45;color:var(--muted)}
+.setupsub b{color:var(--ink);font-size:15px}
+.setupacts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:11px}
+.setupacts .addbtn{width:auto;padding:10px 18px;margin:0}
+.setupacts .listlink:disabled{opacity:.35}
+.setuplabel{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 7px}
+.setupsofar{display:flex;flex-wrap:wrap;gap:6px;padding:11px;border-radius:10px;
+  background:var(--accent-soft);border:1px solid var(--accent);max-height:132px;overflow-y:auto}
+.ochip{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--card);color:var(--ink)}
+.ochip b{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:3px}
+.setupsecs{display:flex;flex-wrap:wrap;gap:7px}
+.secchip{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;font:inherit;font-size:14px;
+  font-weight:600;cursor:pointer;border-radius:999px;border:1px solid var(--accent);
+  background:var(--card);color:var(--accent)}
+.secchip span{font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;
+  background:var(--accent);color:#fff}
+.setupitems{display:flex;flex-wrap:wrap;gap:6px}
+.ichip{padding:9px 12px;font:inherit;font-size:14px;cursor:pointer;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink);text-align:left}
+.setupbtn{display:block;width:100%;margin-top:8px;padding:11px;text-align:center;
+  border:1px dashed var(--line);border-radius:10px;text-decoration:none;font-weight:600}

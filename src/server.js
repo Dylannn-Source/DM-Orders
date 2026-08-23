@@ -1149,14 +1149,15 @@ function checkDept(req, res) {
 app.get('/api/:dept/bootstrap', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
   try {
-    const [items, routes, counts, session, vendors, order] = await Promise.all([
+    const [items, routes, counts, session, vendors, order, secs] = await Promise.all([
       pool.query('SELECT * FROM items WHERE dept=$1 ORDER BY sort_order, name', [dept]),
       pool.query('SELECT * FROM routes WHERE dept=$1 ORDER BY position', [dept]),
       pool.query('SELECT * FROM counts WHERE dept=$1', [dept]),
       pool.query('SELECT * FROM session_state WHERE dept=$1', [dept]),
       pool.query('SELECT name FROM vendors WHERE dept=$1 ORDER BY name', [dept]),
       pool.query(`SELECT key, value FROM app_config WHERE key IN ($1,$2)`,
-                 [`walk_${dept}_shelf`, `walk_${dept}_back`])
+                 [`walk_${dept}_shelf`, `walk_${dept}_back`]),
+      pool.query('SELECT value FROM app_config WHERE key=$1', [`sections_${dept}`])
     ]);
     // The order somebody actually walks each pass in. Two of them, because the
     // shelves and the back room are not arranged the same way, and walking a
@@ -1173,7 +1174,11 @@ app.get('/api/:dept/bootstrap', async (req, res) => {
       counts: counts.rows,
       day: session.rows[0]?.day_key || null,
       vendors: vendors.rows.map(r => r.name),
-      walk
+      walk,
+      // Loose groupings of similar products, offered in the setup screen as a way
+      // to place sixteen items with one tap where a shelf happens to hold them
+      // together. Only a shortcut: the walk is whatever order somebody taps.
+      sections: (() => { try { return JSON.parse(secs.rows[0]?.value || 'null'); } catch { return null; } })()
     });
   } catch (e) {
     console.error('bootstrap failed', e);
