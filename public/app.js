@@ -372,12 +372,18 @@ function lapToolsHtml(){
 
 function walkOfferHtml(){
   if (!TWO_PASS() || !canEdit() || walked.length < 8) return '';
-  const saved = walk[pass] || [];
-  const same = saved.length === walked.length && saved.every((n, i) => n === walked[i]);
-  if (same) return '';
+  // Only ever offered when there is no order yet. Once one has been set
+  // deliberately this button was a trap: what gets recorded is only what was
+  // touched in this session, so pressing it after a thirty-item count would
+  // have replaced a full order with thirty and dropped the other hundred and
+  // forty-four to the bottom of the list. Changing a real order is a deliberate
+  // act, and it has its own screen.
+  if ((walk[pass] || []).length) return '';
+  const total = items.filter(i => i.active).length;
   return `<button class="walksave" onclick="saveWalk()">
       Save this as the ${pass === 'shelf' ? 'shelf' : 'back room'} order
-      <span>so next time the list follows your feet</span></button>`;
+      <span>${walked.length} of ${total} placed so far &mdash; the rest stay at the end
+      until you set them</span></button>`;
 }
 
 async function saveWalk(){
