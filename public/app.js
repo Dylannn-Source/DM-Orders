@@ -125,14 +125,15 @@ function computeOrder(it){
     const s = (e.shelf === null || e.shelf === undefined) ? null : Number(e.shelf);
     const c = (e.cooler === null || e.cooler === undefined) ? null : Number(e.cooler);
     if (s === null && c === null) return null;
-    const shelfNeed = Math.max(shelfTargetFor(it) - (s || 0), 0);
-    const coolerNeed = Math.max(parFor(it, day) - (c || 0), 0);
-    // A quarter-full shelf needs three quarters to fill it, and you cannot order
-    // three quarters of anything. Rounded once at the end, so a shelf that is
-    // merely low still asks for one.
-    return Math.ceil((shelfNeed + coolerNeed) * 100) / 100 % 1
-      ? Math.ceil(shelfNeed + coolerNeed)
-      : shelfNeed + coolerNeed;
+    // What we want to have, less what we have anywhere. The two gaps used to be
+    // added, which meant a case sitting in the back could never cancel a
+    // half-empty shelf: the other buyer picks something up, has not put it out
+    // yet, and the app still says order more. A quarter-full shelf needs three
+    // quarters to fill it, and nobody orders three quarters of a box, so the
+    // answer is rounded up once at the end.
+    const want = shelfTargetFor(it) + parFor(it, day);
+    const have = (s || 0) + (c || 0);
+    return Math.ceil(Math.max(want - have, 0));
   }
   const q = (e.qty === null || e.qty === undefined) ? null : Number(e.qty);
   if (q === null) return null;
@@ -151,10 +152,10 @@ function isDone(it){
 function orderedItems(){
   let active = items.filter(i => i.active);
   if (TWO_PASS()){
-    // The back lap only shows what could actually be ordered from the back
-    // today. Eighty produce items have no back par on a Monday; walking past
-    // them is the difference between a lap and an afternoon.
-    if (pass === 'back') active = active.filter(i => parFor(i, day) > 0);
+    // The back lap shows everything, including items with no par today. Stock
+    // that somebody bought and has not put out yet is exactly what stops you
+    // buying again, and an item filtered out for having no par is an item whose
+    // back stock you never see.
     const saved = walk[pass];
     if (saved && saved.length){
       const byName = {}; active.forEach(i => byName[i.name] = i);
@@ -247,14 +248,16 @@ async function setDay(d){
 function passBarHtml(){
   if (!TWO_PASS()) return '';
   const active = items.filter(i => i.active);
-  const back = active.filter(i => parFor(i, day) > 0);
-  const doneS = active.filter(i => counts[i.name]?.shelf !== null && counts[i.name]?.shelf !== undefined).length;
-  const doneB = back.filter(i => counts[i.name]?.cooler !== null && counts[i.name]?.cooler !== undefined).length;
+  const doneS = active.filter(i => counts[i.name]?.shelf != null).length;
+  // Most things have nothing out the back, and nobody should have to tap a zero
+  // onto a hundred and fifty of them. Untouched already means none, so the back
+  // lap counts what was found rather than how much of the list has been visited.
+  const foundB = active.filter(i => Number(counts[i.name]?.cooler) > 0).length;
   return `<div class="passbar">
       <button class="${pass === 'shelf' ? 'on' : ''}" onclick="setPass('shelf')">
         Shelves <span>${doneS}/${active.length}</span></button>
       <button class="${pass === 'back' ? 'on' : ''}" onclick="setPass('back')">
-        Back <span>${doneB}/${back.length}</span></button>
+        Back <span>${foundB} found</span></button>
     </div>`;
 }
 
@@ -420,13 +423,15 @@ function refreshProgress(){
   // On a two-lap department this counts the lap you are on. Counting whole items
   // instead read "0 of 174" next to a pass bar saying 12/174, because nothing is
   // finished until both laps are, which is true and unhelpful.
-  const done = it => TWO_PASS()
-    ? (counts[it.name] || {})[pass === 'shelf' ? 'shelf' : 'cooler'] != null
+  const done = it => TWO_PASS() && pass === 'shelf'
+    ? (counts[it.name] || {}).shelf != null
     : isDone(it);
   const counted = visibleItems.filter(done).length;
-  $('progresslabel').textContent = TWO_PASS()
-    ? `${counted} of ${total} ${pass === 'shelf' ? 'shelves' : 'in the back'}`
-    : `${counted} of ${total} counted`;
+  $('progresslabel').textContent = !TWO_PASS()
+    ? `${counted} of ${total} counted`
+    : pass === 'shelf'
+      ? `${counted} of ${total} shelves`
+      : `${visibleItems.filter(i => Number(counts[i.name]?.cooler) > 0).length} found in the back`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
   // The button is about the whole order, so it stays on whole items.
   const whole = visibleItems.filter(isDone).length;
@@ -460,7 +465,7 @@ async function stepCount(name, field, delta){
   const cur = Number(c[field] || 0);
   const next = Math.max(cur + delta, 0);
   c[field] = Math.round(next * 4) / 4;
-  refreshRow(name); refreshProgress();
+  refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
