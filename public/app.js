@@ -32,6 +32,12 @@ let armedDeleteGroup = null, armedDeleteTimer = null;
 // room. They are not laid out the same way, so each lap has its own order and
 // each shows only the control that lap is for.
 let pass = 'shelf';
+// While building an order you are walking a route the list does not know yet, so
+// you search for each item as you reach it. Hiding what is already done shrinks
+// 174 rows towards nothing as you go, which is the difference between hunting
+// and finishing.
+let hideDone = false;
+function toggleHideDone(){ hideDone = !hideDone; renderList(); }
 let walk = {};                 // the saved order for each lap
 let walked = [];               // the order this lap is being done in, as it happens
 const TWO_PASS = () => dept === 'produce';
@@ -275,6 +281,23 @@ function refreshPassBar(){
   if (el) el.innerHTML = passBarHtml();
 }
 
+// The first lap of a pass has no order to follow, so it is done by search: walk
+// the route, type two or three letters, tap. The order writes itself out of that,
+// and from the next lap on the list is already in the right order.
+function lapToolsHtml(){
+  const known = (walk[pass] || []).length > 0;
+  const total = items.filter(i => i.active).length;
+  return `<div class="laptools">
+      <label class="hidedone">
+        <input type="checkbox" ${hideDone ? 'checked' : ''} onchange="toggleHideDone()">
+        Hide what I have done
+      </label>
+      ${known ? '' : `<div class="lapnote">No ${pass === 'shelf' ? 'shelf' : 'back room'} order saved yet.
+        Walk your route and search for each item as you reach it &mdash; two or three letters is enough.
+        The order writes itself, and next time these ${total} will already be in it.</div>`}
+    </div>`;
+}
+
 function walkOfferHtml(){
   if (!TWO_PASS() || !canEdit() || walked.length < 8) return '';
   const saved = walk[pass] || [];
@@ -298,11 +321,16 @@ function renderList(){
   const wrap = $('listView');
   wrap.innerHTML = '';
   wrap.insertAdjacentHTML('beforeend', `<div id="passBar">${passBarHtml()}</div>`);
+  if (TWO_PASS() && canEdit()) wrap.insertAdjacentHTML('beforeend', lapToolsHtml());
   let total = 0, lastGroup;
   const shown = [];
 
+  const laneDone = it => TWO_PASS() && pass === 'back'
+    ? Number(counts[it.name]?.cooler) > 0
+    : (counts[it.name] || {})[TWO_PASS() ? 'shelf' : 'qty'] != null;
   orderedItems().forEach(({ item: it, group }) => {
     if (q && !it.name.toLowerCase().includes(q) && !(it.invdesc || '').toLowerCase().includes(q)) return;
+    if (hideDone && !q && laneDone(it)) return;
     total++;
     // A heading only where there is something to say. An unnamed group used to
     // print "Items" above the list, which named nothing.

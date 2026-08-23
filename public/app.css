@@ -644,3 +644,9 @@ body.simple .whhead { padding-bottom:6px; }
   font-size:15px;font-weight:600;text-align:left;cursor:pointer;color:var(--ink);
   background:var(--card);border:1px dashed var(--accent);border-radius:12px}
 .walksave span{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+.laptools{margin:0 0 12px}
+.hidedone{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--muted);
+  padding:9px 12px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.hidedone input{width:20px;height:20px}
+.lapnote{margin-top:8px;padding:11px 13px;border-radius:10px;font-size:13.5px;line-height:1.5;
+  color:var(--ink);background:var(--accent-soft);border:1px solid var(--accent)}
