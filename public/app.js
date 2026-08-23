@@ -43,8 +43,40 @@ let hideDone = false;
 // The family groupings are offered as a shortcut for wherever a shelf happens to
 // hold one, which turns sixteen taps into one.
 let setupOn = false, setupOrder = [], sections = {};
-function setupStart(){ setupOn = true; setupOrder = (walk[pass] || []).slice(); window.scrollTo(0,0); renderList(); }
-function setupQuit(){ setupOn = false; setupMoving = null; renderList(); }
+
+// A half-built order is kept on the phone as it is built.
+//
+// It used to live only in a variable, so anything that took the page away --
+// changing tab, a reload, the phone deciding to drop the page while it was in a
+// pocket -- threw the work away with nothing saved. Building an order is twenty
+// minutes of walking, and losing it is unforgivable. Save still means save; this
+// only means nothing is ever lost on the way there.
+const SETUP_DRAFT = 'dm_setup_draft';
+function setupKey(){ return `${SETUP_DRAFT}:${dept}:${pass}`; }
+function setupStash(){
+  try { localStorage.setItem(setupKey(), JSON.stringify(setupOrder)); } catch {}
+}
+function setupTake(){
+  try { return JSON.parse(localStorage.getItem(setupKey()) || 'null'); } catch { return null; }
+}
+function setupDrop(){ try { localStorage.removeItem(setupKey()); } catch {} }
+
+function setupStart(){
+  setupOn = true;
+  // Where you left off if there is one, otherwise the order as it stands.
+  const draft = setupTake();
+  setupOrder = Array.isArray(draft) && draft.length ? draft : (walk[pass] || []).slice();
+  window.scrollTo(0, 0);
+  renderList();
+}
+// Anything that leaves the app mid-build.
+document.addEventListener('visibilitychange', () => { if (document.hidden && setupOn) setupStash(); });
+window.addEventListener('pagehide', () => { if (setupOn) setupStash(); });
+function setupQuit(){
+  if (setupOrder.length && !confirm(`Leave without saving?\n\n`
+    + `${setupOrder.length} placed. They are kept on this phone, so you can carry on later.`)) return;
+  setupOn = false; setupMoving = null; renderList();
+}
 function setupAdd(name){
   if (!setupOrder.includes(name)) setupOrder.push(name);
   renderSetup();
@@ -80,11 +112,12 @@ function setupTap(name){
 }
 function setupClear(){
   if (setupOrder.length && !confirm('Start this order again from nothing?')) return;
-  setupOrder = []; renderSetup();
+  setupOrder = []; setupDrop(); renderSetup();
 }
 async function setupSave(){
   const res = await write('PUT', '/walk-order', { pass, names: setupOrder });
-  if (res === false) return;
+  if (res === false) return;                 // keep the draft if the save failed
+  setupDrop();
   walk[pass] = setupOrder.slice();
   setupOn = false; setupMoving = null;
   renderList();
@@ -275,7 +308,7 @@ async function bootstrap(){
   vendors = data.vendors;
   walk = data.walk || {};
   sections = data.sections || {};
-  setupOn = false; setupOrder = [];
+  setupOn = false; setupOrder = []; setupMoving = null;
   walked = [];
   pass = 'shelf';
   counts = {};
@@ -342,6 +375,7 @@ function refreshPassBar(){
 // and from the next lap on the list is already in the right order.
 // The setup screen: what is left, tappable, shrinking as it is placed.
 function renderSetup(){
+  setupStash();
   const wrap = $('listView');
   const q = ($('search').value || '').trim().toLowerCase();
   const active = items.filter(i => i.active);
@@ -356,7 +390,9 @@ function renderSetup(){
       <div class="setuptitle">Order for the ${pass === 'shelf' ? 'shelves' : 'back room'}</div>
       <div class="setupsub">Tap things in the order you walk past them.
         <b>${setupOrder.length}</b> of ${active.length} placed &middot;
-        anything left out goes to the end.</div>
+        anything left out goes to the end.<br>
+        Kept on this phone as you go &mdash; leaving and coming back carries on
+        from here. Press Save when it is right for everybody.</div>
       <div class="setupacts">
         <button class="addbtn" onclick="setupSave()">Save this order</button>
         <button class="listlink" ${setupOrder.length ? '' : 'disabled'} onclick="setupUndo()">Undo last</button>
