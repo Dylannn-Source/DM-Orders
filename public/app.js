@@ -307,6 +307,7 @@ async function bootstrap(){
   routes = data.routes;
   vendors = data.vendors;
   walk = data.walk || {};
+  loadQuarters();
   sections = data.sections || {};
   setupOn = false; setupOrder = []; setupMoving = null;
   walked = [];
@@ -430,6 +431,10 @@ function lapToolsHtml(){
         <input type="checkbox" ${hideDone ? 'checked' : ''} onchange="toggleHideDone()">
         Hide what I have done
       </label>
+      ${pass === 'back' ? `<label class="hidedone quartersw ${quarters ? 'on' : ''}">
+        <input type="checkbox" ${quarters ? 'checked' : ''} onchange="toggleQuarters()">
+        Count in quarters${quarters ? ' &mdash; plus and minus move &frac14; of a case' : ''}
+      </label>` : ''}
       <button class="listlink setupbtn" onclick="setupStart()">
         ${known ? 'Change' : 'Set'} the ${pass === 'shelf' ? 'shelf' : 'back room'} order</button>
       ${known ? '' : `<div class="lapnote">No ${pass === 'shelf' ? 'shelf' : 'back room'} order saved yet.
@@ -555,24 +560,20 @@ function controlsHtml(it){
             <button class="${s===1?'sel-full':''}" onclick="setCount('${esc(it.name)}','shelf',1)">full</button>
           </div>
         </div>`;
-      // Most things out the back are counted in whole cases and a few are not.
-      // Rather than putting a quarter control on all 174 rows, or asking anybody
-      // to mark which items are which, there is one small chip beside the
-      // stepper. Untouched it does nothing and reads as a hint; tapped it cycles
-      // a quarter, a half, three quarters and back to none. The stepper still
-      // moves whole cases and keeps whatever fraction is set, so two and a half
-      // plus one is three and a half.
-      const frac = Math.round(((Number(e.cooler) || 0) % 1) * 4) / 4;
+      // Whole cases unless the quarters switch is on, in which case the same two
+      // buttons move a quarter at a time. One control that changes gear rather
+      // than a second control on every row: nearly everything out the back is
+      // counted in whole cases, and a per-row quarter button would be clutter on
+      // a hundred and fifty rows to serve a handful.
+      const stepBy = quarters ? 0.25 : 1;
       const backCtl = `
         <div class="mini-stepper-group">
           <span class="lbl">Back &middot; par ${fmt(parFor(it, day))}</span>
-          <div class="stepper mini">
-            <button onclick="stepCount('${esc(it.name)}','cooler',-1)">&minus;</button>
+          <div class="stepper mini ${quarters ? 'quarters' : ''}">
+            <button onclick="stepCount('${esc(it.name)}','cooler',-${stepBy})">&minus;</button>
             <input type="number" inputmode="decimal" step="0.25" value="${e.cooler ?? ''}" placeholder="0"
                    onchange="setCount('${esc(it.name)}','cooler',this.value)">
-            <button onclick="stepCount('${esc(it.name)}','cooler',1)">+</button>
-            <button class="fracchip ${frac ? 'on' : ''}" onclick="cycleFraction('${esc(it.name)}')"
-                    title="part of a case">${FRAC_LABEL[frac] || '&frac14;'}</button>
+            <button onclick="stepCount('${esc(it.name)}','cooler',${stepBy})">+</button>
           </div>
         </div>`;
       ctl = !TWO_PASS() ? shelfCtl + backCtl : (pass === 'shelf' ? shelfCtl : backCtl);
@@ -687,20 +688,19 @@ async function setCount(name, field, val){
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
-const FRAC_LABEL = { 0: '', 0.25: '&frac14;', 0.5: '&frac12;', 0.75: '&frac34;' };
-const FRAC_NEXT  = { 0: 0.25, 0.25: 0.5, 0.5: 0.75, 0.75: 0 };
-
-// The fractional part only. Whole cases stay with the stepper, so the two never
-// fight over the same number.
-async function cycleFraction(name){
-  noteWalked(name);
-  const c = ensureCount(name);
-  const cur = Number(c.cooler) || 0;
-  const whole = Math.floor(cur);
-  const frac = Math.round((cur % 1) * 4) / 4;
-  c.cooler = whole + (FRAC_NEXT[frac] ?? 0.25);
-  refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
-  await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
+// Counting the back in quarters. A switch on the lap rather than a control on
+// every row, because it is a stretch of shelf that gets counted that way, not a
+// property of one item -- flick it on for those, off again after. Remembered on
+// the phone so it does not reset halfway through a count, and shown clearly
+// while it is on so nobody wonders why the number is moving in quarters.
+let quarters = false;
+function loadQuarters(){
+  try { quarters = localStorage.getItem('dm_quarters') === '1'; } catch { quarters = false; }
+}
+function toggleQuarters(){
+  quarters = !quarters;
+  try { localStorage.setItem('dm_quarters', quarters ? '1' : '0'); } catch {}
+  renderList();
 }
 
 async function stepCount(name, field, delta){
