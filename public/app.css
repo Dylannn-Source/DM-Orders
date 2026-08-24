@@ -691,3 +691,5 @@ body.simple .whhead { padding-bottom:6px; }
 .quartersw{margin-top:7px}
 .quartersw.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .stepper.mini.quarters button{background:var(--accent);border-color:var(--accent);color:#fff}
+.walkstate{padding:9px 12px;margin-top:7px;border-radius:10px;font-size:13px;
+  background:var(--good-soft, var(--card));border:1px solid var(--line);color:var(--ink)}

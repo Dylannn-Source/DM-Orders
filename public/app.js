@@ -62,10 +62,28 @@ function setupTake(){
 function setupDrop(){ try { localStorage.removeItem(setupKey()); } catch {} }
 
 function setupStart(){
-  setupOn = true;
-  // Where you left off if there is one, otherwise the order as it stands.
   const draft = setupTake();
-  setupOrder = Array.isArray(draft) && draft.length ? draft : (walk[pass] || []).slice();
+  const saved = walk[pass] || [];
+  const stale = Array.isArray(draft) && draft.length
+    && saved.length
+    && (draft.length !== saved.length || draft.some((n, i) => n !== saved[i]));
+
+  // An unsaved draft on this phone used to win outright. Finish an order on the
+  // desktop and the phone would still open its own half-done copy -- and pressing
+  // Save there would have written the stale one over the good one. It cannot
+  // guess which is wanted, so it asks, with the two counts side by side.
+  if (stale) {
+    const keep = confirm(
+      `This phone has ${draft.length} placed that were never saved.\n`
+      + `The saved order has ${saved.length}.\n\n`
+      + `OK carries on from this phone's ${draft.length}.\n`
+      + `Cancel starts from the saved ${saved.length}.`);
+    setupOrder = keep ? draft : saved.slice();
+    if (!keep) setupDrop();
+  } else {
+    setupOrder = Array.isArray(draft) && draft.length ? draft : saved.slice();
+  }
+  setupOn = true;
   window.scrollTo(0, 0);
   renderList();
 }
@@ -435,6 +453,8 @@ function lapToolsHtml(){
         <input type="checkbox" ${quarters ? 'checked' : ''} onchange="toggleQuarters()">
         Count in quarters${quarters ? ' &mdash; plus and minus move &frac14; of a case' : ''}
       </label>` : ''}
+      ${known ? `<div class="walkstate">${(walk[pass] || []).length} of ${total} in the
+        ${pass === 'shelf' ? 'shelf' : 'back room'} order &middot; saved for everybody</div>` : ''}
       <button class="listlink setupbtn" onclick="setupStart()">
         ${known ? 'Change' : 'Set'} the ${pass === 'shelf' ? 'shelf' : 'back room'} order</button>
       ${known ? '' : `<div class="lapnote">No ${pass === 'shelf' ? 'shelf' : 'back room'} order saved yet.
