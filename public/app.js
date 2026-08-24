@@ -497,9 +497,6 @@ function renderList(){
   let total = 0, lastGroup;
   const shown = [];
 
-  const laneDone = it => TWO_PASS() && pass === 'back'
-    ? Number(counts[it.name]?.cooler) > 0
-    : (counts[it.name] || {})[TWO_PASS() ? 'shelf' : 'qty'] != null;
   orderedItems().forEach(({ item: it, group }) => {
     if (q && !it.name.toLowerCase().includes(q) && !(it.invdesc || '').toLowerCase().includes(q)) return;
     if (hideDone && !q && laneDone(it)) return;
@@ -544,10 +541,14 @@ function renderList(){
   wrap.insertAdjacentHTML('beforeend', `<div id="walkOffer">${walkOfferHtml()}</div>`);
 
   if (total === 0){
-    // An empty list means no search hit, or a department with nothing in it yet.
-    wrap.innerHTML = q
-      ? '<div class="emptystate">No items match your search.</div>'
-      : '<div class="emptystate">No items in this department yet.</div>';
+    // Appended, never assigned. Replacing innerHTML here took the pass bar and
+    // the lap tools with it, so once the list emptied there was no checkbox left
+    // to untick and no way back -- the whole page appeared to vanish.
+    const why = q ? 'No items match your search.'
+      : hideDone ? `Everything on this lap is counted. Untick "hide what I have
+          done" above to see it all again.`
+      : 'No items in this department yet.';
+    wrap.insertAdjacentHTML('beforeend', `<div class="emptystate">${why}</div>`);
   }
   refreshProgress();
 }
@@ -615,32 +616,53 @@ function rowEl(name){
   return [...document.querySelectorAll('#listView .row')].find(r => r.dataset.name === name);
 }
 
+// True when this item is done for the lap being walked.
+function laneDone(it){
+  if (TWO_PASS() && pass === 'back') return Number(counts[it.name]?.cooler) > 0;
+  return (counts[it.name] || {})[TWO_PASS() ? 'shelf' : 'qty'] != null;
+}
+
 function refreshRow(name){
   const it = items.find(i => i.name === name);
   const row = rowEl(name);
   if (!it || !row) return;
+  // Counting an item only ever repainted its row, so with "hide what I have
+  // done" ticked the list stopped shrinking the moment it was switched on: the
+  // filter runs when the list is built, and counting does not rebuild it. It
+  // leaves now, as it is counted, which is what ticking the box promised.
+  if (hideDone && !($('search').value || '').trim() && laneDone(it)){
+    row.remove();
+    visibleItems = visibleItems.filter(x => x.name !== name);
+    if (!document.querySelectorAll('#listView .row').length) renderList();
+    return;
+  }
   const order = computeOrder(it);
   row.classList.toggle('hasorder', !!(order && order > 0));
   row.querySelector('.row-ctl').innerHTML = controlsHtml(it);
 }
 
 function refreshProgress(){
-  const total = visibleItems.length;
+  // Against the whole lap, not against what happens to be on screen. Hiding what
+  // is done shrinks the visible list towards nothing, and counting that would
+  // have walked the progress line down to "0 of 0" as the work was finished.
+  const hiding = hideDone && !($('search').value || '').trim();
+  const scope = hiding
+    ? items.filter(i => i.active)
+    : visibleItems;
+  const total = scope.length;
   // On a two-lap department this counts the lap you are on. Counting whole items
   // instead read "0 of 174" next to a pass bar saying 12/174, because nothing is
   // finished until both laps are, which is true and unhelpful.
-  const done = it => TWO_PASS() && pass === 'shelf'
-    ? (counts[it.name] || {}).shelf != null
-    : isDone(it);
-  const counted = visibleItems.filter(done).length;
+  // Counted on the lap, from the same rule the list filters by.
+  const counted = scope.filter(it => TWO_PASS() ? laneDone(it) : isDone(it)).length;
   $('progresslabel').textContent = !TWO_PASS()
     ? `${counted} of ${total} counted`
     : pass === 'shelf'
       ? `${counted} of ${total} shelves`
-      : `${visibleItems.filter(i => Number(counts[i.name]?.cooler) > 0).length} found in the back`;
+      : `${scope.filter(i => Number(counts[i.name]?.cooler) > 0).length} found in the back`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
   // The button is about the whole order, so it stays on whole items.
-  const whole = visibleItems.filter(isDone).length;
+  const whole = scope.filter(isDone).length;
   $('reviewBtn').textContent = `Review Orders (${whole}/${total})`;
 }
 
