@@ -555,14 +555,24 @@ function controlsHtml(it){
             <button class="${s===1?'sel-full':''}" onclick="setCount('${esc(it.name)}','shelf',1)">full</button>
           </div>
         </div>`;
+      // Most things out the back are counted in whole cases and a few are not.
+      // Rather than putting a quarter control on all 174 rows, or asking anybody
+      // to mark which items are which, there is one small chip beside the
+      // stepper. Untouched it does nothing and reads as a hint; tapped it cycles
+      // a quarter, a half, three quarters and back to none. The stepper still
+      // moves whole cases and keeps whatever fraction is set, so two and a half
+      // plus one is three and a half.
+      const frac = Math.round(((Number(e.cooler) || 0) % 1) * 4) / 4;
       const backCtl = `
         <div class="mini-stepper-group">
           <span class="lbl">Back &middot; par ${fmt(parFor(it, day))}</span>
           <div class="stepper mini">
             <button onclick="stepCount('${esc(it.name)}','cooler',-1)">&minus;</button>
-            <input type="number" inputmode="decimal" step="1" value="${e.cooler ?? ''}" placeholder="0"
+            <input type="number" inputmode="decimal" step="0.25" value="${e.cooler ?? ''}" placeholder="0"
                    onchange="setCount('${esc(it.name)}','cooler',this.value)">
             <button onclick="stepCount('${esc(it.name)}','cooler',1)">+</button>
+            <button class="fracchip ${frac ? 'on' : ''}" onclick="cycleFraction('${esc(it.name)}')"
+                    title="part of a case">${FRAC_LABEL[frac] || '&frac14;'}</button>
           </div>
         </div>`;
       ctl = !TWO_PASS() ? shelfCtl + backCtl : (pass === 'shelf' ? shelfCtl : backCtl);
@@ -677,12 +687,30 @@ async function setCount(name, field, val){
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
 
+const FRAC_LABEL = { 0: '', 0.25: '&frac14;', 0.5: '&frac12;', 0.75: '&frac34;' };
+const FRAC_NEXT  = { 0: 0.25, 0.25: 0.5, 0.5: 0.75, 0.75: 0 };
+
+// The fractional part only. Whole cases stay with the stepper, so the two never
+// fight over the same number.
+async function cycleFraction(name){
+  noteWalked(name);
+  const c = ensureCount(name);
+  const cur = Number(c.cooler) || 0;
+  const whole = Math.floor(cur);
+  const frac = Math.round((cur % 1) * 4) / 4;
+  c.cooler = whole + (FRAC_NEXT[frac] ?? 0.25);
+  refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
+  await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
+}
+
 async function stepCount(name, field, delta){
   noteWalked(name);
   const c = ensureCount(name);
   const cur = Number(c[field] || 0);
-  const next = Math.max(cur + delta, 0);
-  c[field] = Math.round(next * 4) / 4;
+  // Never below nothing, and never past zero into a bare fraction: minus on
+  // "half a case" should land on nothing, not on minus a half.
+  const next = Math.max(cur + delta, delta < 0 && cur + delta < 0 ? 0 : 0);
+  c[field] = Math.round(Math.max(next, 0) * 4) / 4;
   refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
   await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
 }
