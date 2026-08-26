@@ -228,6 +228,25 @@ function canEdit(area){
 function parFor(it, d){ return (it.pars && it.pars[d] !== undefined) ? Number(it.pars[d]) : 0; }
 function shelfTargetFor(it){ return it.shelf_target === null || it.shelf_target === undefined ? 1 : Number(it.shelf_target); }
 
+// The smallest amount of this item anybody can actually buy.
+//
+// Unset means the department's usual unit, which is what both departments did
+// before there was a setting: produce comes in whole cases, meat and fish are
+// bought down to the quarter. Set it per item where the truth is different --
+// the herbs that come in half boxes, the peppers you can take a quarter of.
+function defaultStepFor(it){ return it.mode === 'shelf_cooler' ? 1 : 0.25; }
+function buyStepFor(it){
+  const s = Number(it.buy_step);
+  return (isFinite(s) && s > 0) ? s : defaultStepFor(it);
+}
+// Up to the next thing you can buy, never down: a shelf three quarters empty is
+// still three quarters empty if you order nothing. The epsilon is for float
+// noise -- without it 1.5 over a step of 0.5 can land on 2 instead of 1.5.
+function roundUpTo(v, step){
+  const s = step > 0 ? step : 1;
+  return Math.round(Math.ceil(v / s - 1e-9) * s * 100) / 100;
+}
+
 function computeOrder(it){
   const e = counts[it.name];
   if (!e) return null;
@@ -238,16 +257,18 @@ function computeOrder(it){
     // What we want to have, less what we have anywhere. The two gaps used to be
     // added, which meant a case sitting in the back could never cancel a
     // half-empty shelf: the other buyer picks something up, has not put it out
-    // yet, and the app still says order more. A quarter-full shelf needs three
-    // quarters to fill it, and nobody orders three quarters of a box, so the
-    // answer is rounded up once at the end.
+    // yet, and the app still says order more.
+    //
+    // Then up to the nearest amount that can be bought. That used to be a whole
+    // case for everything, so a shelf a quarter down ordered a full case whether
+    // or not the vendor would have sold a half.
     const want = shelfTargetFor(it) + parFor(it, day);
     const have = (s || 0) + (c || 0);
-    return Math.ceil(Math.max(want - have, 0));
+    return roundUpTo(Math.max(want - have, 0), buyStepFor(it));
   }
   const q = (e.qty === null || e.qty === undefined) ? null : Number(e.qty);
   if (q === null) return null;
-  return Math.max(parFor(it, day) - q, 0);
+  return roundUpTo(Math.max(parFor(it, day) - q, 0), buyStepFor(it));
 }
 
 function isDone(it){
@@ -524,6 +545,11 @@ function renderList(){
       ? `<span class="chip">${htmlEsc(it.vendor)}</span>`
       : `<span class="chip note">vendor unassigned</span>`;
     meta += `<span class="chip">PAR ${fmt(parFor(it, day))}</span>`;
+    // Only worth saying where it differs from how the department buys anyway.
+    // Meat and fish have always come down to the quarter, and stamping that on
+    // every one of a hundred and sixty rows says nothing.
+    if (buyStepFor(it) !== defaultStepFor(it))
+      meta += `<span class="chip">BUY ${stepLabel(buyStepFor(it))}</span>`;
     if (it.vendor2) meta += `<span class="chip alt">or ${htmlEsc(it.vendor2)}</span>`;
     if (it.note) meta += `<span class="chip note">${htmlEsc(it.note)}</span>`;
 
@@ -933,9 +959,9 @@ function showSummary(){
             ${changed ? `<span class="twas">worked out at ${fmt(it.rawQty)}
                &middot; <button class="undoqty" onclick="clearOrderQty('${nm}')">use that</button></span>` : ''}</span>
             ${canEdit() ? `<span class="tedit">
-              <button ${it.orderQty <= 0 ? 'disabled' : ''} onclick="bumpOrderQty('${nm}',${it.rawQty},-1)">&minus;</button>
+              <button ${it.orderQty <= 0 ? 'disabled' : ''} onclick="bumpOrderQty('${nm}',${it.rawQty},-${buyStepFor(it)})">&minus;</button>
               <span class="tqty">${fmt(it.orderQty)}</span>
-              <button onclick="bumpOrderQty('${nm}',${it.rawQty},1)">+</button>
+              <button onclick="bumpOrderQty('${nm}',${it.rawQty},${buyStepFor(it)})">+</button>
               <button class="nonebtn ${it.orderQty <= 0 ? 'on' : ''}" onclick="setOrderQty('${nm}',0)">none</button>
             </span>` : `<span class="tqty">${fmt(it.orderQty)}</span>`}
           </div>`;
@@ -1175,6 +1201,12 @@ function renderPars(){
         <input type="number" step="0.25" class="numinput" value="${parFor(it, d.key)}"
           onchange="setPar('${esc(it.name)}','${d.key}', this.value)"></div>`;
     });
+    const step = buyStepFor(it);
+    rows += `<div class="vitem"><span class="viname">Buy in
+      <span class="vihint">what an order rounds up to</span></span>
+      <span class="stepchips">${[[1,'case'],[0.5,'\u00bd'],[0.25,'\u00bc']].map(([v,l]) =>
+        `<button class="stepchip ${step === v ? 'on' : ''}"
+           onclick="setBuyStep('${esc(it.name)}', ${v})">${l}</button>`).join('')}</span></div>`;
     div.innerHTML = `<div class="vgroup-head" style="cursor:default;">
       <div class="oldname">${htmlEsc(it.name)}</div></div>${rows}`;
     wrap.appendChild(div);
@@ -1185,6 +1217,16 @@ async function setPar(name, dayKey, val){
   if (!it) return;
   it.pars = { ...(it.pars || {}), [dayKey]: val === '' ? 0 : Number(val) };
   await write('PUT', '/item', { name, pars: it.pars });
+}
+async function setBuyStep(name, val){
+  const it = items.find(i => i.name === name);
+  if (!it) return;
+  it.buy_step = Number(val);
+  renderPars();
+  await write('PUT', '/item', { name, buy_step: it.buy_step });
+}
+function stepLabel(v){
+  return v === 0.5 ? '\u00bd case' : v === 0.25 ? '\u00bc case' : 'case';
 }
 async function setShelfTarget(name, val){
   const it = items.find(i => i.name === name);

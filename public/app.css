@@ -162,6 +162,12 @@ main{padding:10px 12px 4px;}
 .vitem{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;
   border-top:1px solid var(--line);gap:8px;}
 .vitem .viname{font-size:13.5px;flex:1;min-width:0;}
+.vitem .vihint{display:block;font-family:var(--mono);font-size:10px;
+  color:var(--ink-soft);margin-top:2px;}
+.stepchips{display:flex;gap:5px;flex:none;}
+.stepchip{border:1px solid var(--line);background:var(--card);border-radius:8px;
+  padding:0 11px;height:30px;font-size:12px;font-weight:600;color:var(--ink-soft);}
+.stepchip.on{background:var(--good-soft);border-color:var(--good);color:var(--good);}
 select.single,select.bulk{border:1px solid var(--line);border-radius:7px;padding:6px 8px;
   font-size:12.5px;font-family:var(--sans);background:var(--card);color:var(--ink);max-width:160px;}
 select.single.unassigned{border-color:var(--accent);background:var(--accent-soft);

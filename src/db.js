@@ -435,6 +435,15 @@ export async function initDb() {
        ON CONFLICT (key) DO NOTHING`);
   }
 
+  // The smallest amount of an item that can actually be bought. An order is
+  // rounded up to a multiple of it, because a shelf that is three quarters empty
+  // still has to be filled from whatever the vendor will sell.
+  //
+  // Left NULL until somebody sets it, and NULL means the department's usual
+  // unit: a whole case on produce, a quarter on meat and fish, which is what
+  // both did before this column existed. So nothing changes until it is used.
+  await pool.query('ALTER TABLE items ADD COLUMN IF NOT EXISTS buy_step NUMERIC');
+
   // Which Vori product a warehouse line is, and what it is called there — free
   // text names cannot be matched to product ids on their own.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS vori_product_id TEXT');

@@ -1269,7 +1269,8 @@ app.put('/api/:dept/day', async (req, res) => {
 app.put('/api/:dept/item', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
   if (!canWrite(req, res, dept)) return;
-  const { name, vendor, vendor2, pars, shelf_target, active, note, invdesc } = req.body || {};
+  const { name, vendor, vendor2, pars, shelf_target, active, note, invdesc,
+          buy_step } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name required' });
   try {
     const sets = [];
@@ -1282,6 +1283,9 @@ app.put('/api/:dept/item', async (req, res) => {
     if (note !== undefined)         { sets.push(`note=$${i++}`);         vals.push(note); }
     if (invdesc !== undefined)      { sets.push(`invdesc=$${i++}`);      vals.push(invdesc); }
     if (vendor2 !== undefined)      { sets.push(`vendor2=$${i++}`);      vals.push(vendor2 || null); }
+    // Null puts it back on the department's usual unit rather than pinning it.
+    if (buy_step !== undefined)     { sets.push(`buy_step=$${i++}`);
+      vals.push(buy_step === null || buy_step === '' ? null : Number(buy_step)); }
     if (!sets.length) return res.json({ ok: true });
     await pool.query(`UPDATE items SET ${sets.join(', ')} WHERE dept=$1 AND name=$2`, vals);
     res.json({ ok: true });
