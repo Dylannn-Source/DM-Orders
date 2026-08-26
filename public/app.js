@@ -965,12 +965,12 @@ function clearOrderQty(name){ setOrderQty(name, ''); }
 // so naming them back to themselves adds nothing; keep it to the date and the
 // lines they have to read. A note only appears when the buyer typed one.
 function buildText(list, dateStr){
+  // Names and quantities, nothing else. Notes are ours -- "check the price",
+  // "ask for the small ones", whoever wrote it and why -- and a vendor reading
+  // them gets confusion at best. They stay on screen and in the order history,
+  // which is where they are of use.
   const lines = [`Dat Moi Order - ${dateStr}`, ''];
-  list.forEach(it => {
-    let l = `${orderName(it)}: ${fmt(it.orderQty)}`;
-    if (it.note) l += ` - ${it.note}`;
-    lines.push(l);
-  });
+  list.forEach(it => lines.push(`${orderName(it)}: ${fmt(it.orderQty)}`));
   return lines.join('\n');
 }
 async function copyTicket(idx, btn){
