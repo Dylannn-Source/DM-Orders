@@ -888,6 +888,7 @@ function showSummary(){
     } else {
       msg = 'No items need ordering yet.<br>Go back and finish counting.';
     }
+    $('wholeWrap').innerHTML = '';
     wrap.innerHTML = `<div class="emptystate">${msg}</div>`;
     return;
   }
@@ -934,6 +935,66 @@ function showSummary(){
     ticket.dataset.items = JSON.stringify(send.map(it => ({ name: it.name, qty: it.orderQty, note: it.note || null })));
     wrap.appendChild(ticket);
   });
+
+  renderWholeCopy(names.map(v => ({
+    vendor: v,
+    list: byVendor[v].map(it => ({ ...it, orderQty: effQty(it.name, it.rawQty) }))
+                     .filter(it => Number(it.orderQty) > 0)
+  })).filter(g => g.list.length), sendDate);
+}
+
+// The whole order, every vendor, in one copy.
+//
+// A produce order runs to twenty-odd vendors, and copying twenty-odd tickets one
+// at a time into a phone is its own small job. The buyer sends the list to
+// himself and ticks items off at the market as he picks them up, so what he
+// needs is the entire order in a single paste, in the order he walks it.
+function renderWholeCopy(groups, dateStr){
+  const box = $('wholeWrap');
+  if (!groups.length || !canEdit()){ box.innerHTML = ''; return; }
+  const n = groups.reduce((t, g) => t + g.list.length, 0);
+  box.innerHTML = `<button class="copybtn wholebtn" onclick="copyWholeList(this)">
+    Copy the whole list &middot; ${n} item${n===1?'':'s'}${
+      groups.length > 1 ? ` from ${groups.length} vendors` : ''}
+  </button>`;
+  box.firstElementChild.dataset.text = buildWholeText(groups, dateStr);
+  box.firstElementChild.dataset.groups = JSON.stringify(groups.map(g => ({
+    vendor: g.vendor,
+    items: g.list.map(it => ({ name: it.name, qty: it.orderQty, note: it.note || null }))
+  })));
+}
+// Written to be pasted into a phone's notes and turned into a checklist, so
+// every line is something to tick off. The date goes first because the first
+// line of a note becomes its title. Vendors stay as headings -- they are the
+// stalls, and the list is walked stall by stall -- and are dropped when the
+// whole order is going to one place anyway.
+function buildWholeText(groups, dateStr){
+  const title = dept.charAt(0).toUpperCase() + dept.slice(1);
+  const lines = [`${title} Order - ${dateStr}`];
+  groups.forEach(g => {
+    lines.push('');
+    if (groups.length > 1) lines.push(g.vendor);
+    g.list.forEach(it => lines.push(`${orderName(it)}: ${fmt(it.orderQty)}`));
+  });
+  return lines.join('\n');
+}
+async function copyWholeList(btn){
+  const text = btn.dataset.text;
+  const groups = JSON.parse(btn.dataset.groups);
+  const ok = await copyText(text);
+  const label = btn.innerHTML;
+  if (ok){
+    btn.textContent = 'Copied \u2713'; btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = label; btn.classList.remove('copied'); }, 1800);
+  } else {
+    showCopyFallback(text);
+  }
+  // The whole list went out, so every vendor on it has been ordered from.
+  groups.forEach(g => write('POST', '/order', {
+    vendor: g.vendor,
+    day_label: DAY_NAMES[day],
+    items: g.items
+  }));
 }
 // What is actually going to be bought. The pars work out a figure and it is
 // usually right, but some things are bought by the whole case or not at all, so
