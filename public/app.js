@@ -254,17 +254,25 @@ function computeOrder(it){
     const s = (e.shelf === null || e.shelf === undefined) ? null : Number(e.shelf);
     const c = (e.cooler === null || e.cooler === undefined) ? null : Number(e.cooler);
     if (s === null && c === null) return null;
-    // What we want to have, less what we have anywhere. The two gaps used to be
-    // added, which meant a case sitting in the back could never cancel a
-    // half-empty shelf: the other buyer picks something up, has not put it out
-    // yet, and the app still says order more.
+    // The par is what we want in the back. Only that.
     //
+    // It used to be the back and the shelf together, so a shelf half down asked
+    // for another half case on top of the back par whether or not anything was
+    // actually running out -- the shelf looks stocked, and we bought again.
+    // A shelf with anything on it now asks for nothing; an empty one asks for
+    // enough to fill it, which is the shelf target, one case for nearly
+    // everything. Broccoli empty on the shelf with none in the back is a par of
+    // one plus a case for the shelf: two.
+    //
+    // Explicitly empty, not merely uncounted. On the back lap the shelf may not
+    // have been walked yet, and a shelf nobody has looked at is not known to be
+    // empty -- assuming it was would put a case on the order for every item in
+    // the department.
+    const fill = s === 0 ? shelfTargetFor(it) : 0;
     // Then up to the nearest amount that can be bought. That used to be a whole
     // case for everything, so a shelf a quarter down ordered a full case whether
     // or not the vendor would have sold a half.
-    const want = shelfTargetFor(it) + parFor(it, day);
-    const have = (s || 0) + (c || 0);
-    return roundUpTo(Math.max(want - have, 0), buyStepFor(it));
+    return roundUpTo(Math.max(parFor(it, day) + fill - (c || 0), 0), buyStepFor(it));
   }
   const q = (e.qty === null || e.qty === undefined) ? null : Number(e.qty);
   if (q === null) return null;
@@ -1186,13 +1194,15 @@ function showParSettings(){
 function renderPars(){
   const wrap = $('parWrap');
   wrap.innerHTML = `<div class="vsummarybar"><div class="vs-title">PARs</div>
-    <div class="vs-sub">${dept === 'produce' ? 'Shelf target + cooler PAR per day' : 'Target quantity per day'}</div></div>`;
+    <div class="vs-sub">${dept === 'produce' ? 'PAR is what you want in the back, per day'
+      : 'Target quantity per day'}</div></div>`;
   [...items].sort((a,b)=>a.name.localeCompare(b.name)).forEach(it => {
     const div = document.createElement('div');
     div.className = 'vgroup';
     let rows = '';
     if (it.mode === 'shelf_cooler'){
-      rows += `<div class="vitem"><span class="viname">Shelf target (full)</span>
+      rows += `<div class="vitem"><span class="viname">Fills the shelf
+        <span class="vihint">added only when the shelf is empty &middot; 0 to never add</span></span>
         <input type="number" step="0.25" class="numinput" value="${shelfTargetFor(it)}"
           onchange="setShelfTarget('${esc(it.name)}', this.value)"></div>`;
     }
