@@ -693,3 +693,17 @@ body.simple .whhead { padding-bottom:6px; }
 .stepper.mini.quarters button{background:var(--accent);border-color:var(--accent);color:#fff}
 .walkstate{padding:9px 12px;margin-top:7px;border-radius:10px;font-size:13px;
   background:var(--good-soft, var(--card));border:1px solid var(--line);color:var(--ink)}
+
+/* ---- deciding what actually gets bought ---- */
+.tedit{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto}
+.tedit button{width:34px;height:34px;font:inherit;font-size:19px;font-weight:600;cursor:pointer;
+  border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);line-height:1}
+.tedit button:disabled{opacity:.3}
+.tedit .tqty{min-width:34px;text-align:center}
+.tedit .nonebtn{width:auto;padding:0 10px;font-size:12px;font-weight:700;letter-spacing:.05em}
+.tedit .nonebtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tline.changed{background:var(--accent-soft);border-radius:8px;padding-left:6px;padding-right:6px}
+.tline.zeroed .tname{text-decoration:line-through;opacity:.55}
+.twas{display:block;font-size:11px;letter-spacing:.03em;color:var(--muted);margin-top:2px}
+.undoqty{font:inherit;font-size:11px;background:none;border:0;padding:0;cursor:pointer;
+  color:var(--accent);text-decoration:underline}

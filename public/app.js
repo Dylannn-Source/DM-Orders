@@ -22,7 +22,7 @@ let routes = [];
 let vendors = [];
 let counts = {};        // name -> {shelf, cooler, qty}
 let day = 'mon';
-let roundChoices = {};
+let orderOverrides = {};   // item -> what the buyer decided to buy
 let visibleItems = [];   // the items currently rendered, for the progress counter
 let me = null;           // the signed-in employee
 let authNames = [], authPick = null, authPin = '', authMode = 'who';
@@ -300,7 +300,7 @@ async function switchDept(d){
     b.classList.toggle('active', b.dataset.dept === d));
   $('deptEyebrow').textContent = `DAT MOI \u00b7 ${d.toUpperCase()}`;
   $('deptTitle').textContent = DEPT_TITLES[d];
-  roundChoices = {};
+  orderOverrides = {};
   await bootstrap();
   applyAccess();
   showList();
@@ -332,6 +332,7 @@ async function bootstrap(){
   pass = 'shelf';
   counts = {};
   data.counts.forEach(c => {
+    if (c.order_qty !== null && c.order_qty !== undefined) orderOverrides[c.item_name] = Number(c.order_qty);
     counts[c.item_name] = {
       shelf: c.shelf === null ? null : Number(c.shelf),
       cooler: c.cooler === null ? null : Number(c.cooler),
@@ -773,7 +774,7 @@ function handleResetTap(){
     clearTimeout(resetArmTimer);
     resetArmed = false;
     btn.textContent = 'Reset'; btn.style.background = ''; btn.style.color = '';
-    counts = {}; roundChoices = {};
+    counts = {}; orderOverrides = {};
     renderList();
     write('DELETE', '/counts');
   }
@@ -893,50 +894,73 @@ function showSummary(){
   wrap.innerHTML = '';
   names.forEach((v, idx) => {
     const list = byVendor[v].map(it => ({ ...it, orderQty: effQty(it.name, it.rawQty) }));
+    // Zeroed lines stay on screen so the decision is visible and reversible, but
+    // they are not part of what gets sent.
+    const send = list.filter(it => Number(it.orderQty) > 0);
     const ticket = document.createElement('div');
     ticket.className = 'ticket';
     ticket.innerHTML = `
       <div class="notch left"></div><div class="notch right"></div>
       <div class="ticket-head">
         <span class="vname">${htmlEsc(v)}</span>
-        <span class="vcount">${list.length} item${list.length===1?'':'s'}</span>
+        <span class="vcount">${send.length} item${send.length===1?'':'s'}${
+          send.length !== list.length ? ` &middot; ${list.length - send.length} dropped` : ''}</span>
       </div>
       <div class="ticket-body">
         ${list.map(it => {
-          const frac = Math.abs(it.rawQty % 1) > 0.001;
-          const ch = roundChoices[it.name];
-          return `<div class="tline">
+          const changed = isOverridden(it.name);
+          const nm = esc(it.name);
+          return `<div class="tline ${changed ? 'changed' : ''} ${it.orderQty <= 0 ? 'zeroed' : ''}">
             <span class="tname">${htmlEsc(orderName(it))}${
               orderName(it) !== it.name ? `<span class="tsell">${htmlEsc(it.name)}</span>` : ''
-            }${it.note?`<span class="tnote">${htmlEsc(it.note)}</span>`:''}</span>
-            <span style="text-align:right;">
+            }${it.note?`<span class="tnote">${htmlEsc(it.note)}</span>`:''}
+            ${changed ? `<span class="twas">worked out at ${fmt(it.rawQty)}
+               &middot; <button class="undoqty" onclick="clearOrderQty('${nm}')">use that</button></span>` : ''}</span>
+            ${canEdit() ? `<span class="tedit">
+              <button ${it.orderQty <= 0 ? 'disabled' : ''} onclick="bumpOrderQty('${nm}',${it.rawQty},-1)">&minus;</button>
               <span class="tqty">${fmt(it.orderQty)}</span>
-              ${frac ? `<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:3px;">
-                <button class="roundbtn ${ch==='down'?'sel':''}" onclick="setRound('${esc(it.name)}','down')">&darr; ${Math.floor(it.rawQty)}</button>
-                <button class="roundbtn ${(!ch||ch==='exact')?'exact-sel':''}" onclick="setRound('${esc(it.name)}','exact')">${fmt(it.rawQty)}</button>
-                <button class="roundbtn ${ch==='up'?'sel':''}" onclick="setRound('${esc(it.name)}','up')">&uarr; ${Math.ceil(it.rawQty)}</button>
-              </div>` : ''}
-            </span>
+              <button onclick="bumpOrderQty('${nm}',${it.rawQty},1)">+</button>
+              <button class="nonebtn ${it.orderQty <= 0 ? 'on' : ''}" onclick="setOrderQty('${nm}',0)">none</button>
+            </span>` : `<span class="tqty">${fmt(it.orderQty)}</span>`}
           </div>`;
         }).join('')}
       </div>
       ${canEdit() ? `<div class="ticket-foot">
         <button class="copybtn" onclick="copyTicket(${idx}, this)">Copy text for ${htmlEsc(v)}</button>
       </div>` : ''}`;
-    ticket.dataset.text = buildText(list, sendDate);
+    ticket.dataset.text = buildText(send, sendDate);
     ticket.dataset.vendor = v;
     ticket.dataset.dayLabel = dayLabel;
-    ticket.dataset.items = JSON.stringify(list.map(it => ({ name: it.name, qty: it.orderQty, note: it.note || null })));
+    ticket.dataset.items = JSON.stringify(send.map(it => ({ name: it.name, qty: it.orderQty, note: it.note || null })));
     wrap.appendChild(ticket);
   });
 }
+// What is actually going to be bought. The pars work out a figure and it is
+// usually right, but some things are bought by the whole case or not at all, so
+// one and a half rounds to two when the answer is one, or none. Whatever the
+// buyer decides wins, and it is what gets copied to the vendor.
 function effQty(name, raw){
-  const c = roundChoices[name];
-  if (c === 'up') return Math.ceil(raw);
-  if (c === 'down') return Math.floor(raw);
-  return raw;
+  const o = orderOverrides[name];
+  return (o === null || o === undefined) ? raw : Number(o);
 }
-function setRound(name, mode){ roundChoices[name] = mode; showSummary(); }
+function isOverridden(name){
+  const o = orderOverrides[name];
+  return o !== null && o !== undefined;
+}
+async function setOrderQty(name, val){
+  const blank = val === null || val === undefined || String(val).trim() === '';
+  const n = blank ? null : Math.max(0, Math.round(Number(val) * 4) / 4);
+  if (!blank && !isFinite(n)) return;
+  orderOverrides[name] = n;
+  if (n === null) delete orderOverrides[name];
+  showSummary();
+  await write('PUT', '/order-qty', { item_name: name, order_qty: n });
+}
+function bumpOrderQty(name, raw, delta){
+  const cur = effQty(name, raw);
+  setOrderQty(name, Math.max(0, cur + delta));
+}
+function clearOrderQty(name){ setOrderQty(name, ''); }
 // The message a vendor actually receives. Each ticket already goes to one vendor,
 // so naming them back to themselves adds nothing; keep it to the date and the
 // lines they have to read. A note only appears when the buyer typed one.

@@ -1187,12 +1187,39 @@ app.get('/api/:dept/bootstrap', async (req, res) => {
 });
 
 // ---- Counts: upsert a single item's count (called as you tap) ----
+// What to actually buy, when the pars got it wrong. Blank puts the item back on
+// whatever the counts work out, so a change can always be undone.
+app.put('/api/:dept/order-qty', async (req, res) => {
+  const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
+  const { item_name } = req.body || {};
+  if (!item_name) return res.status(400).json({ error: 'item_name required' });
+  const raw = req.body?.order_qty;
+  const q = raw === null || raw === undefined || String(raw).trim() === '' ? null : Number(raw);
+  if (q !== null && (!isFinite(q) || q < 0)) {
+    return res.status(400).json({ error: 'An order has to be a number, or blank to use the worked-out one.' });
+  }
+  try {
+    await pool.query(
+      `INSERT INTO counts (dept, item_name, order_qty, counted_by, updated_at)
+       VALUES ($1,$2,$3::numeric,$4,NOW())
+       ON CONFLICT (dept, item_name) DO UPDATE SET order_qty=$3::numeric, updated_at=NOW()`,
+      [dept, item_name, q, req.employee.name]);
+    res.json({ ok: true, order_qty: q });
+  } catch (e) {
+    console.error('order qty save failed', e);
+    res.status(500).json({ error: 'could not save that' });
+  }
+});
+
 app.put('/api/:dept/count', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
   if (!canWrite(req, res, dept)) return;
   const { item_name, shelf, cooler, qty } = req.body || {};
   if (!item_name) return res.status(400).json({ error: 'item_name required' });
   try {
+    // order_qty is deliberately absent from both halves: counting an item again
+    // must not throw away a decision the buyer already made about it.
     await pool.query(
       `INSERT INTO counts (dept, item_name, shelf, cooler, qty, counted_by, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,NOW())

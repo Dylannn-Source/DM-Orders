@@ -387,6 +387,14 @@ export async function initDb() {
   // the product that is sold by the pack, not the pallet it sits on -- and it
   // sets itself the first time anybody records loose from that item.
   await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS pick_loose BOOLEAN NOT NULL DEFAULT FALSE');
+
+  // What the buyer actually decided to order, when it is not what the pars
+  // worked out. Some things are bought by the whole case or not at all, so
+  // "one and a half" rounds to two and the answer is neither -- it is one, or
+  // none, and only the person standing in front of it knows which. Null means
+  // no decision has been made and the computed figure stands. It lives with the
+  // counts so it is cleared by the same reset at the start of the next order.
+  await pool.query('ALTER TABLE counts ADD COLUMN IF NOT EXISTS order_qty NUMERIC');
   await pool.query('CREATE INDEX IF NOT EXISTS warehouse_moves_run ON warehouse_moves (run_id)');
 
   // A container has floor space for eight pallets and no more, but the first
