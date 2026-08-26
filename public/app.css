@@ -695,6 +695,12 @@ body.simple .whhead { padding-bottom:6px; }
 .quartersw{margin-top:7px}
 .quartersw.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .stepper.mini.quarters button{background:var(--accent);border-color:var(--accent);color:#fff}
+/* One tap to say "I looked and there is nothing here" on the back lap. Sized to
+   sit beside the stepper without crowding it off a phone. */
+.backnone{border:1px solid var(--line);background:var(--card);border-radius:8px;
+  padding:0 9px;height:30px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.05em;color:var(--ink-soft);}
+.backnone.on{background:var(--accent-soft);border-color:var(--accent);color:#8E2B2E;}
 .walkstate{padding:9px 12px;margin-top:7px;border-radius:10px;font-size:13px;
   background:var(--good-soft, var(--card));border:1px solid var(--line);color:var(--ink)}
 

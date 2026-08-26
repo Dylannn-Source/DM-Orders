@@ -365,8 +365,9 @@ function passBarHtml(){
   const active = items.filter(i => i.active);
   const doneS = active.filter(i => counts[i.name]?.shelf != null).length;
   // Most things have nothing out the back, and nobody should have to tap a zero
-  // onto a hundred and fifty of them. Untouched already means none, so the back
-  // lap counts what was found rather than how much of the list has been visited.
+  // onto a hundred and fifty of them. Untouched already means none, so this
+  // counts what was found rather than how much of the list has been visited.
+  // The lap's own progress line carries how far through it you are.
   const foundB = active.filter(i => Number(counts[i.name]?.cooler) > 0).length;
   return `<div class="passbar">
       <button class="${pass === 'shelf' ? 'on' : ''}" onclick="setPass('shelf')">
@@ -597,6 +598,8 @@ function controlsHtml(it){
                    onchange="setCount('${esc(it.name)}','cooler',this.value)">
             <button onclick="stepCount('${esc(it.name)}','cooler',${stepBy})">+</button>
           </div>
+          <button class="nonebtn backnone ${e.cooler === 0 ? 'on' : ''}"
+                  onclick="setCount('${esc(it.name)}','cooler',0)">none</button>
         </div>`;
       ctl = !TWO_PASS() ? shelfCtl + backCtl : (pass === 'shelf' ? shelfCtl : backCtl);
     } else {
@@ -618,8 +621,16 @@ function rowEl(name){
 }
 
 // True when this item is done for the lap being walked.
+//
+// Checked, on either lap -- not "has some". A back count of nothing is a count:
+// somebody went and looked and there was nothing there, and "hide what I have
+// done" has to take that row away or it does not work at all, because most
+// things have nothing out the back. Which is why the back lap has a "none"
+// button: one tap to say you looked. Nobody is made to tap it -- an item left
+// alone still orders as if the back were empty, and the pass bar still counts
+// what was found -- it is there for the walk where you do go through the lot.
 function laneDone(it){
-  if (TWO_PASS() && pass === 'back') return Number(counts[it.name]?.cooler) > 0;
+  if (TWO_PASS() && pass === 'back') return counts[it.name]?.cooler != null;
   return (counts[it.name] || {})[TWO_PASS() ? 'shelf' : 'qty'] != null;
 }
 
@@ -656,11 +667,15 @@ function refreshProgress(){
   // finished until both laps are, which is true and unhelpful.
   // Counted on the lap, from the same rule the list filters by.
   const counted = scope.filter(it => TWO_PASS() ? laneDone(it) : isDone(it)).length;
+  // The back line used to read only how many were found, while the bar beside it
+  // was drawing how many had been checked. Two different numbers, one of them
+  // invisible. Both are worth knowing, so both are on it.
+  const found = scope.filter(i => Number(counts[i.name]?.cooler) > 0).length;
   $('progresslabel').textContent = !TWO_PASS()
     ? `${counted} of ${total} counted`
     : pass === 'shelf'
       ? `${counted} of ${total} shelves`
-      : `${scope.filter(i => Number(counts[i.name]?.cooler) > 0).length} found in the back`;
+      : `${counted} of ${total} checked \u00b7 ${found} found`;
   $('progressbar').style.width = total ? `${(counted / total * 100).toFixed(0)}%` : '0%';
   // The button is about the whole order, so it stays on whole items.
   const whole = scope.filter(isDone).length;
