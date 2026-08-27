@@ -104,7 +104,7 @@ main{padding:10px 12px 4px;}
 .btn-ghost{background:var(--paper-2);color:var(--ink);flex:1;}
 
 #summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView,
-#orderNameView,#addItemView,#backupView,#employeesView{
+#orderNameView,#addItemView,#backupView,#employeesView,#marketView{
   display:none;padding:14px 14px 100px;}
 .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .backbtn{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);

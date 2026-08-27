@@ -93,6 +93,9 @@
   <div class="hubrow" id="vendorHubRow" onclick="showVendorSettings()">
     <div class="hubname">Vendors</div><span class="chip" id="vendorHubCount"></span>
   </div>
+  <div class="hubrow" id="marketHubRow" onclick="showMarketOrder()">
+    <div class="hubname">Market Order</div><span class="chip" id="marketHubCount"></span>
+  </div>
   <div class="hubrow" id="orderNameHubRow" onclick="showOrderNameSettings()">
     <div class="hubname">Order Names</div><span class="chip" id="orderNameHubCount"></span>
   </div>
@@ -129,6 +132,11 @@
 <div id="vendorView">
   <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Vendors</span></div>
   <div id="vendorWrap"></div>
+</div>
+
+<div id="marketView">
+  <div class="backrow"><button class="backbtn" onclick="showSettingsHub()">&larr; settings</button><span class="eyebrow">Market Order</span></div>
+  <div id="marketWrap"></div>
 </div>
 
 <div id="orderNameView">

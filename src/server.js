@@ -1149,7 +1149,7 @@ function checkDept(req, res) {
 app.get('/api/:dept/bootstrap', async (req, res) => {
   const dept = checkDept(req, res); if (!dept) return;
   try {
-    const [items, routes, counts, session, vendors, order, secs] = await Promise.all([
+    const [items, routes, counts, session, vendors, order, secs, vorder] = await Promise.all([
       pool.query('SELECT * FROM items WHERE dept=$1 ORDER BY sort_order, name', [dept]),
       pool.query('SELECT * FROM routes WHERE dept=$1 ORDER BY position', [dept]),
       pool.query('SELECT * FROM counts WHERE dept=$1', [dept]),
@@ -1157,7 +1157,8 @@ app.get('/api/:dept/bootstrap', async (req, res) => {
       pool.query('SELECT name FROM vendors WHERE dept=$1 ORDER BY name', [dept]),
       pool.query(`SELECT key, value FROM app_config WHERE key IN ($1,$2)`,
                  [`walk_${dept}_shelf`, `walk_${dept}_back`]),
-      pool.query('SELECT value FROM app_config WHERE key=$1', [`sections_${dept}`])
+      pool.query('SELECT value FROM app_config WHERE key=$1', [`sections_${dept}`]),
+      pool.query('SELECT value FROM app_config WHERE key=$1', [`vendor_order_${dept}`])
     ]);
     // The order somebody actually walks each pass in. Two of them, because the
     // shelves and the back room are not arranged the same way, and walking a
@@ -1178,7 +1179,13 @@ app.get('/api/:dept/bootstrap', async (req, res) => {
       // Loose groupings of similar products, offered in the setup screen as a way
       // to place sixteen items with one tap where a shelf happens to hold them
       // together. Only a shortcut: the walk is whatever order somebody taps.
-      sections: (() => { try { return JSON.parse(secs.rows[0]?.value || 'null'); } catch { return null; } })()
+      sections: (() => { try { return JSON.parse(secs.rows[0]?.value || 'null'); } catch { return null; } })(),
+      // The order the market is walked in, stall by stall. Empty until somebody
+      // sets it, and then the tickets come out in that order instead of A to Z.
+      vendorOrder: (() => {
+        try { const v = JSON.parse(vorder.rows[0]?.value || 'null'); return Array.isArray(v) ? v : []; }
+        catch { return []; }
+      })()
     });
   } catch (e) {
     console.error('bootstrap failed', e);
@@ -1430,6 +1437,28 @@ app.put('/api/:dept/walk-order', async (req, res) => {
     res.json({ ok: true, saved: names.length });
   } catch (e) {
     console.error('walk order save failed', e);
+    res.status(500).json({ error: 'could not save that order' });
+  }
+});
+
+// The order the vendors are visited in. Alphabetical is nobody's route.
+app.put('/api/:dept/vendor-order', async (req, res) => {
+  const dept = checkDept(req, res); if (!dept) return;
+  if (!canWrite(req, res, dept)) return;
+  const names = Array.isArray(req.body?.names) ? req.body.names.filter(n => typeof n === 'string') : null;
+  if (!names) return res.status(400).json({ error: 'names required' });
+  try {
+    if (!names.length) {
+      await pool.query('DELETE FROM app_config WHERE key=$1', [`vendor_order_${dept}`]);
+      return res.json({ ok: true, cleared: true });
+    }
+    await pool.query(
+      `INSERT INTO app_config (key, value) VALUES ($1,$2)
+       ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+      [`vendor_order_${dept}`, JSON.stringify(names)]);
+    res.json({ ok: true, saved: names.length });
+  } catch (e) {
+    console.error('vendor order save failed', e);
     res.status(500).json({ error: 'could not save that order' });
   }
 });

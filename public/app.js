@@ -43,6 +43,8 @@ let hideDone = false;
 // The family groupings are offered as a shortcut for wherever a shelf happens to
 // hold one, which turns sixteen taps into one.
 let setupOn = false, setupOrder = [], sections = {};
+// The order the market is walked in, stall by stall. Empty means A to Z.
+let vendorOrder = [], vendorSetup = null, vendorMoving = null;
 
 // A half-built order is kept on the phone as it is built.
 //
@@ -356,6 +358,8 @@ async function bootstrap(){
   walk = data.walk || {};
   loadQuarters();
   sections = data.sections || {};
+  vendorOrder = data.vendorOrder || [];
+  vendorSetup = null; vendorMoving = null;
   setupOn = false; setupOrder = []; setupMoving = null;
   walked = [];
   pass = 'shelf';
@@ -832,7 +836,7 @@ function handleResetTap(){
 // ---- views ----
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
-   'orderNameView','addItemView','backupView','employeesView','historyView','warehouseView']
+   'marketView','orderNameView','addItemView','backupView','employeesView','historyView','warehouseView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -861,6 +865,8 @@ function showSettingsHub(){
   const placed = new Set(); routes.forEach(g => (g.item_names||[]).forEach(n => placed.add(n)));
   const notRouted = items.length - placed.size;
   $('vendorHubCount').textContent = unassigned ? `${unassigned} unassigned` : 'all set';
+  const onRoute = vendorOrder.filter(v => vendors.includes(v)).length;
+  $('marketHubCount').textContent = onRoute ? `${onRoute} of ${vendors.length} placed` : 'A to Z';
   $('seasonalHubCount').textContent = `${off} off`;
   $('parHubCount').textContent = `${items.length} items`;
   const renamed = items.filter(i => orderName(i) !== i.name).length;
@@ -922,7 +928,7 @@ function showSummary(){
   $('summaryDate').textContent = `${dayLabel} \u00b7 ${dateStr}`;
 
   const wrap = $('ticketsWrap');
-  const names = Object.keys(byVendor).sort();
+  const names = vendorsInOrder(Object.keys(byVendor));
   if (!names.length){
     // An empty ticket list has three very different causes. Say which one.
     const active = items.filter(it => it.active);
@@ -990,6 +996,22 @@ function showSummary(){
     list: byVendor[v].map(it => ({ ...it, orderQty: effQty(it.name, it.rawQty) }))
                      .filter(it => Number(it.orderQty) > 0)
   })).filter(g => g.list.length), sendDate);
+}
+
+// Vendors in the order they are visited, with anything not on the route after
+// them, alphabetically. A stall added last week should not silently land in the
+// middle of the walk, and it should not disappear either -- it goes at the end,
+// where it is obvious that it has not been placed yet.
+function vendorsInOrder(names){
+  const at = {};
+  vendorOrder.forEach((v, i) => { at[v] = i; });
+  return [...names].sort((a, b) => {
+    const ia = at[a], ib = at[b];
+    if (ia !== undefined && ib !== undefined) return ia - ib;
+    if (ia !== undefined) return -1;
+    if (ib !== undefined) return 1;
+    return a.localeCompare(b);
+  });
 }
 
 // The whole order, every vendor, in one copy.
@@ -1165,6 +1187,87 @@ function renderVendors(){
     wrap.appendChild(div);
   });
 }
+// ---- Market order: the vendors in the order they are visited ----
+//
+// Alphabetical is nobody's route. A produce order runs to twenty-odd stalls and
+// the list is read walking between them, so the one thing it has to match is
+// the walk. Built by tapping, the same way the shelf order is, because that is
+// the interaction already learned here.
+function showMarketOrder(){
+  hideAll(); $('marketView').style.display = 'block'; $('footerBar').style.display = 'none';
+  // Opens on what is already saved rather than on nothing, so fixing one stall
+  // out of place is a tap, not a rebuild of the whole route.
+  if (vendorSetup === null) vendorSetup = vendorOrder.filter(v => vendors.includes(v));
+  vendorMoving = null;
+  renderMarketOrder();
+}
+function renderMarketOrder(){
+  const wrap = $('marketWrap');
+  const placed = new Set(vendorSetup);
+  const left = vendors.filter(v => !placed.has(v));
+  const dirty = JSON.stringify(vendorSetup) !== JSON.stringify(vendorOrder.filter(v => vendors.includes(v)));
+  wrap.innerHTML = `
+    <div class="setuphead">
+      <div class="setuptitle">The order you walk the market</div>
+      <div class="setupsub">Tap the stalls in the order you reach them.
+        <b>${vendorSetup.length}</b> of ${vendors.length} placed &middot;
+        anything left out comes after them, A to Z.<br>
+        Your order comes out in this order, and so does the copied list.</div>
+      <div class="setupacts">
+        <button class="addbtn" ${dirty ? '' : 'disabled'} onclick="marketSave()">Save this order</button>
+        <button class="listlink" ${vendorSetup.length ? '' : 'disabled'} onclick="marketClear()">Start again</button>
+      </div>
+    </div>
+    ${vendorSetup.length ? `
+      <div class="setuplabel">${vendorMoving
+        ? `Moving <b>${htmlEsc(vendorMoving)}</b> &mdash; tap what it goes after, or tap it again to stop`
+        : 'In order so far &mdash; tap one to move it, or &times; to take it out'}</div>
+      <div class="setupsofar">${vendorSetup.map((v, i) =>
+        `<span class="ochip ${vendorMoving === v ? 'moving' : ''}">
+           <b>${i + 1}</b>
+           <button class="oname" onclick="marketTap('${esc(v)}')">${htmlEsc(v)}</button>
+           <button class="odrop" onclick="marketRemove('${esc(v)}')" aria-label="take out">&times;</button>
+         </span>`).join('')}</div>` : ''}
+    <div class="setuplabel">${left.length ? 'Not placed yet' : 'Every stall is placed.'}</div>
+    <div class="setupitems">${left.map(v =>
+      `<button class="ichip" onclick="marketAdd('${esc(v)}')">${htmlEsc(v)}</button>`).join('')}</div>`;
+}
+function marketAdd(v){
+  if (vendorSetup.includes(v)) return;
+  // Straight after whatever is being moved, so placing a stall you forgot puts
+  // it where you are in the route rather than at the far end.
+  if (vendorMoving && vendorMoving !== v){
+    vendorSetup.splice(vendorSetup.indexOf(vendorMoving) + 1, 0, v);
+    vendorMoving = null;
+  } else {
+    vendorSetup.push(v);
+  }
+  renderMarketOrder();
+}
+function marketTap(v){
+  if (vendorMoving === v){ vendorMoving = null; renderMarketOrder(); return; }
+  if (!vendorMoving){ vendorMoving = v; renderMarketOrder(); return; }
+  // Second tap names where the moving one goes: straight after this stall.
+  const moving = vendorMoving;
+  vendorMoving = null;
+  if (moving === v){ renderMarketOrder(); return; }
+  vendorSetup.splice(vendorSetup.indexOf(moving), 1);
+  vendorSetup.splice(vendorSetup.indexOf(v) + 1, 0, moving);
+  renderMarketOrder();
+}
+function marketRemove(v){
+  vendorSetup = vendorSetup.filter(x => x !== v);
+  if (vendorMoving === v) vendorMoving = null;
+  renderMarketOrder();
+}
+function marketClear(){ vendorSetup = []; vendorMoving = null; renderMarketOrder(); }
+async function marketSave(){
+  if (!canEdit()) return;
+  vendorOrder = vendorSetup.slice();
+  renderMarketOrder();
+  await write('PUT', '/vendor-order', { names: vendorOrder });
+}
+
 async function setVendor(name, v){
   const it = items.find(i => i.name === name);
   if (it) it.vendor = v || null;
