@@ -527,6 +527,7 @@ function renderList(){
   const q = $('search').value.trim().toLowerCase();
   const wrap = $('listView');
   wrap.innerHTML = '';
+  countingNow = null;
   wrap.insertAdjacentHTML('beforeend', `<div id="passBar">${passBarHtml()}</div>`);
   if (TWO_PASS() && canEdit()) wrap.insertAdjacentHTML('beforeend', lapToolsHtml());
   let total = 0, lastGroup;
@@ -672,22 +673,43 @@ function laneDone(it){
   return (counts[it.name] || {})[TWO_PASS() ? 'shelf' : 'qty'] != null;
 }
 
+// The row being counted right now. It is the one thing hiding must not take
+// away: three in the back is the plus button pressed three times, and a row
+// that leaves on the first press cannot be pressed again. It is a mis-tap on
+// the shelf lap too -- tap half by mistake and the row is gone before it can
+// be put right.
+let countingNow = null;
+
+// Hiding happens on the way past, not under the thumb. A row goes when you
+// move on to the next one, which is the moment you are actually finished with
+// it, and the last one counted stays on screen as the receipt for it.
+function dropRow(name){
+  const it = items.find(i => i.name === name);
+  const row = rowEl(name);
+  if (!it || !row || !laneDone(it)) return;
+  row.remove();
+  visibleItems = visibleItems.filter(x => x.name !== name);
+  if (!document.querySelectorAll('#listView .row').length) renderList();
+}
+
 function refreshRow(name){
   const it = items.find(i => i.name === name);
   const row = rowEl(name);
   if (!it || !row) return;
   // Counting an item only ever repainted its row, so with "hide what I have
   // done" ticked the list stopped shrinking the moment it was switched on: the
-  // filter runs when the list is built, and counting does not rebuild it. It
-  // leaves now, as it is counted, which is what ticking the box promised.
-  if (hideDone && !($('search').value || '').trim() && laneDone(it)){
-    row.remove();
-    visibleItems = visibleItems.filter(x => x.name !== name);
-    if (!document.querySelectorAll('#listView .row').length) renderList();
-    return;
+  // filter runs when the list is built, and counting does not rebuild it.
+  const hiding = hideDone && !($('search').value || '').trim();
+  if (hiding){
+    if (countingNow && countingNow !== name) dropRow(countingNow);
+    countingNow = name;
   }
   const order = computeOrder(it);
   row.classList.toggle('hasorder', !!(order && order > 0));
+  // Marked only while hiding, where it means this one is counted and staying
+  // until you move on. Off the hiding lap it would just tint whatever happened
+  // to be touched since the last redraw, which says nothing.
+  row.classList.toggle('justcounted', hiding && laneDone(it));
   row.querySelector('.row-ctl').innerHTML = controlsHtml(it);
 }
 
