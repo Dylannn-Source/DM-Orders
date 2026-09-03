@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { fillViNames } from './vi.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -489,6 +490,37 @@ export async function initDb() {
         ALTER TABLE warehouse_categories ADD PRIMARY KEY (location, name);
       END IF;
     END $$;`);
+
+
+  // Filled from the file the app ships with, once, so a deploy is enough and
+  // nobody has to be told to run a script against the production database.
+  //
+  // Last, after every ALTER above: on a fresh database warehouse_stock is
+  // created without a location column, which is added further down, and this
+  // reads it.
+  //
+  // Not marked done while the warehouse is still empty: a deploy that lands
+  // before the stock is loaded would otherwise tick the box, and every item
+  // would arrive afterwards without a name and never get one.
+  const { rows: viDone } = await pool.query(
+    `SELECT 1 FROM app_config WHERE key='warehouse_vi_filled'`);
+  if (!viDone[0]) {
+    const { rows: anyStock } = await pool.query(
+      `SELECT 1 FROM warehouse_stock WHERE location='warehouse' LIMIT 1`);
+    if (anyStock[0]) {
+      try {
+        const n = await fillViNames(pool);
+        console.log(`Vietnamese names: ${n.items} items and ${n.pallets} pallets filled in`
+          + (n.noMatch ? `, ${n.noMatch} with no translation.` : '.'));
+        await pool.query(
+          `INSERT INTO app_config (key, value) VALUES ('warehouse_vi_filled','1')
+           ON CONFLICT (key) DO NOTHING`);
+      } catch (e) {
+        // The names are a convenience. Failing to add them must not stop the app.
+        console.warn('Could not fill in the Vietnamese names:', e.message);
+      }
+    }
+  }
 
   await seedEmptyDepartments();
 }
