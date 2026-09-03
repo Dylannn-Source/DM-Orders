@@ -496,9 +496,13 @@ input.g::placeholder{color:var(--muted);opacity:.55}
 .brandline{font-size:12px;letter-spacing:.04em;color:var(--muted);margin-top:-1px}
 /* The Vietnamese name, directly under the English one it belongs to. Same size
    as the name above it -- it is a name somebody reads, not a footnote. */
-.vietname{font-size:14px;font-weight:600;color:var(--good);margin-top:1px;}
-.palhead .vietname{font-size:13px;}
-.shelf .vietname{font-size:13px;margin:2px 0 0;}
+/* The Vietnamese name, directly under the English one it belongs to, and only
+   on the van screen. Sized with the thing it sits under -- it is a name somebody
+   reads at arm's length in a storage unit, not a footnote. */
+.vietname{font-weight:600;color:var(--good);}
+.ptile .vietname{font-size:15px;margin-top:2px;}
+.bigask + .vietname{font-size:18px;margin:-4px 0 10px;}
+.bigname .vietname{font-size:17px;margin-top:2px;}
 .parline{font-size:12px;letter-spacing:.03em;color:var(--muted);margin-top:2px}
 .parline.short{color:var(--accent);font-weight:600}
 .shelftrust b.short{color:var(--accent)}

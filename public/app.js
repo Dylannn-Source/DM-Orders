@@ -1931,7 +1931,11 @@ async function showWarehouse(loc){
       return;
     }
     whStock = cache.items; whMoves = []; whVori = { configured: false };
-    whCats = cache.cats.map(name => ({ name })); whPals = []; whSheet = null;
+    // Rebuilt from names alone, so the Vietnamese has to be put back or it is
+    // lost at exactly the moment it matters -- at the storage unit, no signal,
+    // which is the only place this screen is ever used.
+    whCats = cache.cats.map(name => ({ name, name_vi: (cache.catsVi || {})[name] || null }));
+    whPals = []; whSheet = null;
     renderWarehouse();
     return;
   }
@@ -2019,9 +2023,13 @@ function parLine(row){
   return '';
 }
 // Brand and size are what tell six Tom Yum Pastes apart.
-// Vietnamese under the English, never instead of it. The boxes on the pallet
-// are printed in English, so the English name is what matches what is in front
-// of you; the Vietnamese is what tells you what it is.
+// Vietnamese under the English, never instead of it. The boxes on the pallet are
+// printed in English, so the English name is what matches what is in front of
+// you; the Vietnamese is what tells you what it is.
+//
+// Only on the van screen. That is the one screen the people who need it ever
+// open, and everywhere else a second name on every row is a line of clutter for
+// somebody who was not going to read it.
 function viLine(v){
   return v ? `<div class="vietname">${htmlEsc(v)}</div>` : '';
 }
@@ -2589,8 +2597,12 @@ let simpleSaved = null;
 
 function simpleSrc(){
   const cache = cachedList();
-  if (whStock.length) return { items: whStock, cats: whCats.map(c => c.name) };
-  return cache ? { items: cache.items, cats: cache.cats } : null;
+  if (whStock.length) return {
+    items: whStock,
+    cats: whCats.map(c => c.name),
+    catVi: Object.fromEntries(whCats.filter(c => c.name_vi).map(c => [c.name, c.name_vi]))
+  };
+  return cache ? { items: cache.items, cats: cache.cats, catVi: cache.catsVi || {} } : null;
 }
 
 function renderSimple(){
@@ -2640,6 +2652,7 @@ function renderSimple(){
       if (!n) return '';
       return `<button class="ptile ${counts[c] ? 'has' : ''}" onclick="simpleOpen('${esc(c)}')">
         <span class="pname">${htmlEsc(c)}</span>
+        ${viLine(src.catVi?.[c])}
         ${counts[c] ? `<span class="pgot">${counts[c]} taken</span>`
                     : `<span class="pn">${n} thing${n === 1 ? '' : 's'}</span>`}
         ${(whCats.find(x => x.name === c) || {}).pallets
@@ -2669,6 +2682,7 @@ function renderSimple(){
   wrap.innerHTML = basket
     + `<button class="bigback" onclick="simpleBack()">&larr; All pallets</button>
        <h2 class="bigask">${htmlEsc(simplePallet)}</h2>
+       ${viLine(src.catVi?.[simplePallet])}
        <p class="bigsub">${(whCats.find(c => c.name === simplePallet) || {}).pallets
            ? htmlEsc((whCats.find(c => c.name === simplePallet) || {}).pallets) + ' &middot; how many did you take?'
            : 'How many did you take?'}</p>
@@ -2709,6 +2723,7 @@ function bigRow(r, draft, reveal){
   const rolls = pack && u >= pack;
 
   const nameCell = `<div class="bigname">${htmlEsc(r.item_name)}
+      ${viLine(r.name_vi)}
       ${loose ? `<span class="bysub">taken by the pack${pack ? ` &middot; ${fmtQty(pack)} to a case` : ''}</span>` : ''}
       ${n > have ? `<span class="toomany">the pallet only had ${fmtQty(have)}</span>` : ''}</div>`;
   const stepper = (val, fn) => `<div class="bigstep">
@@ -2876,8 +2891,13 @@ function cacheList(){
       at: new Date().toISOString(),
       items: whStock.map(r => ({ item_name: r.item_name, brand: r.brand, size: r.size,
                                  category: r.category, qty: r.qty, unit: r.unit,
-                                 pack_size: r.pack_size, unit_name: r.unit_name })),
-      cats: whCats.map(c => c.name)
+                                 pack_size: r.pack_size, unit_name: r.unit_name,
+                                 name_vi: r.name_vi || null })),
+      cats: whCats.map(c => c.name),
+      // Kept beside the names rather than folded into them: a phone holding a
+      // cache from before this existed still reads, it just has no Vietnamese
+      // until it next has signal.
+      catsVi: Object.fromEntries(whCats.filter(c => c.name_vi).map(c => [c.name, c.name_vi]))
     }));
   } catch {}
 }
@@ -2929,7 +2949,6 @@ function renderOrder(){
         <span class="whname">${htmlEsc(row.item_name)}</span>
         <span class="whqty"><b>${fmtQty(s.short)}</b> <span class="whunit">short</span></span>
       </div>
-      ${viLine(row.name_vi)}
       ${brandLine(row)}
       <div class="parline short">have ${fmtQty(s.have)} &middot; par ${fmtQty(s.par)}</div>
     </div>`;
@@ -2981,7 +3000,6 @@ function renderShelfList(){
         <span class="shelfname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</span>
         <span class="shelfcount">${g.rows.length}</span>
       </div>
-      ${viLine(g.name_vi)}
       <div class="shelftrust ${band}">${
         (whCats.find(x => x.name === g.name) || {}).pallets
           ? `<b class="pwhere">${htmlEsc((whCats.find(x => x.name === g.name) || {}).pallets)}</b> &middot; ` : ''
@@ -3109,7 +3127,6 @@ function renderWarehouse(){
         <span class="whname">${htmlEsc(row.item_name)}</span>
         <span class="whqty">${stockLine(row)}</span>
       </div>
-      ${viLine(row.name_vi)}
       ${brandLine(row)}
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
       ${parLine(row)}
@@ -3169,7 +3186,6 @@ function renderWarehouse(){
       head.className = 'palhead' + (g.name ? '' : ' loose');
       head.innerHTML = `
         <div class="palname">${g.name ? htmlEsc(g.name) : `Not in a ${place().section} yet`}</div>
-        ${viLine(g.name_vi)}
         <div class="palmeta">${g.pallets ? htmlEsc(g.pallets) + ' &middot; ' : ''}${g.rows.length} item${g.rows.length===1?'':'s'}${stale ? ` &middot; <b>${stale}</b> stale` : ''}</div>`;
       wrap.appendChild(head);
       if (!g.rows.length){

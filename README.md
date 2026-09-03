@@ -135,9 +135,13 @@ which is what it does today.
 A pallet number typed into the app by hand is kept where the sheet does not name
 one, and replaced where it does.
 
-**Vietnamese** is the product name in Vietnamese, shown under the English one in
-the Offsite tab. The column is optional and the names live in the app until it
-exists: `warehouse_vi.json` holds a translation for every item in Angel's sheet,
+**Vietnamese** is the product name in Vietnamese, shown under the English one on
+the van screen -- "Loading the van" -- and nowhere else. That is the one screen
+the people who need it ever open, and on the others a second name on every row
+is a line of clutter for somebody who was not going to read it. Searching the
+Offsite tab still matches the Vietnamese, with or without the accents.
+
+The column is optional and the names live in the app until it exists: `warehouse_vi.json` holds a translation for every item in Angel's sheet,
 applied once with `node scripts/apply-vi-names.mjs --yes`. A name typed at the
 pallet is never overwritten by a sync, and the sheet only ever fills a blank.
 
