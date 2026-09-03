@@ -494,6 +494,11 @@ input.g::placeholder{color:var(--muted);opacity:.55}
 
 /* ---- pars: what the warehouse should hold, and what it is short of ---- */
 .brandline{font-size:12px;letter-spacing:.04em;color:var(--muted);margin-top:-1px}
+/* The Vietnamese name, directly under the English one it belongs to. Same size
+   as the name above it -- it is a name somebody reads, not a footnote. */
+.vietname{font-size:14px;font-weight:600;color:var(--good);margin-top:1px;}
+.palhead .vietname{font-size:13px;}
+.shelf .vietname{font-size:13px;margin:2px 0 0;}
 .parline{font-size:12px;letter-spacing:.03em;color:var(--muted);margin-top:2px}
 .parline.short{color:var(--accent);font-weight:600}
 .shelftrust b.short{color:var(--accent)}

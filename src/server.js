@@ -625,6 +625,43 @@ app.put('/api/place/:loc/item/:name', async (req, res) => {
   }
 });
 
+// The Vietnamese name for an item, and for a pallet. Typed in the app rather
+// than only synced from the sheet, because the person who spots that a name is
+// wrong is the person standing at the pallet, and they should be able to fix it
+// there rather than tell somebody who will get to the spreadsheet on Friday.
+app.put('/api/place/:loc/item/:name/vi', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const vi = String(req.body?.name_vi ?? '').trim() || null;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE warehouse_stock SET name_vi = $3::text, updated_at = NOW()
+        WHERE location = $1::text AND item_name = $2::text RETURNING item_name`,
+      [loc, req.params.name, vi]);
+    if (!rows[0]) return res.status(404).json({ error: 'not on the list' });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('vietnamese name save failed', e);
+    res.status(500).json({ error: 'could not save that name' });
+  }
+});
+
+app.put('/api/place/:loc/category/:name/vi', async (req, res) => {
+  const loc = checkPlace(req, res); if (!loc) return;
+  if (!canWrite(req, res, loc)) return;
+  const vi = String(req.body?.name_vi ?? '').trim() || null;
+  try {
+    await pool.query(
+      `UPDATE warehouse_categories SET name_vi = $3::text
+        WHERE location = $1::text AND name = $2::text`,
+      [loc, req.params.name, vi]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('vietnamese pallet name save failed', e);
+    res.status(500).json({ error: 'could not save that name' });
+  }
+});
+
 // One route for all three movements. "counted" sets the number and is the only
 // one that refreshes its age — adding or taking a case tells you the stock moved,
 // not that anyone looked at the shelf.

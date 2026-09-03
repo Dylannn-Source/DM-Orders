@@ -435,6 +435,16 @@ export async function initDb() {
        ON CONFLICT (key) DO NOTHING`);
   }
 
+  // The product name in Vietnamese, beside the English one rather than instead
+  // of it. Half the people who walk these pallets read Vietnamese more easily
+  // than English, and the other half read the labels on the boxes, which are in
+  // English. Showing both is the only version that works for everybody.
+  //
+  // Blank is fine and blank is the default: an item with no translation shows
+  // its English name alone, exactly as it does today.
+  await pool.query('ALTER TABLE warehouse_stock ADD COLUMN IF NOT EXISTS name_vi TEXT');
+  await pool.query('ALTER TABLE warehouse_categories ADD COLUMN IF NOT EXISTS name_vi TEXT');
+
   // The smallest amount of an item that can actually be bought. An order is
   // rounded up to a multiple of it, because a shelf that is three quarters empty
   // still has to be filled from whatever the vendor will sell.

@@ -1995,6 +1995,7 @@ function whGroups(shown){
     .filter(([name, rows]) => rows.length || name !== '\u0000none')
     .map(([name, rows]) => ({
       name: name === '\u0000none' ? null : name,
+      name_vi: byName[name]?.name_vi || null,
       pallets: byName[name]?.pallets || null,
       rows
     }));
@@ -2018,6 +2019,26 @@ function parLine(row){
   return '';
 }
 // Brand and size are what tell six Tom Yum Pastes apart.
+// Vietnamese under the English, never instead of it. The boxes on the pallet
+// are printed in English, so the English name is what matches what is in front
+// of you; the Vietnamese is what tells you what it is.
+function viLine(v){
+  return v ? `<div class="vietname">${htmlEsc(v)}</div>` : '';
+}
+// Searching without the accents. Nobody stops mid-count to switch a phone
+// keyboard to Vietnamese, so "gao thom" has to find "G\u1ea1o Th\u01a1m". NFD
+// splits a letter from its marks so the marks can be dropped; d-with-stroke is
+// one character with no mark to drop, so it is spelled out.
+function plain(v){
+  return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0111/g, 'd').replace(/\u0110/g, 'D').toLowerCase();
+}
+// What a search looks at: both names, and the brand, because half of these are
+// known by the brand on the box.
+function whHay(r){
+  return plain([r.item_name, r.name_vi, r.brand].filter(Boolean).join(' '));
+}
+
 function brandLine(row){
   const bits = [row.brand, row.size].filter(Boolean).map(htmlEsc);
   return bits.length ? `<div class="brandline">${bits.join(' &middot; ')}</div>` : '';
@@ -2406,7 +2427,7 @@ function renderTable(){
   const q = ($('whSearch').value || '').trim().toLowerCase();
   const searching = !!q;
   const edit = canEdit(whLoc);
-  const shown = whStock.filter(r => !searching || r.item_name.toLowerCase().includes(q));
+  const shown = whStock.filter(r => !searching || whHay(r).includes(plain(q)));
 
   // Every pallet gets a section, even an empty one, so there is always somewhere
   // to type. While searching, only sections with a hit are worth showing.
@@ -2908,6 +2929,7 @@ function renderOrder(){
         <span class="whname">${htmlEsc(row.item_name)}</span>
         <span class="whqty"><b>${fmtQty(s.short)}</b> <span class="whunit">short</span></span>
       </div>
+      ${viLine(row.name_vi)}
       ${brandLine(row)}
       <div class="parline short">have ${fmtQty(s.have)} &middot; par ${fmtQty(s.par)}</div>
     </div>`;
@@ -2959,6 +2981,7 @@ function renderShelfList(){
         <span class="shelfname">${g.name ? htmlEsc(g.name) : 'Not on a pallet yet'}</span>
         <span class="shelfcount">${g.rows.length}</span>
       </div>
+      ${viLine(g.name_vi)}
       <div class="shelftrust ${band}">${
         (whCats.find(x => x.name === g.name) || {}).pallets
           ? `<b class="pwhere">${htmlEsc((whCats.find(x => x.name === g.name) || {}).pallets)}</b> &middot; ` : ''
@@ -3045,7 +3068,7 @@ function renderWarehouse(){
   const inShelf = (!place().diagram && whGroup !== null && whGroup !== '') ? whGroup : null;
   whSummaryLine();
 
-  let shown = whStock.filter(r => !q || r.item_name.toLowerCase().includes(q));
+  let shown = whStock.filter(r => !q || whHay(r).includes(plain(q)));
   if (!place().diagram && whGroup !== null && !q){
     shown = whGroup === ''
       ? shown.filter(r => !r.category || !whCats.some(c => c.name === r.category))
@@ -3086,6 +3109,7 @@ function renderWarehouse(){
         <span class="whname">${htmlEsc(row.item_name)}</span>
         <span class="whqty">${stockLine(row)}</span>
       </div>
+      ${viLine(row.name_vi)}
       ${brandLine(row)}
       <div class="whage ${age.band}">${htmlEsc(age.text)}</div>
       ${parLine(row)}
@@ -3111,6 +3135,11 @@ function renderWarehouse(){
                  value="${row.par === null || row.par === undefined ? '' : fmtQty(row.par)}">
           <button class="whpackset" onclick="whSetPar('${esc(row.item_name)}')">Set</button>
         </div>`}
+        <div class="whpick" style="margin-top:9px;padding-left:0;">Ten ti\u1ebfng Vi\u1ec7t &mdash; the Vietnamese name</div>
+        <div class="whform">
+          <input type="text" class="whvi" value="${htmlEsc(row.name_vi || '')}" placeholder="leave blank for none">
+          <button class="whpackset" onclick="whSetVi('${esc(row.item_name)}')">Save</button>
+        </div>
         <div class="whpick" style="margin-top:9px;padding-left:0;">Which ${place().section} is this in?</div>
         <div class="whform">
           <input type="text" class="whcat" list="whCatList" value="${htmlEsc(row.category || '')}" placeholder="category">
@@ -3140,6 +3169,7 @@ function renderWarehouse(){
       head.className = 'palhead' + (g.name ? '' : ' loose');
       head.innerHTML = `
         <div class="palname">${g.name ? htmlEsc(g.name) : `Not in a ${place().section} yet`}</div>
+        ${viLine(g.name_vi)}
         <div class="palmeta">${g.pallets ? htmlEsc(g.pallets) + ' &middot; ' : ''}${g.rows.length} item${g.rows.length===1?'':'s'}${stale ? ` &middot; <b>${stale}</b> stale` : ''}</div>`;
       wrap.appendChild(head);
       if (!g.rows.length){
@@ -3361,6 +3391,22 @@ async function whMove(name, kind){
   if (res.ok){ whOpen = null; await showWarehouse(); }
 }
 
+async function whSetVi(name){
+  const row = [...document.querySelectorAll('.whrow')]
+    .find(d => d.querySelector('.whname')?.textContent === name);
+  const input = row?.querySelector('.whvi');
+  if (!input) return;
+  const vi = input.value.trim();
+  const it = whStock.find(r => r.item_name === name);
+  if (it) it.name_vi = vi || null;
+  await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/vi', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name_vi: vi })
+  });
+  // The row stays open, so the name appears under the English one as it is
+  // typed rather than after a trip back to the list.
+  renderWarehouse();
+}
 async function whSetCat(name){
   const category = document.querySelector('.whcat')?.value.trim() ?? '';
   await fetch('/api/place/' + whLoc + '/item/' + encodeURIComponent(name) + '/category', {

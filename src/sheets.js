@@ -107,7 +107,11 @@ const FIELDS = {
   pallet: ['pallet', 'palletnumber', 'palletno', 'pallets', 'location', 'spot', 'bay', 'row'],
   // Some rows he counts by the case and some by the pack. If he ever says which
   // in a column, believe it; until then everything is cases, as it is today.
-  unit:   ['unit', 'units', 'countedby', 'countedas', 'casepack', 'by']
+  unit:   ['unit', 'units', 'countedby', 'countedas', 'casepack', 'by'],
+  // The Vietnamese name, if he ever adds a column for it. The sheet owns the
+  // catalogue, so this is where the translations belong once they are settled;
+  // until the column exists, they are typed in the app.
+  vi:     ['vietnamese', 'tiengviet', 'vietnam', 'vietnamesename', 'tenviet', 'vi', 'vn']
 };
 
 const slug = v => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -180,7 +184,8 @@ export function parseRows(rows) {
       qty: cellNum(r, 'qty') ?? 0,
       loose,                                  // the count is packs, not cases
       unit: cell(r, 'unit') || null,
-      par: cellNum(r, 'par'), onsite_par: cellNum(r, 'onsite'), line
+      par: cellNum(r, 'par'), onsite_par: cellNum(r, 'onsite'),
+      name_vi: cell(r, 'vi') || null, line
     });
   });
   const seen = new Map();
@@ -277,11 +282,11 @@ export async function syncSheet({ dryRun = false } = {}) {
       await client.query(
         `INSERT INTO warehouse_stock
            (location, item_name, brand, size, category, par, onsite_par,
-            qty, qty_units, pick_loose, unit, counted_at, counted_by)
+            qty, qty_units, pick_loose, unit, name_vi, counted_at, counted_by)
          VALUES ($1,$2,$3,$4,$5,$6,$7,
                  CASE WHEN $10::boolean THEN 0 ELSE $8::numeric END,
                  CASE WHEN $10::boolean THEN $8::numeric ELSE 0 END,
-                 $10::boolean, COALESCE($11::text,'cases'), NOW(), $9)
+                 $10::boolean, COALESCE($11::text,'cases'), $12::text, NOW(), $9)
          ON CONFLICT (location, item_name) DO UPDATE SET
            brand      = EXCLUDED.brand,
            size       = EXCLUDED.size,
@@ -290,9 +295,13 @@ export async function syncSheet({ dryRun = false } = {}) {
            onsite_par = EXCLUDED.onsite_par,
            -- once true it stays true: somebody taking loose here proved it
            pick_loose = warehouse_stock.pick_loose OR EXCLUDED.pick_loose,
+           -- a name typed at the pallet is not thrown away by a sheet that has
+           -- no column for it; the sheet only ever fills a blank or replaces
+           -- what it itself supplied
+           name_vi    = COALESCE(EXCLUDED.name_vi, warehouse_stock.name_vi),
            updated_at = NOW()`,
         [LOC, it.name, it.brand, it.size, it.category, it.par, it.onsite_par,
-         it.qty, SOURCE, !!it.loose, it.unit]);
+         it.qty, SOURCE, !!it.loose, it.unit, it.name_vi]);
     }
     await client.query('COMMIT');
   } catch (e) {
