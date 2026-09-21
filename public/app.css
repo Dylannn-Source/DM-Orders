@@ -51,6 +51,13 @@ header h1{font-family:var(--serif);font-size:22px;margin:2px 0 10px;letter-spaci
 .progressbar{height:100%;background:var(--good);border-radius:3px;transition:width .2s;}
 .progresslabel{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:5px;}
 .syncline{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:3px;min-height:14px;}
+/* Counts the server has not got yet. Stays on screen until they are sent --
+   the point of it is that it cannot be missed or wiped by the next save. */
+.unsentbar{background:var(--accent-soft);border:1px solid var(--accent);color:#8E2B2E;
+  border-radius:9px;padding:9px 11px;margin-top:8px;font-size:13px;line-height:1.45;}
+.unsentbar button{margin-left:6px;border:1px solid var(--accent);background:var(--accent);
+  color:#fff;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;}
+.unsentbar button:disabled{opacity:.6;}
 .syncline.saving{color:var(--accent);}
 .syncline.saved{color:var(--good);}
 .syncline.err{color:var(--accent);font-weight:700;}

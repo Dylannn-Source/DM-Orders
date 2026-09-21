@@ -372,10 +372,20 @@ async function bootstrap(){
       qty: c.qty === null ? null : Number(c.qty)
     };
   });
+  // Counts this phone typed but never managed to send. The server has no idea
+  // they exist, so its version of those items is not newer, it is uninformed --
+  // and loading over them would lose the walk a second time.
+  loadUnsent();
+  Object.entries(unsent).forEach(([name, v]) => {
+    counts[name] = { shelf: v.shelf ?? null, cooler: v.cooler ?? null, qty: v.qty ?? null };
+  });
   day = data.day && DAY_DEFS[dept].some(x => x.key === data.day) ? data.day : todayKey();
   renderDayToggle();
   renderList();
+  renderUnsent();
   setSync('saved', 'Loaded');
+  // There is clearly signal now, or the bootstrap would not have arrived.
+  if (unsentCount()) flushUnsent().then(() => { refreshProgress(); refreshPassBar(); });
 }
 
 function renderDayToggle(){
@@ -798,12 +808,85 @@ async function flushWalk(){
   await write('PUT', '/walk-order', { pass, names: walk[pass].slice() });
 }
 
+// ---- counts that have not reached the server yet ----
+//
+// A count is written down on the phone before it is sent, and only crossed off
+// once the server has said it has it.
+//
+// Three quick retries and a shrug used to be the whole story. A count typed
+// where there is no signal reported "Save failed" into a line the next
+// successful save immediately overwrote, and was then gone for good: the row had
+// already left the screen under "hide what I have done", the progress bar had
+// already counted it, and the first anybody knew was a lap that came back short
+// when they got home. The count is the work. It does not get thrown away
+// because a back room has thick walls.
+const UNSENT = () => 'dm_counts_unsent:' + dept;
+let unsent = {};
+function loadUnsent(){
+  try { unsent = JSON.parse(localStorage.getItem(UNSENT()) || '{}') || {}; }
+  catch { unsent = {}; }
+}
+function saveUnsent(){
+  try { localStorage.setItem(UNSENT(), JSON.stringify(unsent)); } catch {}
+}
+function unsentCount(){ return Object.keys(unsent).length; }
+
+async function sendCount(name, c){
+  // A snapshot, not the live count object, which the next tap would mutate.
+  const snap = { shelf: c.shelf ?? null, cooler: c.cooler ?? null, qty: c.qty ?? null };
+  unsent[name] = snap; saveUnsent(); renderUnsent();
+  const ok = await write('PUT', '/count', { item_name: name, ...snap });
+  // Crossed off only if this is still the version waiting to go. A newer tap
+  // while the request was in flight has replaced it, and that one still owes.
+  if (ok && unsent[name] === snap){ delete unsent[name]; saveUnsent(); }
+  renderUnsent();
+}
+
+// Everything still owing, oldest first, one at a time so a bad connection is not
+// hit with a hundred requests at once.
+async function flushUnsent(){
+  // write() addresses whatever department is open right now, so a flush that is
+  // still going when somebody taps another tab would post produce's counts to
+  // meat. Stop instead; the rest are still on the phone and go next time.
+  const started = dept;
+  let sent = 0;
+  for (const name of Object.keys(unsent)){
+    if (dept !== started) break;
+    const snap = unsent[name];
+    if (!snap) continue;
+    const ok = await write('PUT', '/count', { item_name: name,
+      shelf: snap.shelf ?? null, cooler: snap.cooler ?? null, qty: snap.qty ?? null });
+    if (!ok) break;               // still no connection; the rest can wait
+    if (unsent[name] === snap){ delete unsent[name]; sent++; }
+  }
+  if (dept === started){ saveUnsent(); renderUnsent(); }
+  return sent;
+}
+
+// Says so, and keeps saying so. The old failure notice was a line that the next
+// save wiped, which on a lap of a hundred and fifty items is no notice at all.
+function renderUnsent(){
+  const el = $('unsentBar');
+  if (!el) return;
+  const n = unsentCount();
+  if (!n){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = `<b>${n}</b> count${n === 1 ? '' : 's'} not saved yet &mdash;
+    kept on this phone, and sent as soon as there is signal.
+    <button onclick="retryUnsent(this)">Try now</button>`;
+}
+async function retryUnsent(btn){
+  if (btn){ btn.disabled = true; btn.textContent = 'Trying\u2026'; }
+  await flushUnsent();
+  renderUnsent();
+}
+
 async function setCount(name, field, val){
   noteWalked(name);
   const c = ensureCount(name);
   c[field] = (val === '' || val === null) ? null : Number(val);
   refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
-  await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
+  await sendCount(name, c);
 }
 
 // Counting the back in quarters. A switch on the lap rather than a control on
@@ -830,7 +913,7 @@ async function stepCount(name, field, delta){
   const next = Math.max(cur + delta, delta < 0 && cur + delta < 0 ? 0 : 0);
   c[field] = Math.round(Math.max(next, 0) * 4) / 4;
   refreshRow(name); refreshProgress(); refreshWalkOffer(); refreshPassBar();
-  await write('PUT', '/count', { item_name: name, shelf: c.shelf, cooler: c.cooler, qty: c.qty });
+  await sendCount(name, c);
 }
 
 function handleResetTap(){
@@ -850,6 +933,9 @@ function handleResetTap(){
     resetArmed = false;
     btn.textContent = 'Reset'; btn.style.background = ''; btn.style.color = '';
     counts = {}; orderOverrides = {};
+    // Nothing is owed once the counts are thrown away, and replaying them
+    // afterwards would put back exactly what was just cleared.
+    unsent = {}; saveUnsent(); renderUnsent();
     renderList();
     write('DELETE', '/counts');
   }
@@ -1524,6 +1610,11 @@ function cachedMe(){
 // A phone put in a pocket mid-count would otherwise lose the last few nudges.
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushWalk(); });
 window.addEventListener('pagehide', () => { flushWalk(); });
+// Walking out of the back room is the moment these can go, and nobody should
+// have to press anything for that to happen.
+window.addEventListener('online', () => {
+  if (unsentCount()) flushUnsent().then(() => { refreshProgress(); refreshPassBar(); });
+});
 
 async function boot(){
   let offline = false;
