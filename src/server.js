@@ -92,8 +92,11 @@ app.get('/api/auth/whoami', async (req, res) => {
     const me = await currentEmployee(req);
     const n = await employeeCount();
     if (!n) return res.json({ needs_setup: true, employee: null, names: [] });
+    // Only people who can actually sign in. The roster also holds staff who have
+    // no PIN and never open this app, and offering their name on the login
+    // screen is offering a door that opens onto nothing.
     const { rows } = await pool.query(
-      'SELECT id, name FROM employees WHERE active ORDER BY name');
+      'SELECT id, name FROM employees WHERE active AND pin_hash IS NOT NULL ORDER BY name');
     res.json({
       needs_setup: false,
       employee: me ? publicEmployee(me, await areasFor(me)) : null,
@@ -192,6 +195,270 @@ app.post('/api/auth/change-pin', async (req, res) => {
   } catch (e) {
     console.error('change pin failed', e);
     res.status(500).json({ error: 'change pin failed' });
+  }
+});
+
+// ---- time off: vacation and sick hours ------------------------------------
+//
+// The balance is never stored. It is the sum of the ledger, worked out on every
+// read, because the question people actually ask is not "how many hours do I
+// have" but "how did it get to that" -- and the only answer to the second one
+// is the list of what happened.
+const KINDS = ['vacation', 'sick'];
+const okKind = k => KINDS.includes(String(k));
+
+// Everyone may see their own. Only a manager may see anybody else's: hours
+// taken sick are nobody else's business.
+function timeOffScope(req, res, employeeId) {
+  if (req.employee?.role === 'manager') return true;
+  if (Number(employeeId) === Number(req.employee?.id)) return true;
+  res.status(403).json({ error: 'Your own time off is yours to see. Everyone else’s is a manager’s.' });
+  return false;
+}
+
+const num = v => (v === null || v === undefined || String(v).trim() === '') ? null : Number(v);
+// Hours somebody types land on quarters. A time off form says 8, or 4, or 7.5,
+// and a typed 7.3333 is a typo.
+//
+// Accruals are not rounded this way. A rate is legitimately 3.08 a period, or
+// an hour per thirty worked, and snapping that to a quarter takes roughly two
+// hours a year off everybody's vacation -- which in California is earned wages,
+// so rounding it away is not a display quirk. Accrued hours are stored exactly
+// and only rounded when they are drawn on screen.
+const qtr = v => Math.round(Number(v) * 4) / 4;
+// Money-ish precision, and enough for an hour per thirty worked.
+const exact = v => Math.round(Number(v) * 10000) / 10000;
+
+// The roster with a balance against each name. A manager sees everybody; anyone
+// else sees themselves, so the tab is worth opening either way.
+app.get('/api/timeoff/roster', async (req, res) => {
+  try {
+    const mine = req.employee?.role === 'manager' ? null : req.employee?.id;
+    const { rows: people } = await pool.query(
+      `SELECT id, name, active, hired_on, role, pin_hash IS NOT NULL AS can_login
+         FROM employees ${mine ? 'WHERE id=$1' : ''}
+        ORDER BY active DESC, name`, mine ? [mine] : []);
+    const ids = people.map(p => p.id);
+    const balances = {}, rates = {};
+    if (ids.length) {
+      const { rows: b } = await pool.query(
+        `SELECT employee_id, kind, SUM(hours)::numeric AS hours
+           FROM time_off_ledger WHERE employee_id = ANY($1) GROUP BY employee_id, kind`, [ids]);
+      b.forEach(r => { (balances[r.employee_id] = balances[r.employee_id] || {})[r.kind] = Number(r.hours); });
+      const { rows: r } = await pool.query(
+        `SELECT * FROM time_off_rates WHERE employee_id = ANY($1)`, [ids]);
+      r.forEach(x => { (rates[x.employee_id] = rates[x.employee_id] || {})[x.kind] = {
+        basis: x.basis, rate: Number(x.rate), cap: x.cap === null ? null : Number(x.cap) }; });
+    }
+    res.json({
+      manager: req.employee?.role === 'manager',
+      kinds: KINDS,
+      people: people.map(p => ({
+        id: p.id, name: p.name, active: p.active, hired_on: p.hired_on,
+        can_login: p.can_login,
+        balances: { vacation: balances[p.id]?.vacation || 0, sick: balances[p.id]?.sick || 0 },
+        rates: rates[p.id] || {}
+      }))
+    });
+  } catch (e) {
+    console.error('time off roster failed', e);
+    res.status(500).json({ error: 'could not load the roster' });
+  }
+});
+
+// One person: the balance, and every line that made it.
+app.get('/api/timeoff/person/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!timeOffScope(req, res, id)) return;
+  try {
+    const { rows: who } = await pool.query(
+      `SELECT id, name, active, hired_on FROM employees WHERE id=$1`, [id]);
+    if (!who[0]) return res.status(404).json({ error: 'not on the roster' });
+    const { rows: lines } = await pool.query(
+      `SELECT * FROM time_off_ledger WHERE employee_id=$1
+        ORDER BY on_date DESC, id DESC LIMIT 400`, [id]);
+    const { rows: rates } = await pool.query(
+      `SELECT * FROM time_off_rates WHERE employee_id=$1`, [id]);
+    const bal = { vacation: 0, sick: 0 };
+    const { rows: sums } = await pool.query(
+      `SELECT kind, SUM(hours)::numeric AS hours FROM time_off_ledger
+        WHERE employee_id=$1 GROUP BY kind`, [id]);
+    sums.forEach(s => { bal[s.kind] = Number(s.hours); });
+    res.json({
+      person: who[0],
+      balances: bal,
+      rates: Object.fromEntries(rates.map(r => [r.kind,
+        { basis: r.basis, rate: Number(r.rate), cap: r.cap === null ? null : Number(r.cap) }])),
+      lines: lines.map(l => ({ ...l, hours: Number(l.hours) })),
+      manager: req.employee?.role === 'manager'
+    });
+  } catch (e) {
+    console.error('time off person failed', e);
+    res.status(500).json({ error: 'could not load that person' });
+  }
+});
+
+// Somebody on the roster who does not use the app. No PIN, so no way in.
+app.post('/api/timeoff/person', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const name = String(req.body?.name || '').trim();
+  const hired = String(req.body?.hired_on || '').trim() || null;
+  if (!name) return res.status(400).json({ error: 'A name is needed.' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO employees (name, pin_hash, role, must_change_pin, hired_on)
+       VALUES ($1, NULL, 'staff', FALSE, $2::date)
+       ON CONFLICT (name) DO NOTHING RETURNING id, name`, [name, hired]);
+    if (!rows[0]) return res.status(409).json({ error: `${name} is already on the roster.` });
+    res.json({ ok: true, person: rows[0] });
+  } catch (e) {
+    console.error('roster add failed', e);
+    res.status(500).json({ error: 'could not add that person' });
+  }
+});
+
+// What somebody earns. Three ways, because small shops use all of them: a set
+// number of hours each pay period, a number per hour actually worked (which is
+// how California sick leave is usually written), or a lump once a year.
+app.put('/api/timeoff/rate/:id/:kind', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const id = Number(req.params.id);
+  const kind = String(req.params.kind);
+  if (!okKind(kind)) return res.status(400).json({ error: 'vacation or sick' });
+  const basis = ['per_period', 'per_hour_worked', 'annual'].includes(req.body?.basis)
+    ? req.body.basis : 'per_period';
+  const rate = num(req.body?.rate) ?? 0;
+  const cap = num(req.body?.cap);
+  if (!isFinite(rate) || rate < 0) return res.status(400).json({ error: 'That rate is not a number.' });
+  try {
+    await pool.query(
+      `INSERT INTO time_off_rates (employee_id, kind, basis, rate, cap)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (employee_id, kind) DO UPDATE
+         SET basis=EXCLUDED.basis, rate=EXCLUDED.rate, cap=EXCLUDED.cap`,
+      [id, kind, basis, rate, cap]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('rate save failed', e);
+    res.status(500).json({ error: 'could not save that rate' });
+  }
+});
+
+// A line on somebody's ledger: time taken off the form, an opening balance
+// carried over from the spreadsheet, or a correction.
+app.post('/api/timeoff/entry', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const id = Number(req.body?.employee_id);
+  const kind = String(req.body?.kind);
+  const hours = num(req.body?.hours);
+  const on_date = String(req.body?.on_date || '').trim();
+  const through = String(req.body?.through || '').trim() || null;
+  const source = ['request', 'opening', 'adjustment'].includes(req.body?.source)
+    ? req.body.source : 'request';
+  if (!id || !okKind(kind)) return res.status(400).json({ error: 'Who, and vacation or sick?' });
+  if (hours === null || !isFinite(hours) || hours === 0) {
+    return res.status(400).json({ error: 'How many hours?' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(on_date)) return res.status(400).json({ error: 'What date?' });
+  try {
+    // Time taken comes off. The screen asks for a plain number of hours, so the
+    // sign is decided here by what kind of line it is rather than by hoping
+    // somebody remembers to type a minus.
+    const signed = source === 'request' ? -Math.abs(qtr(hours)) : qtr(hours);
+    const { rows } = await pool.query(
+      `INSERT INTO time_off_ledger (employee_id, kind, hours, on_date, through, reason, source, entered_by)
+       VALUES ($1,$2,$3,$4::date,$5::date,$6,$7,$8) RETURNING id`,
+      [id, kind, signed, on_date, through, String(req.body?.reason || '').trim() || null,
+       source, req.employee.name]);
+    res.json({ ok: true, id: rows[0].id });
+  } catch (e) {
+    console.error('time off entry failed', e);
+    res.status(500).json({ error: 'could not save that' });
+  }
+});
+
+// Nothing is deleted. A wrong line is answered with its opposite, so the
+// history of how a balance moved survives being corrected.
+app.post('/api/timeoff/reverse/:id', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    const { rows } = await pool.query('SELECT * FROM time_off_ledger WHERE id=$1', [req.params.id]);
+    const line = rows[0];
+    if (!line) return res.status(404).json({ error: 'no such line' });
+    if (line.source === 'reversal') return res.status(400).json({ error: 'That line is already a correction.' });
+    const { rows: had } = await pool.query(
+      `SELECT 1 FROM time_off_ledger WHERE source='reversal' AND reason LIKE $1`,
+      [`%#${line.id}`]);
+    if (had[0]) return res.status(409).json({ error: 'That line has already been taken back.' });
+    await pool.query(
+      `INSERT INTO time_off_ledger (employee_id, kind, hours, on_date, reason, source, entered_by)
+       VALUES ($1,$2,$3,CURRENT_DATE,$4,'reversal',$5)`,
+      [line.employee_id, line.kind, -Number(line.hours),
+       `takes back #${line.id}`, req.employee.name]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('reversal failed', e);
+    res.status(500).json({ error: 'could not take that back' });
+  }
+});
+
+// Posting a pay period's accrual to everybody at once.
+//
+// Per-hour rates need the hours each person actually worked, which this app has
+// no way of knowing, so they are typed in from payroll. Everything else the
+// rate already answers. The unique index does the real work of stopping a
+// period being posted twice -- two managers, two phones, same afternoon.
+app.post('/api/timeoff/accrue', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const on_date = String(req.body?.on_date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(on_date)) return res.status(400).json({ error: 'Which period end?' });
+  const worked = req.body?.hours_worked && typeof req.body.hours_worked === 'object'
+    ? req.body.hours_worked : {};
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: rates } = await client.query(
+      `SELECT r.*, e.name FROM time_off_rates r
+         JOIN employees e ON e.id = r.employee_id
+        WHERE e.active AND r.rate > 0`);
+    const posted = [], skipped = [], capped = [];
+    for (const r of rates) {
+      let hours = Number(r.rate);
+      if (r.basis === 'per_hour_worked') {
+        const w = num(worked[r.employee_id]);
+        if (!w) { skipped.push(`${r.name} (${r.kind}): no hours worked given`); continue; }
+        hours = Number(r.rate) * w;
+      }
+      hours = exact(hours);
+      if (hours <= 0) continue;
+      if (r.cap !== null) {
+        const { rows: b } = await client.query(
+          `SELECT COALESCE(SUM(hours),0)::numeric AS h FROM time_off_ledger
+            WHERE employee_id=$1 AND kind=$2`, [r.employee_id, r.kind]);
+        const room = Number(r.cap) - Number(b[0].h);
+        if (room <= 0) { capped.push(`${r.name} (${r.kind})`); continue; }
+        // Exactly the room left, never rounded up into it: rounding a partial
+        // top-up to the nearest quarter can land above the cap it was there to
+        // respect.
+        if (hours > room) { hours = exact(room); capped.push(`${r.name} (${r.kind}), part only`); }
+      }
+      const { rows: ins } = await client.query(
+        `INSERT INTO time_off_ledger (employee_id, kind, hours, on_date, reason, source, entered_by)
+         VALUES ($1,$2,$3,$4::date,$5,'accrual',$6)
+         ON CONFLICT DO NOTHING RETURNING id`,
+        [r.employee_id, r.kind, hours, on_date,
+         `period ending ${on_date}`, req.employee.name]);
+      if (ins[0]) posted.push(`${r.name} (${r.kind}): ${hours}`);
+      else skipped.push(`${r.name} (${r.kind}): already posted for this period`);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, posted: posted.length, skipped, capped, detail: posted });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('accrual failed', e);
+    res.status(500).json({ error: 'could not post that period' });
+  } finally {
+    client.release();
   }
 });
 

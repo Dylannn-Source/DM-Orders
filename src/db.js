@@ -436,6 +436,61 @@ export async function initDb() {
        ON CONFLICT (key) DO NOTHING`);
   }
 
+  // Most of the roster never signs into this app. Andy does not own an email
+  // address; the cashiers have no reason to open it at all. But their vacation
+  // and sick hours still have to be tracked, so a person can exist here without
+  // a way in: no PIN, no login, just a row with a name and an accrual rate.
+  //
+  // verifyPin already refuses an empty hash, so a row with no PIN cannot be
+  // signed into whatever is typed at it. The login screen leaves them off the
+  // list as well, so nobody is offered a name that can never work.
+  await pool.query('ALTER TABLE employees ALTER COLUMN pin_hash DROP NOT NULL');
+  await pool.query('ALTER TABLE employees ADD COLUMN IF NOT EXISTS hired_on DATE');
+
+  // What each person earns, per kind. Everybody's rate is different and both
+  // kinds are tracked separately, so this is one row per person per kind rather
+  // than a pair of columns on the employee.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS time_off_rates (
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      kind        TEXT NOT NULL,
+      basis       TEXT NOT NULL DEFAULT 'per_period',
+      rate        NUMERIC NOT NULL DEFAULT 0,
+      cap         NUMERIC,
+      PRIMARY KEY (employee_id, kind)
+    )`);
+
+  // Every hour in and every hour out, one row each, and the balance is the sum
+  // of them. Never a stored balance that the rows are supposed to agree with:
+  // when somebody disputes a number -- and with paid time off somebody
+  // eventually does -- the answer has to be a list of what happened, not a
+  // figure that was right when it was written.
+  //
+  // A mistake is corrected by adding a line that reverses it, so how a balance
+  // got where it is survives the correction.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS time_off_ledger (
+      id          SERIAL PRIMARY KEY,
+      employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      kind        TEXT NOT NULL,
+      hours       NUMERIC NOT NULL,
+      on_date     DATE NOT NULL,
+      through     DATE,
+      reason      TEXT,
+      source      TEXT NOT NULL DEFAULT 'manual',
+      entered_by  TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS time_off_ledger_who ON time_off_ledger (employee_id, kind)');
+  // A pay period posted twice would quietly double everyone's accrual, and the
+  // second posting looks exactly like the first. One accrual per person, per
+  // kind, per period end, enforced where it cannot be got around.
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS time_off_one_accrual
+      ON time_off_ledger (employee_id, kind, on_date)
+      WHERE source = 'accrual'`);
+
   // The product name in Vietnamese, beside the English one rather than instead
   // of it. Half the people who walk these pallets read Vietnamese more easily
   // than English, and the other half read the labels on the boxes, which are in

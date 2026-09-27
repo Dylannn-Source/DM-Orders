@@ -944,7 +944,8 @@ function handleResetTap(){
 // ---- views ----
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
-   'marketView','orderNameView','addItemView','backupView','employeesView','historyView','warehouseView']
+   'marketView','orderNameView','addItemView','backupView','employeesView','historyView','warehouseView',
+   'timeoffView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -1011,6 +1012,302 @@ function goOffline(){
   if (me?.simple_mode) document.body.classList.add('simple');
   else whPicking = true;
   showWarehouse('warehouse').catch(() => {});
+}
+
+// ---- time off: vacation and sick hours ------------------------------------
+//
+// The balance on screen is always the sum of the lines under it, fetched fresh.
+// Nothing here keeps a running total of its own, because the moment two numbers
+// exist for the same thing one of them is wrong and there is no telling which.
+let toData = null, toPerson = null, toBusy = false;
+const KIND_LABEL = { vacation: 'Vacation', sick: 'Sick' };
+const BASIS_LABEL = {
+  per_period: 'each pay period',
+  per_hour_worked: 'per hour worked',
+  annual: 'once a year'
+};
+const hrs = n => {
+  const v = Math.round(Number(n || 0) * 100) / 100;
+  return (v === Math.trunc(v) ? String(v) : v.toFixed(2).replace(/0$/, ''));
+};
+const today = () => new Date().toISOString().slice(0, 10);
+// A date out of Postgres arrives as a timestamp at UTC midnight, which in
+// California is the evening before. Read the calendar date off the string.
+const dmy = d => {
+  const s = String(d || '').slice(0, 10);
+  const [y, m, dd] = s.split('-');
+  return (y && m && dd) ? `${Number(m)}/${Number(dd)}/${y.slice(2)}` : '';
+};
+
+async function toApi(method, path, body){
+  syncStart();
+  try {
+    const res = await fetch('/api/timeoff' + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const out = await res.json().catch(() => ({}));
+    syncDone(res.ok);
+    if (!res.ok){ alert(out.error || 'That did not save.'); return null; }
+    return out;
+  } catch (e) {
+    syncDone(false);
+    alert('No connection. Nothing was saved.');
+    return null;
+  }
+}
+
+async function showTimeOff(){
+  hideAll();
+  $('timeoffView').style.display = 'block';
+  $('footerBar').style.display = 'none';
+  document.querySelectorAll('#deptBar button').forEach(b =>
+    b.classList.toggle('active', b.dataset.dept === 'timeoff'));
+  toPerson = null;
+  $('timeoffWrap').innerHTML = '<div class="hint">Loading…</div>';
+  const d = await toApi('GET', '/roster');
+  if (!d) { $('timeoffWrap').innerHTML = '<div class="emptystate">Could not load the roster.</div>'; return; }
+  toData = d;
+  renderTimeOff();
+}
+
+function renderTimeOff(){
+  if (toPerson) return renderToPerson();
+  const wrap = $('timeoffWrap');
+  const d = toData;
+  const people = d.people;
+  const on = people.filter(p => p.active);
+  const off = people.filter(p => !p.active);
+
+  const card = p => {
+    const noRate = !p.rates.vacation?.rate && !p.rates.sick?.rate;
+    return `<button class="tocard" onclick="toOpen(${p.id})">
+      <div class="totop">
+        <span class="toname">${htmlEsc(p.name)}</span>
+        ${p.can_login ? '' : '<span class="tochip">roster only</span>'}
+      </div>
+      <div class="tobals">
+        <span class="tobal vac"><b>${hrs(p.balances.vacation)}</b> vacation</span>
+        <span class="tobal sick"><b>${hrs(p.balances.sick)}</b> sick</span>
+      </div>
+      ${d.manager && noRate ? '<div class="towarn">No accrual rate set yet</div>' : ''}
+    </button>`;
+  };
+
+  wrap.innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Time Off</div>
+      <div class="vs-sub">${d.manager
+        ? `${on.length} on the roster · hours in the bank`
+        : 'Your hours'}</div>
+    </div>
+    ${d.manager ? `<div class="toacts">
+      <button class="addbtn" onclick="toAccrueForm()">Post a pay period</button>
+      <button class="listlink" onclick="toAddForm()">Add someone</button>
+    </div>` : ''}
+    <div id="toPanel"></div>
+    <div class="tocards">${on.map(card).join('')}</div>
+    ${off.length ? `<div class="sectionlabel">No longer here</div>
+      <div class="tocards">${off.map(card).join('')}</div>` : ''}
+    ${!people.length ? '<div class="emptystate">Nobody on the roster yet.</div>' : ''}`;
+}
+
+function toAddForm(){
+  $('toPanel').innerHTML = `<div class="topanel">
+    <div class="topaneltitle">Add someone to the roster</div>
+    <div class="hint" style="padding:0 0 9px;">They get no PIN and cannot sign in.
+      This is only so their hours can be tracked.</div>
+    <input type="text" class="textinput" id="toNewName" placeholder="Name" style="width:100%;margin-bottom:8px;">
+    <label class="tolabel">Hired on <span>optional</span></label>
+    <input type="date" class="textinput" id="toNewHired" style="width:100%;margin-bottom:11px;">
+    <button class="addbtn" onclick="toAddSave()">Add</button>
+    <button class="listlink" onclick="$('toPanel').innerHTML=''">Cancel</button>
+  </div>`;
+  $('toNewName').focus();
+}
+async function toAddSave(){
+  const name = $('toNewName').value.trim();
+  if (!name) return;
+  const r = await toApi('POST', '/person', { name, hired_on: $('toNewHired').value || null });
+  if (r) showTimeOff();
+}
+
+function toAccrueForm(){
+  const needHours = toData.people.filter(p =>
+    p.active && ['vacation','sick'].some(k => p.rates[k]?.basis === 'per_hour_worked' && p.rates[k]?.rate));
+  $('toPanel').innerHTML = `<div class="topanel">
+    <div class="topaneltitle">Post a pay period</div>
+    <div class="hint" style="padding:0 0 9px;">Adds each person's accrual for one period.
+      A period already posted is left alone, so pressing this twice cannot double anybody.</div>
+    <label class="tolabel">Period ending</label>
+    <input type="date" class="textinput" id="toAccDate" value="${today()}" style="width:100%;margin-bottom:11px;">
+    ${needHours.length ? `<div class="tolabel">Hours worked this period
+        <span>needed for the per-hour rates</span></div>
+      ${needHours.map(p => `<div class="vitem">
+        <span class="viname">${htmlEsc(p.name)}</span>
+        <input type="tel" inputmode="decimal" class="numinput toworked" data-id="${p.id}" placeholder="hours">
+      </div>`).join('')}<div style="height:11px;"></div>` : ''}
+    <button class="addbtn" onclick="toAccrueRun(this)">Post it</button>
+    <button class="listlink" onclick="$('toPanel').innerHTML=''">Cancel</button>
+  </div>`;
+}
+async function toAccrueRun(btn){
+  if (toBusy) return;
+  toBusy = true; btn.disabled = true; btn.textContent = 'Posting…';
+  const hours_worked = {};
+  document.querySelectorAll('.toworked').forEach(i => {
+    if (i.value.trim()) hours_worked[i.dataset.id] = Number(i.value);
+  });
+  const r = await toApi('POST', '/accrue', { on_date: $('toAccDate').value, hours_worked });
+  toBusy = false;
+  if (!r){ btn.disabled = false; btn.textContent = 'Post it'; return; }
+  const d = await toApi('GET', '/roster');
+  if (d) toData = d;
+  renderTimeOff();
+  $('toPanel').innerHTML = `<div class="topanel">
+    <div class="topaneltitle">Posted to ${r.posted} ${r.posted === 1 ? 'person' : 'people'}</div>
+    ${r.capped?.length ? `<div class="towarn">At the cap: ${r.capped.map(htmlEsc).join(', ')}</div>` : ''}
+    ${r.skipped?.length ? `<div class="hint" style="padding:6px 0 0;">Left alone:<br>${
+      r.skipped.map(htmlEsc).join('<br>')}</div>` : ''}
+    <button class="listlink" onclick="$('toPanel').innerHTML=''">Close</button>
+  </div>`;
+}
+
+async function toOpen(id){
+  const d = await toApi('GET', '/person/' + id);
+  if (!d) return;
+  toPerson = d;
+  renderToPerson();
+  window.scrollTo(0, 0);
+}
+// Refetched, not just redrawn. Coming back from somebody's page means a rate or
+// a balance has probably just changed, and a roster redrawn from what was
+// fetched on the way in shows the old number -- and, worse, builds the accrual
+// screen without the person whose rate was just set.
+function toBack(){ toPerson = null; window.scrollTo(0, 0); showTimeOff(); }
+
+function renderToPerson(){
+  const d = toPerson;
+  const p = d.person;
+  const wrap = $('timeoffWrap');
+  const rateRow = kind => {
+    const r = d.rates[kind] || { basis: 'per_period', rate: 0, cap: null };
+    return `<div class="torate">
+      <div class="toratehead">${KIND_LABEL[kind]}</div>
+      ${d.manager ? `
+        <div class="torateform">
+          <input type="tel" inputmode="decimal" class="numinput" id="rate_${kind}" value="${r.rate || ''}" placeholder="hours">
+          <select class="single" id="basis_${kind}">
+            ${Object.entries(BASIS_LABEL).map(([k, v]) =>
+              `<option value="${k}" ${r.basis === k ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="torateform">
+          <input type="tel" inputmode="decimal" class="numinput" id="cap_${kind}" value="${r.cap ?? ''}" placeholder="no cap">
+          <button class="whpackset" onclick="toSaveRate('${kind}')">Save rate</button>
+        </div>`
+        : `<div class="hint" style="padding:0;">${r.rate ? `${hrs(r.rate)} ${BASIS_LABEL[r.basis]}` : 'No rate set'}</div>`}
+    </div>`;
+  };
+
+  const line = l => `<div class="toline ${l.hours < 0 ? 'out' : 'in'}">
+    <div class="tolinetop">
+      <span class="tolinewhat">${htmlEsc(KIND_LABEL[l.kind] || l.kind)}
+        <span class="tolinesrc">${htmlEsc(
+          { accrual: 'earned', request: 'taken', opening: 'starting balance',
+            adjustment: 'correction', reversal: 'taken back' }[l.source] || l.source)}</span></span>
+      <span class="tolinehrs">${l.hours > 0 ? '+' : '−'}${hrs(Math.abs(l.hours))}</span>
+    </div>
+    <div class="tolinemeta">${dmy(l.on_date)}${l.through ? ' – ' + dmy(l.through) : ''}${
+      l.reason ? ' · ' + htmlEsc(l.reason) : ''}${l.entered_by ? ' · ' + htmlEsc(l.entered_by) : ''}</div>
+    ${d.manager && l.source !== 'reversal'
+      ? `<button class="listlink tolineundo" onclick="toReverse(${l.id})">Take this back</button>` : ''}
+  </div>`;
+
+  wrap.innerHTML = `
+    <div class="backrow">
+      <button class="backbtn" onclick="toBack()">&larr; everyone</button>
+      <span class="eyebrow">Time Off</span>
+    </div>
+    <div class="vsummarybar">
+      <div class="vs-title">${htmlEsc(p.name)}</div>
+      <div class="vs-sub">${p.hired_on ? 'Hired ' + dmy(p.hired_on) : 'Hire date not set'}</div>
+    </div>
+    <div class="tobigbals">
+      <div class="tobigbal vac"><b>${hrs(d.balances.vacation)}</b><span>vacation hours</span></div>
+      <div class="tobigbal sick"><b>${hrs(d.balances.sick)}</b><span>sick hours</span></div>
+    </div>
+    ${d.manager ? `<div class="toacts">
+      <button class="addbtn" onclick="toEntryForm()">Enter a request</button>
+    </div>` : ''}
+    <div id="toPanel"></div>
+    <div class="sectionlabel">Accrual</div>
+    ${['vacation', 'sick'].map(rateRow).join('')}
+    <div class="sectionlabel">History</div>
+    ${d.lines.length ? d.lines.map(line).join('')
+      : '<div class="emptystate">Nothing recorded yet.</div>'}`;
+}
+
+async function toSaveRate(kind){
+  const rate = $('rate_' + kind).value.trim();
+  const cap = $('cap_' + kind).value.trim();
+  const basis = $('basis_' + kind).value;
+  const r = await toApi('PUT', `/rate/${toPerson.person.id}/${kind}`,
+    { rate: rate || 0, cap: cap === '' ? null : cap, basis });
+  if (r) toOpen(toPerson.person.id);
+}
+
+function toEntryForm(){
+  $('toPanel').innerHTML = `<div class="topanel">
+    <div class="topaneltitle">Enter a time off request</div>
+    <div class="torow">
+      <select class="single" id="toKind">
+        <option value="vacation">Vacation</option>
+        <option value="sick">Sick</option>
+      </select>
+      <select class="single" id="toSource">
+        <option value="request">Time taken</option>
+        <option value="opening">Starting balance</option>
+        <option value="adjustment">Correction</option>
+      </select>
+    </div>
+    <label class="tolabel">Hours <span>time taken comes off the balance</span></label>
+    <input type="tel" inputmode="decimal" class="textinput" id="toHours" placeholder="8" style="width:100%;margin-bottom:9px;">
+    <div class="torow">
+      <div style="flex:1;"><label class="tolabel">From</label>
+        <input type="date" class="textinput" id="toFrom" value="${today()}" style="width:100%;"></div>
+      <div style="flex:1;"><label class="tolabel">To <span>optional</span></label>
+        <input type="date" class="textinput" id="toThrough" style="width:100%;"></div>
+    </div>
+    <label class="tolabel" style="margin-top:9px;">Note <span>optional</span></label>
+    <input type="text" class="textinput" id="toReason" placeholder="what the form said" style="width:100%;margin-bottom:11px;">
+    <button class="addbtn" onclick="toEntrySave(this)">Save it</button>
+    <button class="listlink" onclick="$('toPanel').innerHTML=''">Cancel</button>
+  </div>`;
+  $('toHours').focus();
+}
+async function toEntrySave(btn){
+  if (toBusy) return;
+  const hours = $('toHours').value.trim();
+  if (!hours){ alert('How many hours?'); return; }
+  toBusy = true; btn.disabled = true;
+  const r = await toApi('POST', '/entry', {
+    employee_id: toPerson.person.id,
+    kind: $('toKind').value,
+    source: $('toSource').value,
+    hours,
+    on_date: $('toFrom').value,
+    through: $('toThrough').value || null,
+    reason: $('toReason').value.trim() || null
+  });
+  toBusy = false;
+  if (r) toOpen(toPerson.person.id); else btn.disabled = false;
+}
+async function toReverse(id){
+  if (!confirm('Add a line that cancels this one out? The original stays on the history.')) return;
+  const r = await toApi('POST', '/reverse/' + id);
+  if (r) toOpen(toPerson.person.id);
 }
 
 // ---- order summary ----

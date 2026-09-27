@@ -114,7 +114,7 @@ main{padding:10px 12px 4px;}
 .btn-ghost{background:var(--paper-2);color:var(--ink);flex:1;}
 
 #summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView,
-#orderNameView,#addItemView,#backupView,#employeesView,#marketView{
+#orderNameView,#addItemView,#backupView,#employeesView,#marketView,#timeoffView{
   display:none;padding:14px 14px 100px;}
 .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .backbtn{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);
@@ -742,3 +742,64 @@ body.simple .whhead { padding-bottom:6px; }
 .twas{display:block;font-size:11px;letter-spacing:.03em;color:var(--muted);margin-top:2px}
 .undoqty{font:inherit;font-size:11px;background:none;border:0;padding:0;cursor:pointer;
   color:var(--accent);text-decoration:underline}
+
+
+/* ---- time off ---------------------------------------------------------- */
+.toacts{display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+.tocards{display:flex;flex-direction:column;gap:8px;}
+.tocard{display:block;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
+  padding:11px 12px;}
+.totop{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.toname{font-weight:700;font-size:15px;}
+.tochip{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--line);
+  border-radius:20px;padding:2px 7px;flex:none;}
+.tobals{display:flex;gap:14px;margin-top:6px;}
+.tobal{font-size:12.5px;color:var(--ink-soft);}
+.tobal b{font-size:16px;color:var(--ink);margin-right:3px;}
+.tobal.vac b{color:var(--good);}
+.tobal.sick b{color:#B98900;}
+.towarn{font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  text-transform:uppercase;color:#8E2B2E;margin-top:6px;}
+
+/* The two numbers somebody actually opened the page for. */
+.tobigbals{display:flex;gap:9px;margin-bottom:13px;}
+.tobigbal{flex:1;background:var(--card);border:1px solid var(--line);
+  border-radius:11px;padding:13px 12px;text-align:center;}
+.tobigbal b{display:block;font-size:30px;line-height:1.1;}
+.tobigbal span{font-family:var(--mono);font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-soft);}
+.tobigbal.vac b{color:var(--good);}
+.tobigbal.sick b{color:#B98900;}
+
+.topanel{background:var(--card);border:1px solid var(--line);border-radius:11px;
+  padding:13px 12px;margin-bottom:13px;}
+.topaneltitle{font-family:var(--serif);font-size:16px;margin-bottom:7px;}
+.tolabel{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
+.tolabel span{text-transform:none;letter-spacing:0;opacity:.75;}
+.torow{display:flex;gap:8px;margin-bottom:9px;}
+.torow .single{flex:1;}
+
+.torate{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;margin-bottom:8px;}
+.toratehead{font-weight:700;font-size:14px;margin-bottom:7px;}
+.torateform{display:flex;gap:7px;align-items:center;margin-bottom:6px;}
+.torateform .numinput{width:88px;flex:none;}
+.torateform .single{flex:1;min-width:0;}
+.torateform:last-child{margin-bottom:0;}
+
+.toline{background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:7px;}
+.toline.in{border-left-color:var(--good);}
+.toline.out{border-left-color:var(--accent);}
+.tolinetop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.tolinewhat{font-weight:600;font-size:13.5px;}
+.tolinesrc{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-soft);margin-left:5px;}
+.tolinehrs{font-family:var(--mono);font-size:15px;font-weight:700;flex:none;}
+.toline.in .tolinehrs{color:var(--good);}
+.toline.out .tolinehrs{color:var(--accent);}
+.tolinemeta{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:3px;}
+.tolineundo{margin-top:5px;font-size:11px;}
