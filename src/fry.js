@@ -72,6 +72,12 @@ let lastError = null, lastRun = null, lastMatched = 0, lastLooked = 0;
 // returns is not the recent end of the list this is where that shows: plenty
 // listed, none in the window, nothing ever matching and no error to explain it.
 let lastListed = 0, lastInWindow = 0;
+// How many line items in the window looked like a fried fish, and what the
+// last transaction's lines were shaped like. The list call working proves the
+// connection; it does not prove the reply is laid out the way the lines are
+// read here. If fish wait while transactions arrive, this is the next
+// question, and guessing at it again is not worth anybody's evening.
+let lastFriedLines = 0, lastLineKeys = null, lastLineSample = null;
 // When a call to Vori last actually succeeded. Without this the board would say
 // "watching the registers" on the strength of a key being present, having never
 // once reached Vori -- and the first anybody would know is a fryer standing at
@@ -187,6 +193,7 @@ export function fryVoriStatus() {
     attempts,
     listed: lastListed,
     in_window: lastInWindow,
+    fried_lines_seen: lastFriedLines,
     watch_started: watchStarted,
     busy: !!inFlight
   };
@@ -206,6 +213,8 @@ export function fryDiag() {
     params: paramPlan ? Object.keys(paramPlan(new Date().toISOString())) : null,
     timeout_ms: TIMEOUT_MS,
     watch_seconds: Number(process.env.FRY_WATCH_SECONDS || 10),
+    line_keys: lastLineKeys,
+    line_sample: lastLineSample,
     build: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
         || process.env.SOURCE_COMMIT?.slice(0, 7) || null,
     started_at: BOOT
@@ -281,8 +290,18 @@ async function runMatch({ probe = false } = {}) {
       }
       const when = new Date(t.completedAt || Date.now()).getTime();
 
+      if (lines.length && !lastLineKeys) {
+        lastLineKeys = Object.keys(lines[0] || {});
+        // Shape only: what a line is called and what it costs, never who bought it.
+        lastLineSample = {
+          product_id: lineProduct(lines[0]) || null,
+          plu: linePlu(lines[0]) || null,
+          amount: lineAmount(lines[0])
+        };
+      }
       for (const l of lines) {
         if (!isFriedLine(l, fried)) continue;
+        lastFriedLines++;
         const amt = lineAmount(l);
         if (amt === null) continue;
         const lineId = String(l.id || `${t.id}:${lineProduct(l)}:${amt}`);
