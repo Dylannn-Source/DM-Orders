@@ -945,7 +945,7 @@ function handleResetTap(){
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
    'marketView','orderNameView','addItemView','backupView','employeesView','historyView','warehouseView',
-   'timeoffView']
+   'timeoffView','fryView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -1012,6 +1012,205 @@ function goOffline(){
   if (me?.simple_mode) document.body.classList.add('simple');
   else whPicking = true;
   showWarehouse('warehouse').catch(() => {});
+}
+
+// ---- fried fish -----------------------------------------------------------
+//
+// One board, three jobs. The clerk puts a fish on it, whoever takes the money
+// taps it paid, and the fryer reads it instead of walking to the registers and
+// going through a pile of slips.
+//
+// It refreshes itself every few seconds, because the whole value of the thing
+// is that the fryer looks up and the answer has already changed. Polling stops
+// when the tab is not on screen -- this sits open on a counter all day.
+let fryData = null, fryTimer = null, fryAdding = false, fryBusy = new Set();
+const FRY_EVERY = 5000;
+
+async function fryApi(method, path, body){
+  try {
+    const res = await fetch('/api/fry' + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok){ if (method !== 'GET') alert(out.error || 'That did not work.'); return null; }
+    return out;
+  } catch (e) {
+    if (method !== 'GET') alert('No connection. Nothing changed.');
+    return null;
+  }
+}
+
+function showFry(){
+  hideAll();
+  $('fryView').style.display = 'block';
+  $('footerBar').style.display = 'none';
+  document.querySelectorAll('#deptBar button').forEach(b =>
+    b.classList.toggle('active', b.dataset.dept === 'fry'));
+  if (!fryData) $('fryWrap').innerHTML = '<div class="hint">Loading…</div>';
+  fryRefresh();
+  fryStartPolling();
+}
+function fryStartPolling(){
+  clearInterval(fryTimer);
+  fryTimer = setInterval(() => {
+    if (document.hidden) return;
+    if ($('fryView').style.display === 'none') return;
+    if (fryAdding || fryBusy.size) return;   // never move the board under a thumb
+    fryRefresh();
+  }, FRY_EVERY);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || fryAdding || fryBusy.size) return;
+  if ($('fryView') && $('fryView').style.display === 'block') fryRefresh();
+});
+
+async function fryRefresh(){
+  const d = await fryApi('GET', '/board');
+  if (!d) return;
+  fryData = d;
+  renderFry();
+}
+
+const fryAge = iso => {
+  if (!iso) return '';
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  return `${h}h ${mins % 60}m`;
+};
+const money = v => (v === null || v === undefined) ? '' : '$' + Number(v).toFixed(2);
+
+function renderFry(){
+  const wrap = $('fryWrap');
+  const d = fryData;
+  if (!d){ wrap.innerHTML = '<div class="emptystate">Could not load the board.</div>'; return; }
+  const by = st => d.tickets.filter(t => t.status === st);
+  const waiting = by('waiting'), paid = by('paid'), frying = by('frying'), done = by('done');
+
+  const card = t => {
+    const busy = fryBusy.has(t.id);
+    const act = (label, action, cls) =>
+      `<button class="frybtn ${cls || ''}" ${busy ? 'disabled' : ''}
+         onclick="fryDo(${t.id},'${action}')">${label}</button>`;
+    const meta = [];
+    if (t.weight) meta.push(`${Number(t.weight)} lb`);
+    if (t.price !== null) meta.push(money(t.price));
+    return `<div class="frycard ${t.status}">
+      <div class="frytop">
+        <span class="frynum">#${t.number}</span>
+        <div class="frywhat">
+          <div class="fryfish">${htmlEsc(t.fish)}</div>
+          ${meta.length ? `<div class="frymeta">${htmlEsc(meta.join(' · '))}</div>` : ''}
+          ${t.prep ? `<div class="fryprep">${htmlEsc(t.prep)}</div>` : ''}
+        </div>
+      </div>
+      <div class="frywho">${htmlEsc(fryStory(t))}</div>
+      <div class="fryacts">
+        ${t.status === 'waiting' ? act('Paid for', 'paid', 'go') : ''}
+        ${t.status === 'paid' ? act('Into the oil', 'frying', 'go') : ''}
+        ${t.status === 'frying' ? act('Done', 'done', 'go') : ''}
+        ${t.status !== 'done' ? act('Undo', 'undo', 'quiet') : ''}
+        ${t.status === 'waiting' ? act('Cancel', 'void', 'quiet') : ''}
+      </div>
+    </div>`;
+  };
+
+  const section = (title, list, note) => `
+    <div class="frysection">
+      <div class="frysechead">${title} <span>${list.length}</span></div>
+      ${list.length ? list.map(card).join('')
+        : `<div class="fryempty">${note}</div>`}
+    </div>`;
+
+  wrap.innerHTML = `
+    <div class="vsummarybar">
+      <div class="vs-title">Fried Fish</div>
+      <div class="vs-sub">${paid.length} ready to fry · ${waiting.length} waiting on payment
+        · ${done.length} done today</div>
+    </div>
+    <button class="addbtn fryadd" onclick="fryNewForm()">+ New fish</button>
+    ${section('Ready to fry', paid, 'Nothing is paid for and waiting.')}
+    ${frying.length ? section('In the oil', frying, '') : ''}
+    ${section('Waiting on payment', waiting,
+       'Nothing waiting. Every fish on the board is paid for.')}
+    ${done.length ? `<div class="frysection">
+      <div class="frysechead">Done today <span>${done.length}</span></div>
+      <div class="frydone">${done.map(t =>
+        `<span class="frydonechip">#${t.number} ${htmlEsc(t.fish)}</span>`).join('')}</div>
+    </div>` : ''}`;
+}
+
+// Who did what, in the order it happened. A pile of slips cannot say that, and
+// it is the part that makes a tap worth as much as holding the paper.
+function fryStory(t){
+  if (t.status === 'waiting') return `${t.created_by || 'someone'} · ${fryAge(t.created_at)}`;
+  if (t.status === 'paid') return `paid · ${t.paid_by || 'someone'} · ${fryAge(t.paid_at)}`;
+  if (t.status === 'frying') return `in the oil · ${t.fried_by || 'someone'} · ${fryAge(t.fried_at)}`;
+  if (t.status === 'done') return `done · ${fryAge(t.done_at)}`;
+  return t.void_reason || 'cancelled';
+}
+
+function fryNewForm(){
+  fryAdding = true;
+  $('fryPanel').innerHTML = `<div class="topanel">
+    <div class="topaneltitle">New fish</div>
+    <input type="text" class="textinput" id="fryFish" list="fryFishList"
+           placeholder="Which fish" style="width:100%;margin-bottom:8px;" autocomplete="off">
+    <datalist id="fryFishList">${(fryData?.fish || [])
+      .map(n => `<option value="${htmlEsc(n)}"></option>`).join('')}</datalist>
+    <div class="torow">
+      <div style="flex:1;"><label class="tolabel">Weight <span>lb, optional</span></label>
+        <input type="tel" inputmode="decimal" class="textinput" id="fryWeight" style="width:100%;"></div>
+      <div style="flex:1;"><label class="tolabel">Price <span>off the slip</span></label>
+        <input type="tel" inputmode="decimal" class="textinput" id="fryPrice" style="width:100%;"></div>
+    </div>
+    <label class="tolabel" style="margin-top:9px;">How they want it <span>optional</span></label>
+    <input type="text" class="textinput" id="fryPrep" placeholder="cut in 3, no head"
+           style="width:100%;margin-bottom:11px;">
+    <button class="addbtn" onclick="fryNewSave(this)">Put it on the board</button>
+    <button class="listlink" onclick="fryCancelAdd()">Cancel</button>
+  </div>`;
+  $('fryFish').focus();
+}
+function fryCancelAdd(){ fryAdding = false; $('fryPanel').innerHTML = ''; }
+
+async function fryNewSave(btn){
+  const fish = $('fryFish').value.trim();
+  if (!fish){ alert('Which fish?'); return; }
+  btn.disabled = true; btn.textContent = 'Adding…';
+  const r = await fryApi('POST', '/ticket', {
+    fish,
+    weight: $('fryWeight').value.trim() || null,
+    price: $('fryPrice').value.trim() || null,
+    prep: $('fryPrep').value.trim() || null
+  });
+  fryAdding = false;
+  if (!r){ btn.disabled = false; btn.textContent = 'Put it on the board'; return; }
+  await fryRefresh();
+  // The number is the thing that has to get written on the customer's slip, so
+  // it is said plainly rather than left to be found on the board.
+  $('fryPanel').innerHTML = `<div class="topanel frynewnum">
+    <div class="frynewbig">#${r.ticket.number}</div>
+    <div class="frynewsub">Write this on the slip — ${htmlEsc(r.ticket.fish)}${
+      r.ticket.price !== null ? ' · ' + money(r.ticket.price) : ''}</div>
+    <button class="addbtn" onclick="fryNewForm()">Another fish</button>
+    <button class="listlink" onclick="$('fryPanel').innerHTML=''">Close</button>
+  </div>`;
+}
+
+async function fryDo(id, action){
+  if (fryBusy.has(id)) return;
+  if (action === 'void' && !confirm('Take this fish off the board?')) return;
+  fryBusy.add(id);
+  renderFry();
+  const r = await fryApi('POST', `/ticket/${id}/${action}`);
+  fryBusy.delete(id);
+  // Refetched either way: a refusal means somebody else already moved it, and
+  // the board should show what is actually true rather than what was tapped.
+  await fryRefresh();
 }
 
 // ---- time off: vacation and sick hours ------------------------------------

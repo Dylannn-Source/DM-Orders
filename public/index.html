@@ -29,6 +29,7 @@
   <button data-dept="fish" onclick="switchDept('fish')">FISH</button>
   <button data-dept="warehouse" onclick="showWarehouse('warehouse')">OFFSITE</button>
   <button data-dept="coldstorage" onclick="showWarehouse('coldstorage')">MONKISH</button>
+  <button data-dept="fry" onclick="showFry()">FRY</button>
   <button data-dept="timeoff" onclick="showTimeOff()">TIME OFF</button>
 </div>
 
@@ -75,6 +76,14 @@
     <div class="whsummary" id="whSummary"></div>
   </div>
   <div id="whWrap"></div>
+</div>
+
+<div id="fryView">
+  <!-- Outside fryWrap on purpose: the board redraws itself every few seconds,
+       and anything inside it is destroyed when it does. A half-typed fish is
+       not something a refresh gets to throw away. -->
+  <div id="fryPanel"></div>
+  <div id="fryWrap"></div>
 </div>
 
 <div id="timeoffView">

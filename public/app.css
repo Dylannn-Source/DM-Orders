@@ -114,7 +114,7 @@ main{padding:10px 12px 4px;}
 .btn-ghost{background:var(--paper-2);color:var(--ink);flex:1;}
 
 #summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView,
-#orderNameView,#addItemView,#backupView,#employeesView,#marketView,#timeoffView{
+#orderNameView,#addItemView,#backupView,#employeesView,#marketView,#timeoffView,#fryView{
   display:none;padding:14px 14px 100px;}
 .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .backbtn{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);
@@ -803,3 +803,51 @@ body.simple .whhead { padding-bottom:6px; }
 .toline.out .tolinehrs{color:var(--accent);}
 .tolinemeta{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:3px;}
 .tolineundo{margin-top:5px;font-size:11px;}
+
+
+/* ---- fried fish -------------------------------------------------------- */
+/* Read at arm's length across a counter, by somebody holding a fish. */
+.fryadd{width:100%;margin-bottom:13px;font-size:16px;padding:13px;}
+#fryPanel:not(:empty){margin-bottom:13px;}
+.frysection{margin-bottom:16px;}
+.frysechead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;
+  display:flex;align-items:baseline;gap:7px;}
+.frysechead span{background:var(--paper-2);border-radius:20px;padding:1px 8px;
+  font-size:11px;color:var(--ink);}
+.fryempty{color:var(--ink-soft);font-size:13px;padding:10px 2px 2px;}
+
+.frycard{background:var(--card);border:1px solid var(--line);
+  border-left:5px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:8px;}
+.frycard.paid{border-left-color:var(--good);background:var(--good-soft);}
+.frycard.frying{border-left-color:#B98900;}
+.frycard.waiting{border-left-color:var(--accent);}
+.frytop{display:flex;gap:11px;align-items:flex-start;}
+.frynum{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;
+  flex:none;min-width:52px;}
+.frycard.paid .frynum{color:var(--good);}
+.frycard.waiting .frynum{color:var(--accent);}
+.frycard.frying .frynum{color:#B98900;}
+.frywhat{min-width:0;flex:1;}
+.fryfish{font-weight:700;font-size:17px;line-height:1.2;}
+.frymeta{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.fryprep{font-size:13px;color:#8E2B2E;margin-top:3px;}
+.frywho{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);
+  margin-top:7px;text-transform:lowercase;}
+.fryacts{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;}
+.frybtn{border:1px solid var(--line);background:var(--card);border-radius:9px;
+  padding:10px 14px;font-size:14px;font-weight:700;}
+.frybtn.go{background:var(--ink);border-color:var(--ink);color:var(--paper);flex:1;}
+.frycard.paid .frybtn.go{background:var(--good);border-color:var(--good);}
+.frybtn.quiet{font-weight:500;font-size:12px;color:var(--ink-soft);padding:10px 11px;}
+.frybtn:disabled{opacity:.45;}
+
+.frydone{display:flex;flex-wrap:wrap;gap:6px;}
+.frydonechip{font-family:var(--mono);font-size:11px;color:var(--ink-soft);
+  border:1px solid var(--line);border-radius:20px;padding:3px 9px;}
+
+/* The number the clerk has to write on the customer's slip. */
+.frynewnum{text-align:center;}
+.frynewbig{font-family:var(--mono);font-size:54px;font-weight:700;line-height:1;
+  color:var(--good);}
+.frynewsub{font-size:13px;color:var(--ink-soft);margin:6px 0 13px;}

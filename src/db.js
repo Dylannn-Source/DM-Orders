@@ -436,6 +436,47 @@ export async function initDb() {
        ON CONFLICT (key) DO NOTHING`);
   }
 
+  // Fried fish. A customer asks at the counter, the clerk weighs it and hands
+  // over a slip with the price, the customer pays at a register, and whoever is
+  // frying has to know the money is in before the fish goes in the oil.
+  //
+  // Today that means walking to the registers and going through a pile of paper
+  // slips, and walking back again when it is not there yet. The ticket number
+  // goes on the slip, the person taking the payment taps it, and the fryer
+  // reads a board instead of walking.
+  //
+  // Every state change is stamped with who did it. A pile of slips cannot tell
+  // you who took the money or when; this can, and that is the verification --
+  // not the tap on its own.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS fry_tickets (
+      id           SERIAL PRIMARY KEY,
+      day          DATE NOT NULL DEFAULT CURRENT_DATE,
+      number       INTEGER NOT NULL,
+      fish         TEXT NOT NULL,
+      weight       NUMERIC,
+      price        NUMERIC,
+      prep         TEXT,
+      status       TEXT NOT NULL DEFAULT 'waiting',
+      created_by   TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      paid_by      TEXT,
+      paid_at      TIMESTAMPTZ,
+      paid_source  TEXT,
+      fried_by     TEXT,
+      fried_at     TIMESTAMPTZ,
+      done_at      TIMESTAMPTZ,
+      void_reason  TEXT,
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+  // The number is what gets written on the slip, so it restarts every morning
+  // and stays short enough to read across a counter. Unique per day because two
+  // tickets sharing a number is the one thing that breaks the whole scheme.
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS fry_tickets_number ON fry_tickets (day, number)');
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS fry_tickets_day ON fry_tickets (day, status)');
+
   // Most of the roster never signs into this app. Andy does not own an email
   // address; the cashiers have no reason to open it at all. But their vacation
   // and sick hours still have to be tracked, so a person can exist here without
