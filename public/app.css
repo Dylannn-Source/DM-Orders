@@ -843,6 +843,7 @@ body.simple .whhead { padding-bottom:6px; }
 /* Not lowercased: a receipt number is read off this line and out loud, and
    DMA1791763651 is not dma1791763651. */
 .frywho{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:7px;}
+.frynoprice{font-size:11.5px;color:#8E2B2E;margin-top:5px;line-height:1.45;}
 .fryacts{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;}
 .frybtn{border:1px solid var(--line);background:var(--card);border-radius:9px;
   padding:10px 14px;font-size:14px;font-weight:700;}

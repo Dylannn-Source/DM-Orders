@@ -1,10 +1,13 @@
 // Watching Vori for the payment on a fried fish.
 //
 // The clerk weighs the fish and hands over a slip; the customer pays at a
-// register; the fryer has to know the money is in. Fried fish is its own PLU --
-// thirty-six of them, a weighed product per species -- so the payment is not
-// something to be guessed at from a total. It is a line item naming the exact
-// product at the exact price, and that can be recognised.
+// register; the fryer has to know the money is in. Everything goes through one
+// variable-price PLU -- 1001, Fried Fish -- with the slip price keyed in, so
+// what we are looking for is a fried-fish line at this ticket's price.
+//
+// The species PLUs are accepted too, in case one is ever rung that way, but
+// nothing depends on the clerk and the cashier having picked the same one. The
+// species on the ticket is for the fryer to read, not for matching.
 //
 // Nothing here writes to Vori, and nothing here is load-bearing: when Vori is
 // not connected, or the call fails, or the match is not certain, the ticket
@@ -78,6 +81,23 @@ const lineAmount = l => money(l.retailTotal) ?? money(l.subtotal) ?? money(l.tot
 const lineProduct = l => String(l.product?.id ?? l.productId ?? '');
 const linePlu = l => String(l.product?.barcode ?? l.plu ?? '');
 
+// Which products count as a fried fish going out of the door. PLU 1001 is the
+// one actually used; the weighed species are in here so a line rung that way is
+// not missed. Read once and kept, since it changes about never.
+let friedIds = null;
+async function friedProducts() {
+  if (friedIds) return friedIds;
+  const { rows } = await pool.query(
+    'SELECT plu, vori_product_id FROM fry_products WHERE active');
+  friedIds = {
+    ids: new Set(rows.map(r => String(r.vori_product_id)).filter(Boolean)),
+    plus: new Set(rows.map(r => String(r.plu)).filter(Boolean))
+  };
+  return friedIds;
+}
+const isFriedLine = (l, set) =>
+  set.ids.has(lineProduct(l)) || set.plus.has(linePlu(l));
+
 export function fryVoriStatus() {
   return {
     configured: voriConfigured(),
@@ -93,11 +113,12 @@ export function fryVoriStatus() {
 export async function matchFryPayments() {
   if (!voriConfigured()) return { skipped: 'vori not connected' };
   try {
+    // A price is the whole of what identifies a ticket now, so one without a
+    // price cannot be matched and is left for a person. The board says so.
     const { rows: open } = await pool.query(
-      `SELECT id, number, price, vori_product_id, plu, created_at
+      `SELECT id, number, price, created_at
          FROM fry_tickets
-        WHERE day = CURRENT_DATE AND status = 'waiting'
-          AND vori_product_id IS NOT NULL`);
+        WHERE day = CURRENT_DATE AND status = 'waiting' AND price IS NOT NULL`);
     lastLooked = open.length;
     if (!open.length) { lastRun = new Date().toISOString(); lastError = null; return { open: 0 }; }
 
@@ -108,6 +129,7 @@ export async function matchFryPayments() {
     const since = new Date(oldest - GRACE_MS);
     pruneSeen(since.getTime() - GRACE_MS);
 
+    const fried = await friedProducts();
     const txns = await listSince(since.toISOString());
     let matched = 0;
     // Oldest first, so the first fish in the queue gets the first payment.
@@ -126,20 +148,21 @@ export async function matchFryPayments() {
       const when = new Date(t.completedAt || Date.now()).getTime();
 
       for (const l of lines) {
-        const pid = lineProduct(l), plu = linePlu(l), amt = lineAmount(l);
-        if (!pid && !plu) continue;
-        const lineId = String(l.id || `${t.id}:${pid}:${amt}`);
+        if (!isFriedLine(l, fried)) continue;
+        const amt = lineAmount(l);
+        if (amt === null) continue;
+        const lineId = String(l.id || `${t.id}:${lineProduct(l)}:${amt}`);
 
-        // Still waiting, right product, rung up after the fish was written down.
+        // Still waiting, this price, rung up after the fish was written down.
         const fits = open.filter(k =>
           k.matched !== true &&
-          (String(k.vori_product_id) === pid || (plu && String(k.plu) === plu)) &&
           when >= new Date(k.created_at).getTime() - GRACE_MS &&
-          (k.price === null || amt === null || Math.abs(Number(k.price) - amt) <= CENTS));
+          Math.abs(Number(k.price) - amt) <= CENTS);
 
-        // Exactly one, or nobody is told anything. Two identical fish at the
-        // same price in the same few minutes is a coin toss, and a coin toss is
-        // worse than the walk it replaces -- those wait for a human.
+        // Exactly one, or nobody is told anything. Price is all there is to go
+        // on, so two fish at the same price in the same few minutes is a coin
+        // toss -- and a coin toss is worse than the walk it replaces. Those
+        // wait for a person.
         if (fits.length !== 1) continue;
         const k = fits[0];
 

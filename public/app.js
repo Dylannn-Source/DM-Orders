@@ -1108,6 +1108,9 @@ function renderFry(){
         </div>
       </div>
       <div class="frywho">${htmlEsc(fryStory(t))}</div>
+      ${t.status === 'waiting' && t.price === null && fryData?.vori?.configured
+        ? '<div class="frynoprice">No price on this one &mdash; the register cannot be matched to it. Tap it when the slip comes in.</div>'
+        : ''}
       <div class="fryacts">
         ${t.status === 'waiting' ? act('Paid for', 'paid', 'go') : ''}
         ${t.status === 'paid' ? act('Into the oil', 'frying', 'go') : ''}
@@ -1189,7 +1192,7 @@ function fryNewForm(){
       <div style="flex:1;"><label class="tolabel">Weight <span>lb</span></label>
         <input type="tel" inputmode="decimal" class="textinput" id="fryWeight"
                oninput="fryPriceOut()" style="width:100%;"></div>
-      <div style="flex:1;"><label class="tolabel">Price <span>what the slip says</span></label>
+      <div style="flex:1;"><label class="tolabel">Price <span>matched at the till</span></label>
         <input type="tel" inputmode="decimal" class="textinput" id="fryPrice" style="width:100%;"></div>
     </div>
     <label class="tolabel" style="margin-top:9px;">How they want it <span>optional</span></label>
