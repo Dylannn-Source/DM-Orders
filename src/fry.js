@@ -34,7 +34,44 @@ const TIMEOUT_MS = Number(process.env.FRY_VORI_TIMEOUT_MS || 10000);
 const PATHS = ['transactions', 'store-transactions', 'checkout-transactions', 'orders'];
 let listPath = process.env.VORI_TRANSACTIONS_PATH || null;
 
+// What to ask for, and under what names.
+//
+// The resource is right -- it answers -- but it is particular about its query,
+// and it says so in useful terms: a 400 reading "property storeId should not
+// exist" names the thing it would not take. So a guess is made, the refusal is
+// read, the offending names are dropped, and it is asked again. A request with
+// nothing on it is the floor, and that is survivable: the time window is
+// checked against every ticket here anyway, so filtering at the server is a
+// saving rather than something correctness rests on.
+const PARAM_SETS = iso => [
+  { storeId: STORE(), completedAtFrom: iso, take: '50' },
+  { store_id: STORE(), completed_at_from: iso, limit: '50' },
+  { storeId: STORE() },
+  {}
+];
+// Whatever it turned out to accept, so the learning happens once.
+let paramPlan = null;
+
+// "property storeId should not exist" -> storeId
+function rejectedProps(e) {
+  const msg = e?.body?.message;
+  const lines = Array.isArray(msg) ? msg : (typeof msg === 'string' ? [msg] : []);
+  const out = [];
+  for (const l of lines) {
+    const m = String(l).match(/property\s+(\w+)\s+should not exist/i);
+    if (m) out.push(m[1]);
+  }
+  return out;
+}
+const qs = o => Object.entries(o)
+  .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
 let lastError = null, lastRun = null, lastMatched = 0, lastLooked = 0;
+// How many came back and how many fell inside the window. With no query
+// parameters accepted there is no server-side filter, so if the page it
+// returns is not the recent end of the list this is where that shows: plenty
+// listed, none in the window, nothing ever matching and no error to explain it.
+let lastListed = 0, lastInWindow = 0;
 // When a call to Vori last actually succeeded. Without this the board would say
 // "watching the registers" on the strength of a key being present, having never
 // once reached Vori -- and the first anybody would know is a fryer standing at
@@ -51,30 +88,51 @@ function pruneSeen(before) {
 const money = v => (v === null || v === undefined || v === '') ? null : Number(v);
 
 async function listSince(iso) {
-  const tries = listPath ? [listPath] : PATHS;
+  const paths = listPath ? [listPath] : PATHS;
   let last;
-  for (const p of tries) {
-    const url = `${BASE}/${p}?storeId=${encodeURIComponent(STORE())}`
-      + `&completedAtFrom=${encodeURIComponent(iso)}&take=50`;
-    try {
-      const body = await getWithBackoff(url, { timeoutMs: TIMEOUT_MS });
-      listPath = p;
-      lastOk = new Date().toISOString();
-      // Vori wraps its lists differently in different places; take whichever
-      // array came back rather than insisting on one shape.
-      return body?.transactions || body?.results || body?.data
-        || (Array.isArray(body) ? body : []);
-    } catch (e) {
-      last = e;
-      // Only a missing resource is worth trying another name for. A 401 means
-      // the path was right and the key was not.
-      if (e.status !== 404) throw e;
+  for (const p of paths) {
+    for (const start of (paramPlan ? [paramPlan(iso)] : PARAM_SETS(iso))) {
+      const params = { ...start };
+      // A few rounds at most, dropping whatever it objected to each time.
+      for (let round = 0; round < 4; round++) {
+        try {
+          const url = `${BASE}/${p}${Object.keys(params).length ? '?' + qs(params) : ''}`;
+          const body = await getWithBackoff(url, { timeoutMs: TIMEOUT_MS });
+          listPath = p;
+          const keys = Object.keys(params);
+          // Remember the shape that worked, so the learning happens once.
+          paramPlan = when => {
+            const o = {};
+            for (const k of keys) {
+              o[k] = /store/i.test(k) ? STORE()
+                   : /(from|since|after|start)/i.test(k) ? when
+                   : start[k];
+            }
+            return o;
+          };
+          lastOk = new Date().toISOString();
+          // Vori wraps its lists differently in different places; take whichever
+          // array came back rather than insisting on one shape.
+          return body?.transactions || body?.results || body?.data
+            || (Array.isArray(body) ? body : []);
+        } catch (e) {
+          last = e;
+          if (e.status === 404) break;          // wrong resource, try the next name
+          const dropped = rejectedProps(e).filter(k => k in params);
+          if (e.status === 400 && dropped.length) {
+            dropped.forEach(k => delete params[k]);
+            continue;                            // ask again without them
+          }
+          // Understood and refused. Nothing to learn by rephrasing it.
+          if (e.status === 401 || e.status === 403) throw e;
+          break;
+        }
+      }
     }
   }
   throw new Error(
-    `No transactions endpoint at ${BASE}. Tried: ${tries.join(', ')}.`
-    + (last ? ` Last reply: ${last.message}` : '')
-    + ' Set VORI_TRANSACTIONS_PATH to the right one.');
+    `Could not list transactions at ${BASE}. Tried paths: ${paths.join(', ')}.`
+    + (last ? ` Last reply: ${last.message}` : ''));
 }
 
 async function detail(id) {
@@ -127,6 +185,8 @@ export function fryVoriStatus() {
     // Enough to tell "the press never arrived" from "the press arrived and
     // went nowhere", which are different problems and look identical.
     attempts,
+    listed: lastListed,
+    in_window: lastInWindow,
     watch_started: watchStarted,
     busy: !!inFlight
   };
@@ -142,6 +202,8 @@ export function fryDiag() {
     has_key: !!(process.env.VORI_API_KEY || '').trim(),
     key_length: (process.env.VORI_API_KEY || '').trim().length,
     forced_path: process.env.VORI_TRANSACTIONS_PATH || null,
+    // The query it settled on, so a wrong page or a missing filter is visible.
+    params: paramPlan ? Object.keys(paramPlan(new Date().toISOString())) : null,
     timeout_ms: TIMEOUT_MS,
     watch_seconds: Number(process.env.FRY_WATCH_SECONDS || 10),
     build: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
@@ -200,7 +262,15 @@ async function runMatch({ probe = false } = {}) {
     const ordered = [...txns].sort((a, b) =>
       new Date(a.completedAt || 0) - new Date(b.completedAt || 0));
 
-    for (const t of ordered) {
+    // The server may not have narrowed the list -- its filter is a saving, not
+    // something leaned on -- so anything older than the window is dropped here
+    // before a single detail is fetched for it.
+    const floor = since.getTime();
+    const inWindow = ordered.filter(x => !x.completedAt
+      || new Date(x.completedAt).getTime() >= floor).slice(-60);
+    lastListed = ordered.length;
+    lastInWindow = inWindow.length;
+    for (const t of inWindow) {
       if (!t?.id) continue;
       if (String(t.transactionStatus || t.status || '').toLowerCase().includes('void')) continue;
       let lines = seen.get(t.id)?.lines;
@@ -247,7 +317,7 @@ async function runMatch({ probe = false } = {}) {
     lastRun = new Date().toISOString();
     lastError = null;
     lastMatched = matched;
-    return { open: open.length, transactions: ordered.length, matched };
+    return { open: open.length, transactions: ordered.length, matched, path: listPath };
   } catch (e) {
     lastError = e.message;
     lastRun = new Date().toISOString();

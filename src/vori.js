@@ -45,6 +45,10 @@ export async function getWithBackoff(url, { timeoutMs = TIMEOUT_MS } = {}) {
         const body = await res.text().catch(() => '');
         const err = new Error(`Vori ${res.status}: ${body.slice(0, 200)}`);
         err.status = res.status;
+        // Kept parsed as well as printed: when Vori refuses a request it says
+        // precisely what it objected to, and that is worth acting on rather
+        // than only logging.
+        try { err.body = JSON.parse(body); } catch { err.body = null; }
         throw err;
       }
       return res.json();
