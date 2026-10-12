@@ -60,6 +60,34 @@ export async function getWithBackoff(url, { timeoutMs = TIMEOUT_MS } = {}) {
   throw new Error('Vori still rate limiting after ' + MAX_RETRIES + ' attempts');
 }
 
+// Some of Vori is a query rather than a resource, and takes a body.
+export async function postWithBackoff(url, body, { timeoutMs = TIMEOUT_MS } = {}) {
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (e) {
+    const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+    const err = new Error(e?.name === 'TimeoutError' || e?.name === 'AbortError'
+      ? `${host} did not answer within ${Math.round(timeoutMs / 1000)}s.`
+      : `Could not reach ${host}: ${e?.message || e}`);
+    err.cause = e;
+    throw err;
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    const err = new Error(`Vori ${res.status}: ${text.slice(0, 200)}`);
+    err.status = res.status;
+    try { err.body = JSON.parse(text); } catch { err.body = null; }
+    throw err;
+  }
+  return res.json();
+}
+
 // The published guide names the on-hand field only in passing and the object
 // page is empty, so rather than hard-coding a guess this tries the plausible
 // names and reports which one it found. The first real sync settles it.

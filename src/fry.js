@@ -8,7 +8,7 @@
 //
 // Nothing here writes to Vori.
 import { pool } from './db.js';
-import { voriConfigured, getWithBackoff } from './vori.js';
+import { voriConfigured, getWithBackoff, postWithBackoff } from './vori.js';
 
 const BASE = process.env.VORI_API_BASE || 'https://api.vori.com/v1';
 const STORE = () => process.env.VORI_STORE_ID || '5084';
@@ -50,7 +50,7 @@ const qs = o => Object.entries(o)
 
 let lastError = null, lastRun = null, lastOk = null, watchStarted = null;
 let attempts = 0, lastListed = 0, lastNew = 0, lastFound = 0;
-let lastLineKeys = null, lastLineSample = null;
+let lastLineKeys = null, lastLineSample = null, lastSource = null, cubeError = null;
 const BOOT = new Date().toISOString();
 
 // Transaction ids already looked inside. A receipt's contents never change, so
@@ -137,6 +137,100 @@ async function friedProducts() {
 }
 const isFried = (l, set) => set.ids.has(lineProduct(l)) || set.plus.has(linePlu(l));
 
+// The day in one question.
+//
+// The transactions resource hands back a page and takes no parameters to ask
+// for another, so reading backwards through a day that way is not possible --
+// which is why a board that had only just been deployed had one fish on it.
+// Vori also exposes its reporting model, and that will answer "every fried
+// fish line between these two times" directly: one call, no paging, no reading
+// the inside of every unrelated basket.
+//
+// The path is not published and this machine cannot reach Vori to find it, so
+// the candidates are tried and whichever answers is kept -- and if none does,
+// the transactions scan still runs and the board still fills as the day goes.
+const CUBE_PATHS = [
+  `${BASE}/cube/load`,
+  `${BASE}/analytics/load`,
+  `${BASE.replace(/\/v1$/, '')}/cubejs-api/v1/load`,
+  `${BASE}/cubejs-api/v1/load`
+];
+let cubePath = process.env.VORI_CUBE_PATH || null;
+let cubeDead = false;
+const L = 'pos_order_line_items';
+
+// Cube returns its timestamps without a zone. The evidence says they are UTC:
+// the four fifty-three in the afternoon payment on the eleventh comes back as
+// 09:53, and California was seven hours behind UTC that day.
+const cubeTime = v => {
+  const t = String(v || '');
+  return /[Zz]|[+-]\d\d:?\d\d$/.test(t) ? new Date(t) : new Date(t + 'Z');
+};
+
+async function cubeFried(fromIso, toIso) {
+  if (cubeDead) return null;
+  const fried = await friedProducts();
+  const query = {
+    dimensions: [`${L}.id`, `${L}.order_completed_at`, `${L}.retail_total`,
+                 `${L}.total`, `${L}.lane_name`, `${L}.cashier_name`,
+                 `${L}.order_shopper_facing_id`, `${L}.order_id`,
+                 `${L}.product_barcode`, `${L}.product_id`],
+    filters: [
+      { member: `${L}.product_barcode`, operator: 'equals', values: [...fried.plus] },
+      { member: `${L}.order_store_id`, operator: 'equals', values: [STORE()] },
+      // Sales only. The refund that came back on the eleventh is not a fish.
+      { member: `${L}.transaction_type`, operator: 'equals', values: ['sale'] }
+    ],
+    timeDimensions: [{ dimension: `${L}.order_completed_at`, dateRange: [fromIso, toIso] }],
+    order: { [`${L}.order_completed_at`]: 'desc' },
+    limit: 1000
+  };
+  const tries = cubePath ? [cubePath] : CUBE_PATHS;
+  let last;
+  for (const url of tries) {
+    for (const shape of [{ query }, query]) {
+      try {
+        const body = await postWithBackoff(url, shape, { timeoutMs: TIMEOUT_MS });
+        const rows = body?.data || body?.results?.[0]?.data || [];
+        cubePath = url;
+        lastOk = new Date().toISOString();
+        return rows;
+      } catch (e) {
+        last = e;
+        if (e.status === 404 || e.status === 405) break;   // wrong address
+      }
+    }
+  }
+  cubeDead = true;
+  cubeError = last ? last.message : 'no reporting endpoint answered';
+  console.warn('Fried fish: reporting query unavailable, falling back to reading receipts -',
+    cubeError);
+  return null;
+}
+
+// Write down whatever the reporting model returned.
+async function saveCubeRows(rows) {
+  let added = 0;
+  for (const r of rows) {
+    const amount = Number(r[`${L}.retail_total`]);
+    if (!isFinite(amount) || amount <= 0) continue;
+    const when = cubeTime(r[`${L}.order_completed_at`]);
+    if (isNaN(when)) continue;
+    const { rowCount } = await pool.query(
+      `INSERT INTO fry_payments
+         (line_id, txn_id, receipt, amount, amount_tax, paid_at, lane, cashier, plu, product_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (line_id) DO NOTHING`,
+      [String(r[`${L}.id`]), String(r[`${L}.order_id`] || ''),
+       String(r[`${L}.order_shopper_facing_id`] || ''), amount,
+       Number(r[`${L}.total`]) || null, when.toISOString(),
+       r[`${L}.lane_name`] || null, r[`${L}.cashier_name`] || null,
+       r[`${L}.product_barcode`] || null, r[`${L}.product_id`] || null]);
+    added += rowCount;
+  }
+  return added;
+}
+
 // One pass: read whatever is new off the registers and write down the fried
 // fish among it.
 let inFlight = null;
@@ -153,6 +247,19 @@ async function runSync({ hours = 14 } = {}) {
   try {
     const fried = await friedProducts();
     const since = new Date(Date.now() - hours * 3600 * 1000);
+
+    // One question for the whole window, where that is available.
+    const rows = await cubeFried(since.toISOString().slice(0, 19),
+                                 new Date(Date.now() + 60000).toISOString().slice(0, 19));
+    if (rows) {
+      const added = await saveCubeRows(rows);
+      lastListed = rows.length; lastFound = rows.length; lastNew = added;
+      lastSource = 'reporting';
+      lastError = null;
+      return { source: 'reporting', lines: rows.length, added };
+    }
+    lastSource = 'receipts';
+
     const txns = await listRecent(since.toISOString());
     lastListed = txns.length;
 
@@ -176,7 +283,12 @@ async function runSync({ hours = 14 } = {}) {
       for (const l of lines) {
         if (!isFried(l, fried)) continue;
         const amount = preTax(l);
-        if (amount === null) continue;
+        // A refund is money going the other way. Real days have them -- one
+        // came back on the eleventh -- and without this the board shows a card
+        // reading minus forty-nine dollars, which is not a fish to fry.
+        if (amount === null || amount <= 0) continue;
+        if (String(l.transactionType || t.transactionType || '').toLowerCase() === 'refund') continue;
+        if (l.refundedOrderLineItemId) continue;
         found++;
         // Lane and cashier come off the list, which names them; the detail call
         // gives ids only.
@@ -233,6 +345,7 @@ export function fryVoriStatus() {
     listed: lastListed,
     fried_lines_seen: lastFound,
     added_last_run: lastNew,
+    source: lastSource,
     watch_started: watchStarted,
     busy: !!inFlight
   };
@@ -250,6 +363,8 @@ export function fryDiag() {
     timeout_ms: TIMEOUT_MS,
     watch_seconds: Number(process.env.FRY_WATCH_SECONDS || 10),
     receipts_read: readAlready.size,
+    cube_path: cubePath,
+    cube_error: cubeError,
     line_keys: lastLineKeys,
     line_sample: lastLineSample,
     build: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
