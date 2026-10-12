@@ -289,7 +289,9 @@ app.post('/api/fry/ticket', async (req, res) => {
 // Ask Vori now rather than waiting for the next sweep. What the fryer presses
 // when they are standing there and the board has not caught up yet.
 app.post('/api/fry/check', async (req, res) => {
-  const out = await matchFryPayments();
+  // Pressed by a person, so it always actually calls Vori, even with an empty
+  // board. That is how the connection gets proved.
+  const out = await matchFryPayments({ probe: true });
   res.json({ ok: true, ...out, vori: fryVoriStatus() });
 });
 

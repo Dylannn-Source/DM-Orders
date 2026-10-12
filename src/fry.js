@@ -32,6 +32,11 @@ const PATHS = ['transactions', 'store-transactions', 'checkout-transactions', 'o
 let listPath = process.env.VORI_TRANSACTIONS_PATH || null;
 
 let lastError = null, lastRun = null, lastMatched = 0, lastLooked = 0;
+// When a call to Vori last actually succeeded. Without this the board would say
+// "watching the registers" on the strength of a key being present, having never
+// once reached Vori -- and the first anybody would know is a fryer standing at
+// the oil waiting for a confirmation that was never coming.
+let lastOk = null;
 
 // Transactions already fetched, so a poll every few seconds does not ask for
 // the same receipt over and over. Only as long as a fish waits to be paid for.
@@ -51,6 +56,7 @@ async function listSince(iso) {
     try {
       const body = await getWithBackoff(url);
       listPath = p;
+      lastOk = new Date().toISOString();
       // Vori wraps its lists differently in different places; take whichever
       // array came back rather than insisting on one shape.
       return body?.transactions || body?.results || body?.data
@@ -62,7 +68,10 @@ async function listSince(iso) {
       if (e.status !== 404) throw e;
     }
   }
-  throw last || new Error('no transactions endpoint answered');
+  throw new Error(
+    `No transactions endpoint at ${BASE}. Tried: ${tries.join(', ')}.`
+    + (last ? ` Last reply: ${last.message}` : '')
+    + ' Set VORI_TRANSACTIONS_PATH to the right one.');
 }
 
 async function detail(id) {
@@ -101,6 +110,9 @@ const isFriedLine = (l, set) =>
 export function fryVoriStatus() {
   return {
     configured: voriConfigured(),
+    // Reached Vori at least once. "A key is set" is not the same thing.
+    verified: !!lastOk,
+    last_ok: lastOk,
     path: listPath,
     last_run: lastRun,
     last_error: lastError,
@@ -110,7 +122,7 @@ export function fryVoriStatus() {
 }
 
 // One pass. Returns what it did, and never throws at its caller.
-export async function matchFryPayments() {
+export async function matchFryPayments({ probe = false } = {}) {
   if (!voriConfigured()) return { skipped: 'vori not connected' };
   try {
     // A price is the whole of what identifies a ticket now, so one without a
@@ -120,7 +132,18 @@ export async function matchFryPayments() {
          FROM fry_tickets
         WHERE day = CURRENT_DATE AND status = 'waiting' AND price IS NOT NULL`);
     lastLooked = open.length;
-    if (!open.length) { lastRun = new Date().toISOString(); lastError = null; return { open: 0 }; }
+    if (!open.length) {
+      lastRun = new Date().toISOString();
+      // Nothing to match, so normally nothing to ask. But a connection nobody
+      // has ever tested is worth one call: on the quiet morning somebody sets
+      // the key, that is the difference between finding out now and finding
+      // out at the oil.
+      if (probe || !lastOk) {
+        await listSince(new Date(Date.now() - 60 * 1000).toISOString());
+      }
+      lastError = null;
+      return { open: 0, probed: probe || true };
+    }
 
     // Always from the oldest fish still waiting, rather than from a saved
     // cursor. A ticket written after the cursor moved on would otherwise never

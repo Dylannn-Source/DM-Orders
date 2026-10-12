@@ -1154,6 +1154,9 @@ function fryVoriLine(v){
   if (!v) return '';
   if (!v.configured) return `<div class="fryvori off">Not watching the registers &mdash;
     tap a fish when the slip comes in.<span>Set VORI_API_KEY to have this read itself.</span></div>`;
+  if (!v.verified) return `<div class="fryvori off">Vori key is set, but the registers
+    have not been read yet.
+    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
   if (v.last_error) return `<div class="fryvori bad">Cannot read the registers &mdash;
     tap a fish when the slip comes in.
     <button class="frybtn quiet" onclick="fryCheckNow(this)">Try now</button>
