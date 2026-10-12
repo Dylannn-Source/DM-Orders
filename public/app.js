@@ -1157,16 +1157,32 @@ function fryVoriLine(v){
   if (!v) return '';
   if (!v.configured) return `<div class="fryvori off">Not watching the registers &mdash;
     tap a fish when the slip comes in.<span>Set VORI_API_KEY to have this read itself.</span></div>`;
-  if (!v.verified) return `<div class="fryvori off">Vori key is set, but the registers
-    have not been read yet.
-    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
   if (v.last_error) return `<div class="fryvori bad">Cannot read the registers &mdash;
     tap a fish when the slip comes in.
     <button class="frybtn quiet" onclick="fryCheckNow(this)">Try now</button>
-    <span>${htmlEsc(v.last_error)}</span></div>`;
+    <span>${htmlEsc(v.last_error)}</span>${fryTried(v)}</div>`;
+  if (!v.verified) return `<div class="fryvori off">Vori key is set, but the registers
+    have not been read yet.
+    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button>
+    ${fryTried(v)}</div>`;
   return `<div class="fryvori on">Watching the registers.
     <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
 }
+// What actually happened, rather than what the line would like to be true. A
+// press that never reached the app and a press that reached it and found
+// nothing look identical from the outside; the number of attempts and the time
+// of the last one tell them apart.
+function fryTried(v){
+  const bits = [];
+  if (v.attempts) bits.push(`${v.attempts} attempt${v.attempts === 1 ? '' : 's'}`);
+  if (v.last_run) bits.push(`last ${new Date(v.last_run).toLocaleTimeString()}`);
+  else bits.push('never tried');
+  if (v.busy) bits.push('one in flight');
+  if (v.path) bits.push(v.path);
+  return `<span>${htmlEsc(bits.join(' \u00b7 '))} ·
+    <a href="/api/fry/diag" target="_blank" rel="noopener">details</a></span>`;
+}
+
 async function fryCheckNow(btn){
   const was = btn.textContent;
   btn.disabled = true; btn.textContent = 'Checking...';

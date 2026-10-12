@@ -7,7 +7,7 @@ import {
   lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
 } from './auth.js';
 import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
-import { startFryWatch, matchFryPayments, fryVoriStatus } from './fry.js';
+import { startFryWatch, matchFryPayments, fryVoriStatus, fryDiag } from './fry.js';
 import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -284,6 +284,12 @@ app.post('/api/fry/ticket', async (req, res) => {
     }
   }
   res.status(503).json({ error: 'The counter is busy. Try that again.' });
+});
+
+// Everything about how the Vori link is wired, on one screen, for when the
+// board says one thing and the registers say another.
+app.get('/api/fry/diag', async (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString(), ...fryDiag() });
 });
 
 // Ask Vori now rather than waiting for the next sweep. What the fryer presses

@@ -111,6 +111,8 @@ async function friedProducts() {
 const isFriedLine = (l, set) =>
   set.ids.has(lineProduct(l)) || set.plus.has(linePlu(l));
 
+let watchStarted = null, attempts = 0;
+
 export function fryVoriStatus() {
   return {
     configured: voriConfigured(),
@@ -121,9 +123,33 @@ export function fryVoriStatus() {
     last_run: lastRun,
     last_error: lastError,
     matched: lastMatched,
-    looked: lastLooked
+    looked: lastLooked,
+    // Enough to tell "the press never arrived" from "the press arrived and
+    // went nowhere", which are different problems and look identical.
+    attempts,
+    watch_started: watchStarted,
+    busy: !!inFlight
   };
 }
+
+// Everything about how this is wired, for when the board says one thing and the
+// registers say another. No key in it: whether one is set, never what it is.
+export function fryDiag() {
+  return {
+    ...fryVoriStatus(),
+    base: BASE,
+    store: STORE(),
+    has_key: !!(process.env.VORI_API_KEY || '').trim(),
+    key_length: (process.env.VORI_API_KEY || '').trim().length,
+    forced_path: process.env.VORI_TRANSACTIONS_PATH || null,
+    timeout_ms: TIMEOUT_MS,
+    watch_seconds: Number(process.env.FRY_WATCH_SECONDS || 10),
+    build: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
+        || process.env.SOURCE_COMMIT?.slice(0, 7) || null,
+    started_at: BOOT
+  };
+}
+const BOOT = new Date().toISOString();
 
 // One pass. Returns what it did, and never throws at its caller.
 // One pass at a time. A slow or hanging call every few seconds would otherwise
@@ -137,6 +163,8 @@ export async function matchFryPayments(opts = {}) {
 }
 
 async function runMatch({ probe = false } = {}) {
+  attempts++;
+  lastRun = new Date().toISOString();
   try {
     // A price is the whole of what identifies a ticket now, so one without a
     // price cannot be matched and is left for a person. The board says so.
@@ -237,6 +265,12 @@ export function startFryWatch() {
   }
   const every = Number(process.env.FRY_WATCH_SECONDS || 10) * 1000;
   console.log(`Fried fish: watching Vori for payments every ${every / 1000}s.`);
+  watchStarted = new Date().toISOString();
+  // Straight away, not in ten seconds: whether this works at all is worth
+  // knowing at boot, and it is written into the log where it can be read.
+  matchFryPayments({ probe: true })
+    .then(r => console.log('Fried fish: first look at Vori -', JSON.stringify(r)))
+    .catch(e => console.warn('Fried fish: first look at Vori failed -', e.message));
   const timer = setInterval(() => { matchFryPayments().catch(() => {}); }, every);
   timer.unref?.();
   return timer;
