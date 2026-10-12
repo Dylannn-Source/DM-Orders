@@ -469,6 +469,31 @@ export async function initDb() {
       void_reason  TEXT,
       updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+  // Every fried fish that has been paid for, as the register saw it.
+  //
+  // The board is this table, not Vori directly: a till that is slow or briefly
+  // unreachable must not blank the screen somebody is relying on, and a day's
+  // payments accumulate here as they happen rather than being re-fetched.
+  //
+  // One row per line item. The line id is the key, so the same receipt read
+  // twice cannot put the same fish on the board twice.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS fry_payments (
+      line_id    TEXT PRIMARY KEY,
+      txn_id     TEXT NOT NULL,
+      receipt    TEXT,
+      amount     NUMERIC NOT NULL,
+      amount_tax NUMERIC,
+      paid_at    TIMESTAMPTZ NOT NULL,
+      lane       TEXT,
+      cashier    TEXT,
+      plu        TEXT,
+      product_id TEXT,
+      seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS fry_payments_when ON fry_payments (paid_at DESC)');
+
   // Which Vori product the fish is. Fried fish is not one PLU but thirty-six --
   // a weighed product per species, each at its own price a pound -- plus a
   // variable-price catch-all. Holding the product on the ticket is what lets

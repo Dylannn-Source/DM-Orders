@@ -1,58 +1,40 @@
-// Watching Vori for the payment on a fried fish.
+// The fried fish that have been paid for, read off the registers.
 //
-// The clerk weighs the fish and hands over a slip; the customer pays at a
-// register; the fryer has to know the money is in. Everything goes through one
-// variable-price PLU -- 1001, Fried Fish -- with the slip price keyed in, so
-// what we are looking for is a fried-fish line at this ticket's price.
+// The paper slip the customer carries is the ticket; this app does not try to
+// be one. The clerk weighs the fish and prices it, the customer pays, and the
+// only question the fryer has is whether this slip's price has been through a
+// till yet. So the board is a list of paid fried fish, newest first, and a slip
+// that is not on it has not been paid for.
 //
-// The species PLUs are accepted too, in case one is ever rung that way, but
-// nothing depends on the clerk and the cashier having picked the same one. The
-// species on the ticket is for the fryer to read, not for matching.
-//
-// Nothing here writes to Vori, and nothing here is load-bearing: when Vori is
-// not connected, or the call fails, or the match is not certain, the ticket
-// simply stays where it is and somebody taps it. This only ever saves a walk.
+// Nothing here writes to Vori.
 import { pool } from './db.js';
 import { voriConfigured, getWithBackoff } from './vori.js';
 
 const BASE = process.env.VORI_API_BASE || 'https://api.vori.com/v1';
 const STORE = () => process.env.VORI_STORE_ID || '5084';
-
-// A fish rung up a minute before the clerk finished typing the ticket is still
-// that fish. The window opens slightly before the ticket to allow for it.
-const GRACE_MS = 3 * 60 * 1000;
-// Rounding between a scale and a register is worth a penny or two, no more.
-const CENTS = 0.02;
-// Somebody is standing at the oil waiting on this, so it gives up quickly and
-// says so rather than leaving a button saying "Checking..." for ever.
+// Somebody is standing at the fryer waiting on this.
 const TIMEOUT_MS = Number(process.env.FRY_VORI_TIMEOUT_MS || 10000);
 
-// The published API docs name the inventory resource and little else, so rather
-// than hard-coding a guess the first call tries the plausible names and the one
-// that answers is remembered. Same approach the inventory sync already takes to
-// Vori's unnamed quantity field.
 const PATHS = ['transactions', 'store-transactions', 'checkout-transactions', 'orders'];
 let listPath = process.env.VORI_TRANSACTIONS_PATH || null;
 
 // What to ask for, and under what names.
 //
-// The resource is right -- it answers -- but it is particular about its query,
-// and it says so in useful terms: a 400 reading "property storeId should not
-// exist" names the thing it would not take. So a guess is made, the refusal is
-// read, the offending names are dropped, and it is asked again. A request with
-// nothing on it is the floor, and that is survivable: the time window is
-// checked against every ticket here anyway, so filtering at the server is a
-// saving rather than something correctness rests on.
+// The resource answers but is particular about its query, and says so in useful
+// terms: a 400 reading "property storeId should not exist" names what it would
+// not take. So a guess goes out, the refusal is read, the offending names are
+// dropped, and it is asked again. A bare request is the floor, and that is
+// survivable -- what matters is the recent end of the list, and everything is
+// filtered to today here anyway.
 const PARAM_SETS = iso => [
-  { storeId: STORE(), completedAtFrom: iso, take: '50' },
-  { store_id: STORE(), completed_at_from: iso, limit: '50' },
+  { storeId: STORE(), completedAtFrom: iso, take: '100' },
+  { store_id: STORE(), completed_at_from: iso, limit: '100' },
+  { limit: '100' },
   { storeId: STORE() },
   {}
 ];
-// Whatever it turned out to accept, so the learning happens once.
 let paramPlan = null;
 
-// "property storeId should not exist" -> storeId
 function rejectedProps(e) {
   const msg = e?.body?.message;
   const lines = Array.isArray(msg) ? msg : (typeof msg === 'string' ? [msg] : []);
@@ -66,47 +48,27 @@ function rejectedProps(e) {
 const qs = o => Object.entries(o)
   .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
 
-let lastError = null, lastRun = null, lastMatched = 0, lastLooked = 0;
-// How many came back and how many fell inside the window. With no query
-// parameters accepted there is no server-side filter, so if the page it
-// returns is not the recent end of the list this is where that shows: plenty
-// listed, none in the window, nothing ever matching and no error to explain it.
-let lastListed = 0, lastInWindow = 0;
-// How many line items in the window looked like a fried fish, and what the
-// last transaction's lines were shaped like. The list call working proves the
-// connection; it does not prove the reply is laid out the way the lines are
-// read here. If fish wait while transactions arrive, this is the next
-// question, and guessing at it again is not worth anybody's evening.
-let lastFriedLines = 0, lastLineKeys = null, lastLineSample = null;
-// When a call to Vori last actually succeeded. Without this the board would say
-// "watching the registers" on the strength of a key being present, having never
-// once reached Vori -- and the first anybody would know is a fryer standing at
-// the oil waiting for a confirmation that was never coming.
-let lastOk = null;
+let lastError = null, lastRun = null, lastOk = null, watchStarted = null;
+let attempts = 0, lastListed = 0, lastNew = 0, lastFound = 0;
+let lastLineKeys = null, lastLineSample = null;
+const BOOT = new Date().toISOString();
 
-// Transactions already fetched, so a poll every few seconds does not ask for
-// the same receipt over and over. Only as long as a fish waits to be paid for.
-const seen = new Map();
-function pruneSeen(before) {
-  for (const [id, v] of seen) if (v.at < before) seen.delete(id);
-}
+// Transaction ids already looked inside. A receipt's contents never change, so
+// once its lines have been read there is no reason to ask again.
+const readAlready = new Set();
 
-const money = v => (v === null || v === undefined || v === '') ? null : Number(v);
-
-async function listSince(iso) {
+async function listRecent(iso) {
   const paths = listPath ? [listPath] : PATHS;
   let last;
   for (const p of paths) {
     for (const start of (paramPlan ? [paramPlan(iso)] : PARAM_SETS(iso))) {
       const params = { ...start };
-      // A few rounds at most, dropping whatever it objected to each time.
       for (let round = 0; round < 4; round++) {
         try {
           const url = `${BASE}/${p}${Object.keys(params).length ? '?' + qs(params) : ''}`;
           const body = await getWithBackoff(url, { timeoutMs: TIMEOUT_MS });
           listPath = p;
           const keys = Object.keys(params);
-          // Remember the shape that worked, so the learning happens once.
           paramPlan = when => {
             const o = {};
             for (const k of keys) {
@@ -117,19 +79,16 @@ async function listSince(iso) {
             return o;
           };
           lastOk = new Date().toISOString();
-          // Vori wraps its lists differently in different places; take whichever
-          // array came back rather than insisting on one shape.
           return body?.transactions || body?.results || body?.data
             || (Array.isArray(body) ? body : []);
         } catch (e) {
           last = e;
-          if (e.status === 404) break;          // wrong resource, try the next name
+          if (e.status === 404) break;
           const dropped = rejectedProps(e).filter(k => k in params);
           if (e.status === 400 && dropped.length) {
             dropped.forEach(k => delete params[k]);
-            continue;                            // ask again without them
+            continue;
           }
-          // Understood and refused. Nothing to learn by rephrasing it.
           if (e.status === 401 || e.status === 403) throw e;
           break;
         }
@@ -142,25 +101,29 @@ async function listSince(iso) {
 }
 
 async function detail(id) {
-  const tries = listPath ? [listPath] : PATHS;
-  for (const p of tries) {
-    try { return await getWithBackoff(`${BASE}/${p}/${encodeURIComponent(id)}`,
-        { timeoutMs: TIMEOUT_MS }); }
-    catch (e) { if (e.status !== 404) throw e; }
+  const paths = listPath ? [listPath] : PATHS;
+  for (const p of paths) {
+    try {
+      return await getWithBackoff(`${BASE}/${p}/${encodeURIComponent(id)}`,
+        { timeoutMs: TIMEOUT_MS });
+    } catch (e) { if (e.status !== 404) throw e; }
   }
   return null;
 }
 
-// What the shelf price was, before tax. The slip the customer carries is the
-// pre-tax price, and the catch-all fried fish PLU is taxed, so comparing
-// against the line's total would miss every one of those by ten per cent.
-const lineAmount = l => money(l.retailTotal) ?? money(l.subtotal) ?? money(l.total);
+const money = v => (v === null || v === undefined || v === '') ? null : Number(v);
+// The number written on the slip is the shelf price, before tax. The line's own
+// total has the county's ten and a half per cent on top of it, which is the
+// figure on the customer's receipt -- both are worth showing, neither is the
+// other.
+const preTax = l => money(l.retailTotal) ?? money(l.subtotal) ?? money(l.total);
+const withTax = l => money(l.total) ?? preTax(l);
 const lineProduct = l => String(l.product?.id ?? l.productId ?? '');
 const linePlu = l => String(l.product?.barcode ?? l.plu ?? '');
 
-// Which products count as a fried fish going out of the door. PLU 1001 is the
-// one actually used; the weighed species are in here so a line rung that way is
-// not missed. Read once and kept, since it changes about never.
+// Which products count as a fried fish. In practice everything goes through the
+// one variable-price PLU; the weighed species are here so a line rung that way
+// is not missed either.
 let friedIds = null;
 async function friedProducts() {
   if (friedIds) return friedIds;
@@ -172,35 +135,109 @@ async function friedProducts() {
   };
   return friedIds;
 }
-const isFriedLine = (l, set) =>
-  set.ids.has(lineProduct(l)) || set.plus.has(linePlu(l));
+const isFried = (l, set) => set.ids.has(lineProduct(l)) || set.plus.has(linePlu(l));
 
-let watchStarted = null, attempts = 0;
+// One pass: read whatever is new off the registers and write down the fried
+// fish among it.
+let inFlight = null;
+export async function syncFryPayments(opts = {}) {
+  if (!voriConfigured()) return { skipped: 'vori not connected' };
+  if (inFlight) return inFlight;
+  inFlight = runSync(opts).finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function runSync({ hours = 14 } = {}) {
+  attempts++;
+  lastRun = new Date().toISOString();
+  try {
+    const fried = await friedProducts();
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+    const txns = await listRecent(since.toISOString());
+    lastListed = txns.length;
+
+    // Oldest first, so a day fills in the order it happened.
+    const ordered = [...txns]
+      .filter(t => t?.id && !String(t.transactionStatus || '').toLowerCase().includes('void'))
+      .filter(t => !t.completedAt || new Date(t.completedAt) >= since)
+      .sort((a, b) => new Date(a.completedAt || 0) - new Date(b.completedAt || 0));
+
+    let found = 0, added = 0;
+    for (const t of ordered) {
+      if (readAlready.has(t.id)) continue;
+      const full = await detail(t.id);
+      const lines = full?.lineItems || full?.line_items || [];
+      readAlready.add(t.id);
+      if (lines.length && !lastLineKeys) {
+        lastLineKeys = Object.keys(lines[0] || {});
+        lastLineSample = { product_id: lineProduct(lines[0]) || null,
+                           plu: linePlu(lines[0]) || null, amount: preTax(lines[0]) };
+      }
+      for (const l of lines) {
+        if (!isFried(l, fried)) continue;
+        const amount = preTax(l);
+        if (amount === null) continue;
+        found++;
+        // Lane and cashier come off the list, which names them; the detail call
+        // gives ids only.
+        const { rowCount } = await pool.query(
+          `INSERT INTO fry_payments
+             (line_id, txn_id, receipt, amount, amount_tax, paid_at, lane, cashier, plu, product_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (line_id) DO NOTHING`,
+          [String(l.id || `${t.id}:${lineProduct(l)}:${amount}`), String(t.id),
+           String(t.shopperFacingId || t.id), amount, withTax(l),
+           t.completedAt || new Date().toISOString(),
+           t.laneName || t.lane?.name || null,
+           t.cashierName || t.employeeName || null,
+           linePlu(l) || null, lineProduct(l) || null]);
+        added += rowCount;
+      }
+    }
+    // Only ever as many receipts as a long day holds.
+    if (readAlready.size > 4000) readAlready.clear();
+    lastFound = found; lastNew = added;
+    lastError = null;
+    return { listed: txns.length, looked: ordered.length, fried: found, added };
+  } catch (e) {
+    lastError = e.message;
+    console.warn('fry payments:', e.message);
+    return { error: e.message };
+  }
+}
+
+// Today's board, out of our own table so a slow till cannot empty the screen.
+export async function fryBoard() {
+  const { rows } = await pool.query(
+    `SELECT line_id, receipt, amount, amount_tax, paid_at, lane, cashier
+       FROM fry_payments
+      WHERE paid_at >= date_trunc('day', NOW() AT TIME ZONE $1) AT TIME ZONE $1
+      ORDER BY paid_at DESC`, [process.env.STORE_TZ || 'America/Los_Angeles']);
+  return rows.map(r => ({
+    id: r.line_id, receipt: r.receipt,
+    amount: Number(r.amount),
+    amount_tax: r.amount_tax === null ? null : Number(r.amount_tax),
+    paid_at: r.paid_at, lane: r.lane, cashier: r.cashier
+  }));
+}
 
 export function fryVoriStatus() {
   return {
     configured: voriConfigured(),
-    // Reached Vori at least once. "A key is set" is not the same thing.
     verified: !!lastOk,
     last_ok: lastOk,
     path: listPath,
     last_run: lastRun,
     last_error: lastError,
-    matched: lastMatched,
-    looked: lastLooked,
-    // Enough to tell "the press never arrived" from "the press arrived and
-    // went nowhere", which are different problems and look identical.
     attempts,
     listed: lastListed,
-    in_window: lastInWindow,
-    fried_lines_seen: lastFriedLines,
+    fried_lines_seen: lastFound,
+    added_last_run: lastNew,
     watch_started: watchStarted,
     busy: !!inFlight
   };
 }
 
-// Everything about how this is wired, for when the board says one thing and the
-// registers say another. No key in it: whether one is set, never what it is.
 export function fryDiag() {
   return {
     ...fryVoriStatus(),
@@ -209,10 +246,10 @@ export function fryDiag() {
     has_key: !!(process.env.VORI_API_KEY || '').trim(),
     key_length: (process.env.VORI_API_KEY || '').trim().length,
     forced_path: process.env.VORI_TRANSACTIONS_PATH || null,
-    // The query it settled on, so a wrong page or a missing filter is visible.
     params: paramPlan ? Object.keys(paramPlan(new Date().toISOString())) : null,
     timeout_ms: TIMEOUT_MS,
     watch_seconds: Number(process.env.FRY_WATCH_SECONDS || 10),
+    receipts_read: readAlready.size,
     line_keys: lastLineKeys,
     line_sample: lastLineSample,
     build: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
@@ -220,147 +257,21 @@ export function fryDiag() {
     started_at: BOOT
   };
 }
-const BOOT = new Date().toISOString();
 
-// One pass. Returns what it did, and never throws at its caller.
-// One pass at a time. A slow or hanging call every few seconds would otherwise
-// stack up connections behind it and bury the reason anybody can see.
-let inFlight = null;
-export async function matchFryPayments(opts = {}) {
-  if (!voriConfigured()) return { skipped: 'vori not connected' };
-  if (inFlight) return inFlight;
-  inFlight = runMatch(opts).finally(() => { inFlight = null; });
-  return inFlight;
-}
-
-async function runMatch({ probe = false } = {}) {
-  attempts++;
-  lastRun = new Date().toISOString();
-  try {
-    // A price is the whole of what identifies a ticket now, so one without a
-    // price cannot be matched and is left for a person. The board says so.
-    const { rows: open } = await pool.query(
-      `SELECT id, number, price, created_at
-         FROM fry_tickets
-        WHERE day = CURRENT_DATE AND status = 'waiting' AND price IS NOT NULL`);
-    lastLooked = open.length;
-    if (!open.length) {
-      lastRun = new Date().toISOString();
-      // Nothing to match, so normally nothing to ask. But a connection nobody
-      // has ever tested is worth one call: on the quiet morning somebody sets
-      // the key, that is the difference between finding out now and finding
-      // out at the oil.
-      if (probe || !lastOk) {
-        await listSince(new Date(Date.now() - 60 * 1000).toISOString());
-      }
-      lastError = null;
-      return { open: 0, probed: probe || true };
-    }
-
-    // Always from the oldest fish still waiting, rather than from a saved
-    // cursor. A ticket written after the cursor moved on would otherwise never
-    // have its payment looked for, and the window is only ever minutes wide.
-    const oldest = open.reduce((a, t) => Math.min(a, new Date(t.created_at).getTime()), Infinity);
-    const since = new Date(oldest - GRACE_MS);
-    pruneSeen(since.getTime() - GRACE_MS);
-
-    const fried = await friedProducts();
-    const txns = await listSince(since.toISOString());
-    let matched = 0;
-    // Oldest first, so the first fish in the queue gets the first payment.
-    const ordered = [...txns].sort((a, b) =>
-      new Date(a.completedAt || 0) - new Date(b.completedAt || 0));
-
-    // The server may not have narrowed the list -- its filter is a saving, not
-    // something leaned on -- so anything older than the window is dropped here
-    // before a single detail is fetched for it.
-    const floor = since.getTime();
-    const inWindow = ordered.filter(x => !x.completedAt
-      || new Date(x.completedAt).getTime() >= floor).slice(-60);
-    lastListed = ordered.length;
-    lastInWindow = inWindow.length;
-    for (const t of inWindow) {
-      if (!t?.id) continue;
-      if (String(t.transactionStatus || t.status || '').toLowerCase().includes('void')) continue;
-      let lines = seen.get(t.id)?.lines;
-      if (!lines) {
-        const full = await detail(t.id);
-        lines = full?.lineItems || full?.line_items || [];
-        seen.set(t.id, { at: new Date(t.completedAt || Date.now()).getTime(), lines });
-      }
-      const when = new Date(t.completedAt || Date.now()).getTime();
-
-      if (lines.length && !lastLineKeys) {
-        lastLineKeys = Object.keys(lines[0] || {});
-        // Shape only: what a line is called and what it costs, never who bought it.
-        lastLineSample = {
-          product_id: lineProduct(lines[0]) || null,
-          plu: linePlu(lines[0]) || null,
-          amount: lineAmount(lines[0])
-        };
-      }
-      for (const l of lines) {
-        if (!isFriedLine(l, fried)) continue;
-        lastFriedLines++;
-        const amt = lineAmount(l);
-        if (amt === null) continue;
-        const lineId = String(l.id || `${t.id}:${lineProduct(l)}:${amt}`);
-
-        // Still waiting, this price, rung up after the fish was written down.
-        const fits = open.filter(k =>
-          k.matched !== true &&
-          when >= new Date(k.created_at).getTime() - GRACE_MS &&
-          Math.abs(Number(k.price) - amt) <= CENTS);
-
-        // Exactly one, or nobody is told anything. Price is all there is to go
-        // on, so two fish at the same price in the same few minutes is a coin
-        // toss -- and a coin toss is worse than the walk it replaces. Those
-        // wait for a person.
-        if (fits.length !== 1) continue;
-        const k = fits[0];
-
-        const { rows } = await pool.query(
-          `UPDATE fry_tickets
-              SET status='paid', paid_at=NOW(), paid_by='Vori', paid_source='vori',
-                  vori_txn=$2, vori_line_id=$3, updated_at=NOW()
-            WHERE id=$1 AND status='waiting' RETURNING number`,
-          [k.id, String(t.shopperFacingId || t.id), lineId]).catch(e => {
-            // The unique index refusing means this line already settled another
-            // ticket. Leave both alone.
-            if (e.code === '23505') return { rows: [] };
-            throw e;
-          });
-        if (rows[0]) { k.matched = true; matched++; }
-      }
-    }
-    lastRun = new Date().toISOString();
-    lastError = null;
-    lastMatched = matched;
-    return { open: open.length, transactions: ordered.length, matched, path: listPath };
-  } catch (e) {
-    lastError = e.message;
-    lastRun = new Date().toISOString();
-    console.warn('fry payment watch:', e.message);
-    return { error: e.message };
-  }
-}
-
-// Only while the store is likely to be frying anything. A poll that finds no
-// open tickets costs one query against our own database and no call to Vori.
 export function startFryWatch() {
   if (!voriConfigured()) {
-    console.log('Fried fish: Vori not connected, payments are confirmed by hand.');
+    console.log('Fried fish: Vori not connected, the board will stay empty.');
     return null;
   }
   const every = Number(process.env.FRY_WATCH_SECONDS || 10) * 1000;
-  console.log(`Fried fish: watching Vori for payments every ${every / 1000}s.`);
+  console.log(`Fried fish: reading the registers every ${every / 1000}s.`);
   watchStarted = new Date().toISOString();
-  // Straight away, not in ten seconds: whether this works at all is worth
-  // knowing at boot, and it is written into the log where it can be read.
-  matchFryPayments({ probe: true })
-    .then(r => console.log('Fried fish: first look at Vori -', JSON.stringify(r)))
-    .catch(e => console.warn('Fried fish: first look at Vori failed -', e.message));
-  const timer = setInterval(() => { matchFryPayments().catch(() => {}); }, every);
+  // Straight away, and over a long window, so a deploy in the middle of a
+  // trading day comes up with the day already on the board rather than empty.
+  syncFryPayments({ hours: 14 })
+    .then(r => console.log('Fried fish: first read -', JSON.stringify(r)))
+    .catch(e => console.warn('Fried fish: first read failed -', e.message));
+  const timer = setInterval(() => { syncFryPayments().catch(() => {}); }, every);
   timer.unref?.();
   return timer;
 }

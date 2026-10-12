@@ -1016,33 +1016,24 @@ function goOffline(){
 
 // ---- fried fish -----------------------------------------------------------
 //
-// One board, three jobs. The clerk puts a fish on it, whoever takes the money
-// taps it paid, and the fryer reads it instead of walking to the registers and
-// going through a pile of slips.
+// A list of fried fish that have been paid for, newest first. Nothing is
+// entered here: the paper slip the customer carries is the ticket, and the
+// register is the proof. The fryer holds a slip, types its price, and either
+// it is on the board or the fish is not paid for.
 //
-// It refreshes itself every few seconds, because the whole value of the thing
-// is that the fryer looks up and the answer has already changed. Polling stops
-// when the tab is not on screen -- this sits open on a counter all day.
-let fryData = null, fryTimer = null, fryAdding = false, fryBusy = new Set();
-const FRY_EVERY = 5000;
+// It refreshes itself, because the whole value of it is looking up and finding
+// the answer already changed. Polling stops when the tab is off screen; this
+// sits open on a monitor all day.
+let fryData = null, fryTimer = null, fryQ = '';
+const FRY_EVERY = 8000;
 
-async function fryApi(method, path, body, ms){
+async function fryApi(method, path, ms){
   try {
-    const res = await fetch('/api/fry' + path, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-      // Nothing here is worth waiting on for ever. A board that says it could
-      // not reach the server is useful; one frozen mid-tap is not.
-      signal: AbortSignal.timeout(ms || 20000)
-    });
+    const res = await fetch('/api/fry' + path, { method, signal: AbortSignal.timeout(ms || 20000) });
     const out = await res.json().catch(() => ({}));
-    if (!res.ok){ if (method !== 'GET') alert(out.error || 'That did not work.'); return null; }
+    if (!res.ok) return null;
     return out;
-  } catch (e) {
-    if (method !== 'GET') alert('No connection. Nothing changed.');
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
 function showFry(){
@@ -1051,237 +1042,128 @@ function showFry(){
   $('footerBar').style.display = 'none';
   document.querySelectorAll('#deptBar button').forEach(b =>
     b.classList.toggle('active', b.dataset.dept === 'fry'));
-  if (!fryData) $('fryWrap').innerHTML = '<div class="hint">Loading…</div>';
+  if (!fryData) $('fryWrap').innerHTML = '<div class="fryloading">Reading the registers…</div>';
   fryRefresh();
-  fryStartPolling();
-}
-function fryStartPolling(){
   clearInterval(fryTimer);
   fryTimer = setInterval(() => {
     if (document.hidden) return;
     if ($('fryView').style.display === 'none') return;
-    if (fryAdding || fryBusy.size) return;   // never move the board under a thumb
     fryRefresh();
   }, FRY_EVERY);
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden || fryAdding || fryBusy.size) return;
-  if ($('fryView') && $('fryView').style.display === 'block') fryRefresh();
+  if (!document.hidden && $('fryView') && $('fryView').style.display === 'block') fryRefresh();
 });
 
 async function fryRefresh(){
   const d = await fryApi('GET', '/board');
-  if (!d) return;
+  if (!d) { fryStale(); return; }
   fryData = d;
   renderFry();
+}
+// The board stays on screen when a refresh fails. What changes is the light:
+// somebody reading a list that stopped updating twenty minutes ago should be
+// told, not left to assume.
+function fryStale(){
+  const el = document.querySelector('.frylive');
+  if (el) el.classList.add('stale');
 }
 
 const fryAge = iso => {
   if (!iso) return '';
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  return `${h}h ${mins % 60}m`;
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  return `${Math.floor(m / 60)} hr ${m % 60} min ago`;
 };
-const money = v => (v === null || v === undefined) ? '' : '$' + Number(v).toFixed(2);
+const fryClock = iso => iso
+  ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+const fryMoney = v => (v === null || v === undefined) ? '' : Number(v).toFixed(2);
+
+function fryFilter(){
+  fryQ = ($('frySearch')?.value || '').replace(/[^0-9.]/g, '');
+  renderFry();
+}
 
 function renderFry(){
   const wrap = $('fryWrap');
   const d = fryData;
-  if (!d){ wrap.innerHTML = '<div class="emptystate">Could not load the board.</div>'; return; }
-  const by = st => d.tickets.filter(t => t.status === st);
-  const waiting = by('waiting'), paid = by('paid'), frying = by('frying'), done = by('done');
+  if (!d){ wrap.innerHTML = '<div class="fryloading">Could not reach the app.</div>'; return; }
 
-  const card = t => {
-    const busy = fryBusy.has(t.id);
-    const act = (label, action, cls) =>
-      `<button class="frybtn ${cls || ''}" ${busy ? 'disabled' : ''}
-         onclick="fryDo(${t.id},'${action}')">${label}</button>`;
-    const meta = [];
-    if (t.weight) meta.push(`${Number(t.weight)} lb`);
-    if (t.price !== null) meta.push(money(t.price));
-    return `<div class="frycard ${t.status}">
-      <div class="frytop">
-        <span class="frynum">#${t.number}</span>
-        <div class="frywhat">
-          <div class="fryfish">${htmlEsc(t.fish)}</div>
-          ${meta.length ? `<div class="frymeta">${htmlEsc(meta.join(' · '))}</div>` : ''}
-          ${t.prep ? `<div class="fryprep">${htmlEsc(t.prep)}</div>` : ''}
-        </div>
-      </div>
-      <div class="frywho">${htmlEsc(fryStory(t))}</div>
-      ${t.status === 'waiting' && t.price === null && fryData?.vori?.configured
-        ? '<div class="frynoprice">No price on this one &mdash; the register cannot be matched to it. Tap it when the slip comes in.</div>'
-        : ''}
-      <div class="fryacts">
-        ${t.status === 'waiting' ? act('Paid for', 'paid', 'go') : ''}
-        ${t.status === 'paid' ? act('Into the oil', 'frying', 'go') : ''}
-        ${t.status === 'frying' ? act('Done', 'done', 'go') : ''}
-        ${t.status !== 'done' ? act('Undo', 'undo', 'quiet') : ''}
-        ${t.status === 'waiting' ? act('Cancel', 'void', 'quiet') : ''}
-      </div>
-    </div>`;
-  };
+  // Matched against the slip price and the receipt total both, because people
+  // read whichever number is in front of them.
+  const all = d.payments || [];
+  const list = !fryQ ? all : all.filter(p =>
+    fryMoney(p.amount).startsWith(fryQ) || fryMoney(p.amount_tax).startsWith(fryQ)
+    || fryMoney(p.amount).includes(fryQ) || fryMoney(p.amount_tax).includes(fryQ));
 
-  const section = (title, list, note) => `
-    <div class="frysection">
-      <div class="frysechead">${title} <span>${list.length}</span></div>
-      ${list.length ? list.map(card).join('')
-        : `<div class="fryempty">${note}</div>`}
-    </div>`;
+  const v = d.vori || {};
+  const trouble = !v.configured ? 'The registers are not connected.'
+    : v.last_error ? v.last_error
+    : !v.verified ? 'Waiting on the first read of the registers.' : null;
+
+  const card = p => `<div class="frycard">
+    <div class="frycardtop">
+      <span class="frypaid">PAID</span>
+      <span class="fryago">${htmlEsc(fryAge(p.paid_at))}</span>
+    </div>
+    <div class="fryprice"><span>$</span>${fryMoney(p.amount)}</div>
+    ${p.amount_tax !== null && p.amount_tax !== p.amount
+      ? `<div class="frytax">$${fryMoney(p.amount_tax)} with tax</div>` : ''}
+    <div class="fryline"></div>
+    <div class="frywhen">${htmlEsc([fryClock(p.paid_at), p.lane, p.cashier]
+      .filter(Boolean).join(' · '))}</div>
+    ${p.receipt ? `<div class="fryrcpt">Receipt ${htmlEsc(p.receipt)}</div>` : ''}
+  </div>`;
+
+  const today = new Date().toLocaleDateString('en-US',
+    { weekday: 'long', month: 'long', day: 'numeric' });
 
   wrap.innerHTML = `
-    <div class="vsummarybar">
-      <div class="vs-title">Fried Fish</div>
-      <div class="vs-sub">${paid.length} ready to fry · ${waiting.length} waiting on payment
-        · ${done.length} done today</div>
+    <div class="fryhead">
+      <div>
+        <div class="fryeyebrow">DAT MOI &middot; FRY STATION</div>
+        <h1 class="frytitle">PAID FRIED FISH</h1>
+        <div fry-date class="frydate">${htmlEsc(today)}</div>
+      </div>
+      <div class="frystats">
+        <div class="frystat"><b>${d.paid_today || 0}</b><span>PAID TODAY</span></div>
+        <div class="frystat"><b>${htmlEsc(fryClock(d.last_paid) || '—')}</b><span>LAST PAID</span></div>
+        <div class="frylive ${trouble ? 'bad' : ''}">
+          <i></i>${trouble ? htmlEsc(trouble)
+            : `Live · updated ${htmlEsc(fryClock(d.updated_at) || fryClock(d.now))}`}</div>
+      </div>
     </div>
-    ${fryVoriLine(d.vori)}
-    <button class="addbtn fryadd" onclick="fryNewForm()">+ New fish</button>
-    ${section('Ready to fry', paid, 'Nothing is paid for and waiting.')}
-    ${frying.length ? section('In the oil', frying, '') : ''}
-    ${section('Waiting on payment', waiting,
-       'Nothing waiting. Every fish on the board is paid for.')}
-    ${done.length ? `<div class="frysection">
-      <div class="frysechead">Done today <span>${done.length}</span></div>
-      <div class="frydone">${done.map(t =>
-        `<span class="frydonechip">#${t.number} ${htmlEsc(t.fish)}</span>`).join('')}</div>
-    </div>` : ''}`;
+    <div class="frysearchrow">
+      <div class="frysearchbox">
+        <span>$</span>
+        <input type="text" id="frySearch" inputmode="decimal" autocomplete="off"
+               placeholder="Type the price on the slip" value="${htmlEsc(fryQ)}"
+               oninput="fryFilter()">
+        ${fryQ ? '<button class="fryclear" onclick="fryClearSearch()">&times;</button>' : ''}
+      </div>
+      <button class="fryrefresh" onclick="fryCheckNow(this)">Refresh now</button>
+    </div>
+    ${fryQ ? `<div class="fryfound ${list.length ? 'yes' : 'no'}">${
+      list.length
+        ? `${list.length} paid at $${htmlEsc(fryQ)}`
+        : `Nothing paid at $${htmlEsc(fryQ)} — do not fry it yet`}</div>` : ''}
+    <div class="frygrid">${list.map(card).join('')}</div>
+    ${!all.length && !trouble
+      ? '<div class="fryloading">Nothing paid for yet today.</div>' : ''}`;
+
+  // Typing must survive the board redrawing itself underneath.
+  const box = $('frySearch');
+  if (box && fryQ){ box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
 }
 
-// Whether the registers are being watched at all. Said plainly, because the
-// difference between "nothing is paid for yet" and "nobody is looking" is the
-// difference between waiting and walking.
-function fryVoriLine(v){
-  if (!v) return '';
-  if (!v.configured) return `<div class="fryvori off">Not watching the registers &mdash;
-    tap a fish when the slip comes in.<span>Set VORI_API_KEY to have this read itself.</span></div>`;
-  if (v.last_error) return `<div class="fryvori bad">Cannot read the registers &mdash;
-    tap a fish when the slip comes in.
-    <button class="frybtn quiet" onclick="fryCheckNow(this)">Try now</button>
-    <span>${htmlEsc(v.last_error)}</span>${fryTried(v)}</div>`;
-  if (!v.verified) return `<div class="fryvori off">Vori key is set, but the registers
-    have not been read yet.
-    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button>
-    ${fryTried(v)}</div>`;
-  return `<div class="fryvori on">Watching the registers.
-    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
-}
-// What actually happened, rather than what the line would like to be true. A
-// press that never reached the app and a press that reached it and found
-// nothing look identical from the outside; the number of attempts and the time
-// of the last one tell them apart.
-function fryTried(v){
-  const bits = [];
-  if (v.attempts) bits.push(`${v.attempts} attempt${v.attempts === 1 ? '' : 's'}`);
-  if (v.last_run) bits.push(`last ${new Date(v.last_run).toLocaleTimeString()}`);
-  else bits.push('never tried');
-  if (v.busy) bits.push('one in flight');
-  if (v.path) bits.push(v.path);
-  return `<span>${htmlEsc(bits.join(' \u00b7 '))} ·
-    <a href="/api/fry/diag" target="_blank" rel="noopener">details</a></span>`;
-}
+function fryClearSearch(){ fryQ = ''; renderFry(); $('frySearch')?.focus(); }
 
 async function fryCheckNow(btn){
   const was = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Checking...';
-  try {
-    const r = await fryApi('POST', '/check', null, 25000);
-    await fryRefresh();
-    // Pressed and nothing came back at all: say that, rather than redrawing
-    // the same line and looking like the button does nothing.
-    if (!r) alert('No answer from the app itself. Check the connection and try again.');
-  } finally {
-    // The board is usually redrawn by now and this button with it, but if the
-    // call failed it is the same button and it has to come back.
-    if (btn.isConnected){ btn.disabled = false; btn.textContent = was; }
-  }
-}
-
-// Who did what, in the order it happened. A pile of slips cannot say that, and
-// it is the part that makes a tap worth as much as holding the paper.
-function fryStory(t){
-  if (t.status === 'waiting') return `${t.created_by || 'someone'} · ${fryAge(t.created_at)}`;
-  if (t.status === 'paid') return t.paid_source === 'vori'
-    ? `paid · rung up${t.vori_txn ? ' on ' + t.vori_txn : ''} · ${fryAge(t.paid_at)}`
-    : `paid · ${t.paid_by || 'someone'} · ${fryAge(t.paid_at)}`;
-  if (t.status === 'frying') return `in the oil · ${t.fried_by || 'someone'} · ${fryAge(t.fried_at)}`;
-  if (t.status === 'done') return `done · ${fryAge(t.done_at)}`;
-  return t.void_reason || 'cancelled';
-}
-
-function fryNewForm(){
-  fryAdding = true;
-  $('fryPanel').innerHTML = `<div class="topanel">
-    <div class="topaneltitle">New fish</div>
-    <select class="single fryselect" id="fryFish" onchange="fryPriceOut()">
-      <option value="">Which fish...</option>
-      ${(fryData?.fish || []).map(f => `<option value="${htmlEsc(f.plu)}">${htmlEsc(f.name)}${
-        f.price_per_lb ? ` — $${f.price_per_lb.toFixed(2)}/lb` : ''}</option>`).join('')}
-    </select>
-    <div class="torow">
-      <div style="flex:1;"><label class="tolabel">Weight <span>lb</span></label>
-        <input type="tel" inputmode="decimal" class="textinput" id="fryWeight"
-               oninput="fryPriceOut()" style="width:100%;"></div>
-      <div style="flex:1;"><label class="tolabel">Price <span>matched at the till</span></label>
-        <input type="tel" inputmode="decimal" class="textinput" id="fryPrice" style="width:100%;"></div>
-    </div>
-    <label class="tolabel" style="margin-top:9px;">How they want it <span>optional</span></label>
-    <input type="text" class="textinput" id="fryPrep" placeholder="cut in 3, no head"
-           style="width:100%;margin-bottom:11px;">
-    <button class="addbtn" onclick="fryNewSave(this)">Put it on the board</button>
-    <button class="listlink" onclick="fryCancelAdd()">Cancel</button>
-  </div>`;
-  $('fryFish').focus();
-}
-// The price the register will charge, worked out from the weight so the ticket
-// and the till agree to the penny. Agreeing to the penny is what lets the
-// payment be recognised later without anybody tapping anything.
-function fryPriceOut(){
-  const f = (fryData?.fish || []).find(x => x.plu === $('fryFish').value);
-  const w = Number($('fryWeight').value);
-  if (!f || !f.price_per_lb || !(w > 0)) return;
-  $('fryPrice').value = (Math.round(w * f.price_per_lb * 100) / 100).toFixed(2);
-}
-function fryCancelAdd(){ fryAdding = false; $('fryPanel').innerHTML = ''; }
-
-async function fryNewSave(btn){
-  const plu = $('fryFish').value;
-  const picked = (fryData?.fish || []).find(x => x.plu === plu);
-  if (!picked){ alert('Which fish?'); return; }
-  btn.disabled = true; btn.textContent = 'Adding…';
-  const r = await fryApi('POST', '/ticket', {
-    fish: picked.name, plu,
-    weight: $('fryWeight').value.trim() || null,
-    price: $('fryPrice').value.trim() || null,
-    prep: $('fryPrep').value.trim() || null
-  });
-  fryAdding = false;
-  if (!r){ btn.disabled = false; btn.textContent = 'Put it on the board'; return; }
-  await fryRefresh();
-  // The number is the thing that has to get written on the customer's slip, so
-  // it is said plainly rather than left to be found on the board.
-  $('fryPanel').innerHTML = `<div class="topanel frynewnum">
-    <div class="frynewbig">#${r.ticket.number}</div>
-    <div class="frynewsub">Write this on the slip — ${htmlEsc(r.ticket.fish)}${
-      r.ticket.price !== null ? ' · ' + money(r.ticket.price) : ''}${
-      r.ticket.plu ? ' · PLU ' + htmlEsc(r.ticket.plu) : ''}</div>
-    <button class="addbtn" onclick="fryNewForm()">Another fish</button>
-    <button class="listlink" onclick="$('fryPanel').innerHTML=''">Close</button>
-  </div>`;
-}
-
-async function fryDo(id, action){
-  if (fryBusy.has(id)) return;
-  if (action === 'void' && !confirm('Take this fish off the board?')) return;
-  fryBusy.add(id);
-  renderFry();
-  const r = await fryApi('POST', `/ticket/${id}/${action}`);
-  fryBusy.delete(id);
-  // Refetched either way: a refusal means somebody else already moved it, and
-  // the board should show what is actually true rather than what was tapped.
-  await fryRefresh();
+  btn.disabled = true; btn.textContent = 'Reading…';
+  try { await fryApi('POST', '/check', 25000); await fryRefresh(); }
+  finally { if (btn.isConnected){ btn.disabled = false; btn.textContent = was; } }
 }
 
 // ---- time off: vacation and sick hours ------------------------------------

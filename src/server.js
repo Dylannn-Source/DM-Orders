@@ -7,7 +7,7 @@ import {
   lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
 } from './auth.js';
 import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
-import { startFryWatch, matchFryPayments, fryVoriStatus, fryDiag } from './fry.js';
+import { startFryWatch, syncFryPayments, fryBoard, fryVoriStatus, fryDiag } from './fry.js';
 import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -201,44 +201,20 @@ app.post('/api/auth/change-pin', async (req, res) => {
 
 // ---- fried fish -----------------------------------------------------------
 //
-// One ticket per fish, from the counter to the oil. The number on it is what
-// the clerk writes on the customer's slip, so the person at the register can
-// find the same ticket without reading anything back to anybody.
-const FRY_STEPS = ['waiting', 'paid', 'frying', 'done'];
-
-function fryRow(t) {
-  return {
-    id: t.id, number: t.number, fish: t.fish,
-    weight: t.weight === null ? null : Number(t.weight),
-    price: t.price === null ? null : Number(t.price),
-    prep: t.prep, status: t.status,
-    created_by: t.created_by, created_at: t.created_at,
-    plu: t.plu, vori_product_id: t.vori_product_id,
-    paid_by: t.paid_by, paid_at: t.paid_at, paid_source: t.paid_source,
-    vori_txn: t.vori_txn,
-    fried_by: t.fried_by, fried_at: t.fried_at, done_at: t.done_at,
-    void_reason: t.void_reason
-  };
-}
-
-// Everything today, plus the fish names already in the fish department so the
-// clerk picks rather than spells.
+// The board is a list of paid fried fish and nothing else. The paper slip is
+// the ticket; the register is the proof. Served out of our own table, so a
+// slow or unreachable till shows a stale "updated" time rather than an empty
+// screen somebody is standing in front of.
 app.get('/api/fry/board', async (req, res) => {
   try {
-    const [tickets, fish] = await Promise.all([
-      pool.query(`SELECT * FROM fry_tickets WHERE day = CURRENT_DATE ORDER BY number`),
-      pool.query(`SELECT plu, name, price_per_lb, vori_product_id, by_weight
-                    FROM fry_products WHERE active ORDER BY name`)
-    ]);
+    const payments = await fryBoard();
+    const v = fryVoriStatus();
     res.json({
-      tickets: tickets.rows.map(fryRow),
-      fish: fish.rows.map(f => ({
-        plu: f.plu, name: f.name, by_weight: f.by_weight,
-        price_per_lb: f.price_per_lb === null ? null : Number(f.price_per_lb),
-        vori_product_id: f.vori_product_id
-      })),
-      vori: fryVoriStatus(),
-      me: req.employee?.name || null,
+      payments,
+      paid_today: payments.length,
+      last_paid: payments[0]?.paid_at || null,
+      updated_at: v.last_ok,
+      vori: v,
       now: new Date().toISOString()
     });
   } catch (e) {
@@ -247,138 +223,16 @@ app.get('/api/fry/board', async (req, res) => {
   }
 });
 
-// A fish goes on the board. The number is the next one today, worked out inside
-// the insert so two clerks at two counters cannot both be handed the same one.
-app.post('/api/fry/ticket', async (req, res) => {
-  const fish = String(req.body?.fish || '').trim();
-  if (!fish) return res.status(400).json({ error: 'Which fish?' });
-  const n = v => (v === null || v === undefined || String(v).trim() === '') ? null : Number(v);
-  const weight = n(req.body?.weight), price = n(req.body?.price);
-  if (weight !== null && !(weight >= 0)) return res.status(400).json({ error: 'That weight is not a number.' });
-  if (price !== null && !(price >= 0)) return res.status(400).json({ error: 'That price is not a number.' });
-  const prep = String(req.body?.prep || '').trim() || null;
-  // The PLU is what ties the ticket to the line the cashier will ring. Without
-  // it the fish still goes on the board, it just has to be tapped paid by hand.
-  let plu = String(req.body?.plu || '').trim() || null, productId = null;
-  if (plu) {
-    const { rows: f } = await pool.query(
-      'SELECT plu, vori_product_id FROM fry_products WHERE plu=$1', [plu]);
-    if (!f[0]) plu = null; else productId = f[0].vori_product_id;
-  }
-  // The unique index is the referee. On the rare collision, take the next one.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const { rows } = await pool.query(
-        `INSERT INTO fry_tickets (day, number, fish, weight, price, prep, created_by,
-                                   plu, vori_product_id)
-         SELECT CURRENT_DATE,
-                COALESCE((SELECT MAX(number) FROM fry_tickets WHERE day = CURRENT_DATE), 0) + 1,
-                $1, $2::numeric, $3::numeric, $4, $5, $6, $7
-         RETURNING *`,
-        [fish, weight, price, prep, req.employee.name, plu, productId]);
-      return res.json({ ok: true, ticket: fryRow(rows[0]) });
-    } catch (e) {
-      if (e.code === '23505') continue;     // somebody took that number; try again
-      console.error('fry ticket failed', e);
-      return res.status(500).json({ error: 'could not add that fish' });
-    }
-  }
-  res.status(503).json({ error: 'The counter is busy. Try that again.' });
-});
-
-// Everything about how the Vori link is wired, on one screen, for when the
-// board says one thing and the registers say another.
-app.get('/api/fry/diag', async (req, res) => {
-  res.json({ ok: true, now: new Date().toISOString(), ...fryDiag() });
-});
-
-// Ask Vori now rather than waiting for the next sweep. What the fryer presses
-// when they are standing there and the board has not caught up yet.
+// Read the registers now rather than waiting for the next sweep.
 app.post('/api/fry/check', async (req, res) => {
-  // Pressed by a person, so it always actually calls Vori, even with an empty
-  // board. That is how the connection gets proved.
-  const out = await matchFryPayments({ probe: true });
+  const out = await syncFryPayments({ hours: 14 });
   res.json({ ok: true, ...out, vori: fryVoriStatus() });
 });
 
-// Moving a ticket along. Each step records who and when, because "it is paid"
-// with nobody's name on it is exactly the pile of paper this replaces.
-app.post('/api/fry/ticket/:id/:action', async (req, res) => {
-  const id = Number(req.params.id);
-  const action = String(req.params.action);
-  const who = req.employee.name;
-  try {
-    const { rows: found } = await pool.query('SELECT * FROM fry_tickets WHERE id=$1', [id]);
-    const t = found[0];
-    if (!t) return res.status(404).json({ error: 'no such ticket' });
-
-    // Every step names the status it is moving away from, and that status is in
-    // the WHERE clause rather than only in a check above it. Two fryers tapping
-    // "into the oil" on the same fish both read 'paid', both pass a check, and
-    // both get told yes -- and the fish is fried twice. Postgres settles it:
-    // the second update matches no row and is told what actually happened.
-    let sql, vals, from;
-    if (action === 'paid') {
-      from = 'waiting';
-      sql = `UPDATE fry_tickets SET status='paid', paid_by=$2, paid_at=NOW(),
-               paid_source='cashier', updated_at=NOW()
-             WHERE id=$1 AND status='waiting' RETURNING *`;
-      vals = [id, who];
-    } else if (action === 'frying') {
-      // Only a paid fish goes in the oil. This is the whole point of the board,
-      // so it is refused here and not merely greyed out on a screen.
-      from = 'paid';
-      sql = `UPDATE fry_tickets SET status='frying', fried_by=$2, fried_at=NOW(),
-               updated_at=NOW() WHERE id=$1 AND status='paid' RETURNING *`;
-      vals = [id, who];
-    } else if (action === 'done') {
-      from = 'frying';
-      sql = `UPDATE fry_tickets SET status='done', done_at=NOW(), updated_at=NOW()
-               WHERE id=$1 AND status='frying' RETURNING *`;
-      vals = [id];
-    } else if (action === 'undo') {
-      // A wrong tap during a rush, put back one step. Nothing is erased: the
-      // name and time of the step being undone are cleared, and the board is
-      // what it was a moment ago.
-      const at = FRY_STEPS.indexOf(t.status);
-      if (at <= 0) return res.status(409).json({ error: `#${t.number} is already at the start.` });
-      const back = FRY_STEPS[at - 1];
-      from = t.status;
-      sql = `UPDATE fry_tickets SET status=$3, updated_at=NOW(),
-               paid_by   = CASE WHEN $3='waiting' THEN NULL ELSE paid_by END,
-               paid_at   = CASE WHEN $3='waiting' THEN NULL ELSE paid_at END,
-               paid_source = CASE WHEN $3='waiting' THEN NULL ELSE paid_source END,
-               fried_by  = CASE WHEN $3 IN ('waiting','paid') THEN NULL ELSE fried_by END,
-               fried_at  = CASE WHEN $3 IN ('waiting','paid') THEN NULL ELSE fried_at END,
-               done_at   = NULL
-             WHERE id=$1 AND status=$2 RETURNING *`;
-      vals = [id, t.status, back];
-    } else if (action === 'void') {
-      from = t.status;
-      if (t.status === 'void') return res.status(409).json({ error: 'already cancelled' });
-      sql = `UPDATE fry_tickets SET status='void', void_reason=$3, updated_at=NOW()
-               WHERE id=$1 AND status=$2 RETURNING *`;
-      vals = [id, t.status, String(req.body?.reason || '').trim() || `cancelled by ${who}`];
-    } else {
-      return res.status(400).json({ error: 'unknown action' });
-    }
-    const { rows } = await pool.query(sql, vals);
-    if (!rows[0]) {
-      // Somebody got there first. Say what it is now, not what it was.
-      const { rows: now } = await pool.query('SELECT status, number FROM fry_tickets WHERE id=$1', [id]);
-      const at = now[0]?.status || 'gone';
-      return res.status(409).json({
-        error: action === 'frying' && at === 'waiting'
-          ? `#${t.number} is not paid for yet.`
-          : `#${t.number} is ${at} already.`,
-        status: at
-      });
-    }
-    res.json({ ok: true, ticket: fryRow(rows[0]) });
-  } catch (e) {
-    console.error('fry ticket update failed', e);
-    res.status(500).json({ error: 'could not change that ticket' });
-  }
+// How the link to the registers is wired, for when the board says one thing
+// and the till says another. Never the key itself.
+app.get('/api/fry/diag', async (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString(), ...fryDiag() });
 });
 
 // ---- time off: vacation and sick hours ------------------------------------
