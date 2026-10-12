@@ -7,6 +7,7 @@ import {
   lockState, noteFailure, noteSuccess, ipThrottled, MAX_FAILURES, LOCK_MINUTES
 } from './auth.js';
 import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
+import { startFryWatch, matchFryPayments, fryVoriStatus } from './fry.js';
 import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -212,7 +213,9 @@ function fryRow(t) {
     price: t.price === null ? null : Number(t.price),
     prep: t.prep, status: t.status,
     created_by: t.created_by, created_at: t.created_at,
+    plu: t.plu, vori_product_id: t.vori_product_id,
     paid_by: t.paid_by, paid_at: t.paid_at, paid_source: t.paid_source,
+    vori_txn: t.vori_txn,
     fried_by: t.fried_by, fried_at: t.fried_at, done_at: t.done_at,
     void_reason: t.void_reason
   };
@@ -222,14 +225,19 @@ function fryRow(t) {
 // clerk picks rather than spells.
 app.get('/api/fry/board', async (req, res) => {
   try {
-    const [tickets, names] = await Promise.all([
-      pool.query(`SELECT * FROM fry_tickets WHERE day = CURRENT_DATE
-                   ORDER BY number`),
-      pool.query(`SELECT DISTINCT name FROM items WHERE dept='fish' AND active ORDER BY name`)
+    const [tickets, fish] = await Promise.all([
+      pool.query(`SELECT * FROM fry_tickets WHERE day = CURRENT_DATE ORDER BY number`),
+      pool.query(`SELECT plu, name, price_per_lb, vori_product_id, by_weight
+                    FROM fry_products WHERE active ORDER BY name`)
     ]);
     res.json({
       tickets: tickets.rows.map(fryRow),
-      fish: names.rows.map(r => r.name),
+      fish: fish.rows.map(f => ({
+        plu: f.plu, name: f.name, by_weight: f.by_weight,
+        price_per_lb: f.price_per_lb === null ? null : Number(f.price_per_lb),
+        vori_product_id: f.vori_product_id
+      })),
+      vori: fryVoriStatus(),
       me: req.employee?.name || null,
       now: new Date().toISOString()
     });
@@ -249,16 +257,25 @@ app.post('/api/fry/ticket', async (req, res) => {
   if (weight !== null && !(weight >= 0)) return res.status(400).json({ error: 'That weight is not a number.' });
   if (price !== null && !(price >= 0)) return res.status(400).json({ error: 'That price is not a number.' });
   const prep = String(req.body?.prep || '').trim() || null;
+  // The PLU is what ties the ticket to the line the cashier will ring. Without
+  // it the fish still goes on the board, it just has to be tapped paid by hand.
+  let plu = String(req.body?.plu || '').trim() || null, productId = null;
+  if (plu) {
+    const { rows: f } = await pool.query(
+      'SELECT plu, vori_product_id FROM fry_products WHERE plu=$1', [plu]);
+    if (!f[0]) plu = null; else productId = f[0].vori_product_id;
+  }
   // The unique index is the referee. On the rare collision, take the next one.
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const { rows } = await pool.query(
-        `INSERT INTO fry_tickets (day, number, fish, weight, price, prep, created_by)
+        `INSERT INTO fry_tickets (day, number, fish, weight, price, prep, created_by,
+                                   plu, vori_product_id)
          SELECT CURRENT_DATE,
                 COALESCE((SELECT MAX(number) FROM fry_tickets WHERE day = CURRENT_DATE), 0) + 1,
-                $1, $2::numeric, $3::numeric, $4, $5
+                $1, $2::numeric, $3::numeric, $4, $5, $6, $7
          RETURNING *`,
-        [fish, weight, price, prep, req.employee.name]);
+        [fish, weight, price, prep, req.employee.name, plu, productId]);
       return res.json({ ok: true, ticket: fryRow(rows[0]) });
     } catch (e) {
       if (e.code === '23505') continue;     // somebody took that number; try again
@@ -267,6 +284,13 @@ app.post('/api/fry/ticket', async (req, res) => {
     }
   }
   res.status(503).json({ error: 'The counter is busy. Try that again.' });
+});
+
+// Ask Vori now rather than waiting for the next sweep. What the fryer presses
+// when they are standing there and the board has not caught up yet.
+app.post('/api/fry/check', async (req, res) => {
+  const out = await matchFryPayments();
+  res.json({ ok: true, ...out, vori: fryVoriStatus() });
 });
 
 // Moving a ticket along. Each step records who and when, because "it is paid"
@@ -2023,6 +2047,7 @@ initDb()
     app.listen(PORT, () => console.log(`Dat Moi ordering running on :${PORT}`));
     startVoriPolling();
     startSheetPolling();
+    startFryWatch();
   })
   .catch(err => {
     console.error('DB init failed', err);

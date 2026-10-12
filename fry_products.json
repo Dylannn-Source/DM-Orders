@@ -1,0 +1,264 @@
+{
+  "note": "Fried fish PLUs from Vori, store 5084, department 57601 \"Fried\", plus the catch-all variable-price PLU. Seeded so the counter screen works before Vori is connected; refreshed from Vori once it is.",
+  "products": [
+    {
+      "plu": "1001",
+      "name": "Fried Fish (other)",
+      "price_per_lb": null,
+      "vori_product_id": "29198682",
+      "by_weight": false
+    },
+    {
+      "plu": "00101",
+      "name": "Fried Barracuda",
+      "price_per_lb": 4.49,
+      "vori_product_id": "28850295",
+      "by_weight": true
+    },
+    {
+      "plu": "00102",
+      "name": "Fried Belt Fish",
+      "price_per_lb": 1.99,
+      "vori_product_id": "28851353",
+      "by_weight": true
+    },
+    {
+      "plu": "00140",
+      "name": "Fried Branzino",
+      "price_per_lb": 9.93,
+      "vori_product_id": "28851587",
+      "by_weight": true
+    },
+    {
+      "plu": "00104",
+      "name": "Fried Catfish",
+      "price_per_lb": 4.41,
+      "vori_product_id": "28850555",
+      "by_weight": true
+    },
+    {
+      "plu": "00105",
+      "name": "Fried Catfish Head",
+      "price_per_lb": 1.65,
+      "vori_product_id": "28851482",
+      "by_weight": true
+    },
+    {
+      "plu": "00106",
+      "name": "Fried Doctor Fish",
+      "price_per_lb": 11.99,
+      "vori_product_id": "28846927",
+      "by_weight": true
+    },
+    {
+      "plu": "00107",
+      "name": "Fried Gaspergoo",
+      "price_per_lb": 3.79,
+      "vori_product_id": "28850659",
+      "by_weight": true
+    },
+    {
+      "plu": "00108",
+      "name": "Fried Golden Pompano",
+      "price_per_lb": 6.06,
+      "vori_product_id": "28850672",
+      "by_weight": true
+    },
+    {
+      "plu": "00109",
+      "name": "Fried Halibut (Steak)",
+      "price_per_lb": 3.99,
+      "vori_product_id": "28850663",
+      "by_weight": true
+    },
+    {
+      "plu": "00110",
+      "name": "Fried Halibut (Whole)",
+      "price_per_lb": 6.62,
+      "vori_product_id": "28850684",
+      "by_weight": true
+    },
+    {
+      "plu": "00112",
+      "name": "Fried Jack Fish",
+      "price_per_lb": 3.85,
+      "vori_product_id": "28850225",
+      "by_weight": true
+    },
+    {
+      "plu": "00113",
+      "name": "Fried King Mackerel (Steak)",
+      "price_per_lb": 13.25,
+      "vori_product_id": "28851171",
+      "by_weight": true
+    },
+    {
+      "plu": "00114",
+      "name": "Fried King Mackerel (Whole)",
+      "price_per_lb": 12.14,
+      "vori_product_id": "28850219",
+      "by_weight": true
+    },
+    {
+      "plu": "00116",
+      "name": "Fried Mullet",
+      "price_per_lb": 4.96,
+      "vori_product_id": "28851679",
+      "by_weight": true
+    },
+    {
+      "plu": "00117",
+      "name": "Fried New Zealand Snapper",
+      "price_per_lb": 9.99,
+      "vori_product_id": "28850231",
+      "by_weight": true
+    },
+    {
+      "plu": "00118",
+      "name": "Fried Pargo",
+      "price_per_lb": 8.83,
+      "vori_product_id": "28850226",
+      "by_weight": true
+    },
+    {
+      "plu": "00119",
+      "name": "Fried Parrot Fish",
+      "price_per_lb": 6.05,
+      "vori_product_id": "28851564",
+      "by_weight": true
+    },
+    {
+      "plu": "00120",
+      "name": "Fried Pink Grouper (Steak)",
+      "price_per_lb": 13.99,
+      "vori_product_id": "28851032",
+      "by_weight": true
+    },
+    {
+      "plu": "00121",
+      "name": "Fried Pink Grouper (Whole)",
+      "price_per_lb": 15.46,
+      "vori_product_id": "28851091",
+      "by_weight": true
+    },
+    {
+      "plu": "00122",
+      "name": "Fried Red Mullet",
+      "price_per_lb": 4.99,
+      "vori_product_id": "28851213",
+      "by_weight": true
+    },
+    {
+      "plu": "00123",
+      "name": "Fried Red Tilapia",
+      "price_per_lb": 4.99,
+      "vori_product_id": "28851138",
+      "by_weight": true
+    },
+    {
+      "plu": "00124",
+      "name": "Fried Robalo Snook",
+      "price_per_lb": 8.25,
+      "vori_product_id": "28850737",
+      "by_weight": true
+    },
+    {
+      "plu": "00126",
+      "name": "Fried Salmon (Steak)",
+      "price_per_lb": 8.99,
+      "vori_product_id": "28846940",
+      "by_weight": true
+    },
+    {
+      "plu": "00127",
+      "name": "Fried Salmon (Whole)",
+      "price_per_lb": 10.99,
+      "vori_product_id": "28850685",
+      "by_weight": true
+    },
+    {
+      "plu": "00141",
+      "name": "Fried Sea Bream",
+      "price_per_lb": 7.7,
+      "vori_product_id": "28850736",
+      "by_weight": true
+    },
+    {
+      "plu": "00128",
+      "name": "Fried Seabass",
+      "price_per_lb": 3.99,
+      "vori_product_id": "28850553",
+      "by_weight": true
+    },
+    {
+      "plu": "00129",
+      "name": "Fried Sierra",
+      "price_per_lb": 4.39,
+      "vori_product_id": "28850346",
+      "by_weight": true
+    },
+    {
+      "plu": "00130",
+      "name": "Fried Strawberry Grouper",
+      "price_per_lb": 11.01,
+      "vori_product_id": "28847041",
+      "by_weight": true
+    },
+    {
+      "plu": "00131",
+      "name": "Fried Striped Bass",
+      "price_per_lb": 8.8,
+      "vori_product_id": "28850567",
+      "by_weight": true
+    },
+    {
+      "plu": "00132",
+      "name": "Fried Tilapia",
+      "price_per_lb": 7.99,
+      "vori_product_id": "28847046",
+      "by_weight": true
+    },
+    {
+      "plu": "00133",
+      "name": "Fried True Red Snapper (U/1)",
+      "price_per_lb": 11.03,
+      "vori_product_id": "28850236",
+      "by_weight": true
+    },
+    {
+      "plu": "00134",
+      "name": "Fried True Snapper (1/Up)",
+      "price_per_lb": 11.03,
+      "vori_product_id": "28850753",
+      "by_weight": true
+    },
+    {
+      "plu": "00135",
+      "name": "Fried White Bass",
+      "price_per_lb": 2.79,
+      "vori_product_id": "28850658",
+      "by_weight": true
+    },
+    {
+      "plu": "00136",
+      "name": "Fried White Perch",
+      "price_per_lb": 3.49,
+      "vori_product_id": "28851054",
+      "by_weight": true
+    },
+    {
+      "plu": "00138",
+      "name": "Fried Yellowtail",
+      "price_per_lb": 2.99,
+      "vori_product_id": "28851154",
+      "by_weight": true
+    },
+    {
+      "plu": "00139",
+      "name": "Fried Yellowtail Snapper",
+      "price_per_lb": 12.14,
+      "vori_product_id": "28850282",
+      "by_weight": true
+    }
+  ]
+}

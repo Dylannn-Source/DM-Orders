@@ -1131,6 +1131,7 @@ function renderFry(){
       <div class="vs-sub">${paid.length} ready to fry · ${waiting.length} waiting on payment
         · ${done.length} done today</div>
     </div>
+    ${fryVoriLine(d.vori)}
     <button class="addbtn fryadd" onclick="fryNewForm()">+ New fish</button>
     ${section('Ready to fry', paid, 'Nothing is paid for and waiting.')}
     ${frying.length ? section('In the oil', frying, '') : ''}
@@ -1143,11 +1144,33 @@ function renderFry(){
     </div>` : ''}`;
 }
 
+// Whether the registers are being watched at all. Said plainly, because the
+// difference between "nothing is paid for yet" and "nobody is looking" is the
+// difference between waiting and walking.
+function fryVoriLine(v){
+  if (!v) return '';
+  if (!v.configured) return `<div class="fryvori off">Not watching the registers &mdash;
+    tap a fish when the slip comes in.<span>Set VORI_API_KEY to have this read itself.</span></div>`;
+  if (v.last_error) return `<div class="fryvori bad">Cannot read the registers &mdash;
+    tap a fish when the slip comes in.
+    <button class="frybtn quiet" onclick="fryCheckNow(this)">Try now</button>
+    <span>${htmlEsc(v.last_error)}</span></div>`;
+  return `<div class="fryvori on">Watching the registers.
+    <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
+}
+async function fryCheckNow(btn){
+  btn.disabled = true; btn.textContent = 'Checking...';
+  await fryApi('POST', '/check');
+  await fryRefresh();
+}
+
 // Who did what, in the order it happened. A pile of slips cannot say that, and
 // it is the part that makes a tap worth as much as holding the paper.
 function fryStory(t){
   if (t.status === 'waiting') return `${t.created_by || 'someone'} · ${fryAge(t.created_at)}`;
-  if (t.status === 'paid') return `paid · ${t.paid_by || 'someone'} · ${fryAge(t.paid_at)}`;
+  if (t.status === 'paid') return t.paid_source === 'vori'
+    ? `paid · rung up${t.vori_txn ? ' on ' + t.vori_txn : ''} · ${fryAge(t.paid_at)}`
+    : `paid · ${t.paid_by || 'someone'} · ${fryAge(t.paid_at)}`;
   if (t.status === 'frying') return `in the oil · ${t.fried_by || 'someone'} · ${fryAge(t.fried_at)}`;
   if (t.status === 'done') return `done · ${fryAge(t.done_at)}`;
   return t.void_reason || 'cancelled';
@@ -1157,14 +1180,16 @@ function fryNewForm(){
   fryAdding = true;
   $('fryPanel').innerHTML = `<div class="topanel">
     <div class="topaneltitle">New fish</div>
-    <input type="text" class="textinput" id="fryFish" list="fryFishList"
-           placeholder="Which fish" style="width:100%;margin-bottom:8px;" autocomplete="off">
-    <datalist id="fryFishList">${(fryData?.fish || [])
-      .map(n => `<option value="${htmlEsc(n)}"></option>`).join('')}</datalist>
+    <select class="single fryselect" id="fryFish" onchange="fryPriceOut()">
+      <option value="">Which fish...</option>
+      ${(fryData?.fish || []).map(f => `<option value="${htmlEsc(f.plu)}">${htmlEsc(f.name)}${
+        f.price_per_lb ? ` — $${f.price_per_lb.toFixed(2)}/lb` : ''}</option>`).join('')}
+    </select>
     <div class="torow">
-      <div style="flex:1;"><label class="tolabel">Weight <span>lb, optional</span></label>
-        <input type="tel" inputmode="decimal" class="textinput" id="fryWeight" style="width:100%;"></div>
-      <div style="flex:1;"><label class="tolabel">Price <span>off the slip</span></label>
+      <div style="flex:1;"><label class="tolabel">Weight <span>lb</span></label>
+        <input type="tel" inputmode="decimal" class="textinput" id="fryWeight"
+               oninput="fryPriceOut()" style="width:100%;"></div>
+      <div style="flex:1;"><label class="tolabel">Price <span>what the slip says</span></label>
         <input type="tel" inputmode="decimal" class="textinput" id="fryPrice" style="width:100%;"></div>
     </div>
     <label class="tolabel" style="margin-top:9px;">How they want it <span>optional</span></label>
@@ -1175,14 +1200,24 @@ function fryNewForm(){
   </div>`;
   $('fryFish').focus();
 }
+// The price the register will charge, worked out from the weight so the ticket
+// and the till agree to the penny. Agreeing to the penny is what lets the
+// payment be recognised later without anybody tapping anything.
+function fryPriceOut(){
+  const f = (fryData?.fish || []).find(x => x.plu === $('fryFish').value);
+  const w = Number($('fryWeight').value);
+  if (!f || !f.price_per_lb || !(w > 0)) return;
+  $('fryPrice').value = (Math.round(w * f.price_per_lb * 100) / 100).toFixed(2);
+}
 function fryCancelAdd(){ fryAdding = false; $('fryPanel').innerHTML = ''; }
 
 async function fryNewSave(btn){
-  const fish = $('fryFish').value.trim();
-  if (!fish){ alert('Which fish?'); return; }
+  const plu = $('fryFish').value;
+  const picked = (fryData?.fish || []).find(x => x.plu === plu);
+  if (!picked){ alert('Which fish?'); return; }
   btn.disabled = true; btn.textContent = 'Adding…';
   const r = await fryApi('POST', '/ticket', {
-    fish,
+    fish: picked.name, plu,
     weight: $('fryWeight').value.trim() || null,
     price: $('fryPrice').value.trim() || null,
     prep: $('fryPrep').value.trim() || null
@@ -1195,7 +1230,8 @@ async function fryNewSave(btn){
   $('fryPanel').innerHTML = `<div class="topanel frynewnum">
     <div class="frynewbig">#${r.ticket.number}</div>
     <div class="frynewsub">Write this on the slip — ${htmlEsc(r.ticket.fish)}${
-      r.ticket.price !== null ? ' · ' + money(r.ticket.price) : ''}</div>
+      r.ticket.price !== null ? ' · ' + money(r.ticket.price) : ''}${
+      r.ticket.plu ? ' · PLU ' + htmlEsc(r.ticket.plu) : ''}</div>
     <button class="addbtn" onclick="fryNewForm()">Another fish</button>
     <button class="listlink" onclick="$('fryPanel').innerHTML=''">Close</button>
   </div>`;

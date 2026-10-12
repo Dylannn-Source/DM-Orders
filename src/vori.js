@@ -20,7 +20,7 @@ function headers() {
   return { Authorization: `Bearer ${process.env.VORI_API_KEY}`, Accept: 'application/json' };
 }
 
-async function getWithBackoff(url) {
+export async function getWithBackoff(url) {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const res = await fetch(url, { headers: headers() });
     if (res.status !== 429) {

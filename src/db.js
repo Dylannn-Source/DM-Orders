@@ -469,6 +469,47 @@ export async function initDb() {
       void_reason  TEXT,
       updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+  // Which Vori product the fish is. Fried fish is not one PLU but thirty-six --
+  // a weighed product per species, each at its own price a pound -- plus a
+  // variable-price catch-all. Holding the product on the ticket is what lets
+  // the payment be recognised later without guessing from the amount alone.
+  await pool.query('ALTER TABLE fry_tickets ADD COLUMN IF NOT EXISTS plu TEXT');
+  await pool.query('ALTER TABLE fry_tickets ADD COLUMN IF NOT EXISTS vori_product_id TEXT');
+  await pool.query('ALTER TABLE fry_tickets ADD COLUMN IF NOT EXISTS vori_txn TEXT');
+  await pool.query('ALTER TABLE fry_tickets ADD COLUMN IF NOT EXISTS vori_line_id TEXT');
+  // One payment line settles one ticket. Without this, two tickets for the same
+  // fish at the same price both match the same line and both go green on the
+  // strength of one payment.
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS fry_tickets_line ON fry_tickets (vori_line_id)
+       WHERE vori_line_id IS NOT NULL`);
+
+  // The fish the counter can sell, with their PLUs. Seeded from the file so the
+  // screen works before Vori is connected, and refreshed from Vori after.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS fry_products (
+      plu             TEXT PRIMARY KEY,
+      name            TEXT NOT NULL,
+      price_per_lb    NUMERIC,
+      vori_product_id TEXT,
+      by_weight       BOOLEAN NOT NULL DEFAULT TRUE,
+      active          BOOLEAN NOT NULL DEFAULT TRUE
+    )`);
+  {
+    const { rows: has } = await pool.query('SELECT 1 FROM fry_products LIMIT 1');
+    if (!has[0]) {
+      const seed = JSON.parse(
+        fs.readFileSync(path.join(__dirname, '..', 'fry_products.json'), 'utf8'));
+      for (const f of seed.products) {
+        await pool.query(
+          `INSERT INTO fry_products (plu, name, price_per_lb, vori_product_id, by_weight)
+           VALUES ($1,$2,$3,$4,$5) ON CONFLICT (plu) DO NOTHING`,
+          [f.plu, f.name, f.price_per_lb, f.vori_product_id, f.by_weight !== false]);
+      }
+      console.log(`Fried fish: ${seed.products.length} PLUs loaded.`);
+    }
+  }
+
   // The number is what gets written on the slip, so it restarts every morning
   // and stays short enough to read across a counter. Unique per day because two
   // tickets sharing a number is the one thing that breaks the whole scheme.
