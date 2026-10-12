@@ -1026,12 +1026,15 @@ function goOffline(){
 let fryData = null, fryTimer = null, fryAdding = false, fryBusy = new Set();
 const FRY_EVERY = 5000;
 
-async function fryApi(method, path, body){
+async function fryApi(method, path, body, ms){
   try {
     const res = await fetch('/api/fry' + path, {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined
+      body: body ? JSON.stringify(body) : undefined,
+      // Nothing here is worth waiting on for ever. A board that says it could
+      // not reach the server is useful; one frozen mid-tap is not.
+      signal: AbortSignal.timeout(ms || 20000)
     });
     const out = await res.json().catch(() => ({}));
     if (!res.ok){ if (method !== 'GET') alert(out.error || 'That did not work.'); return null; }
@@ -1165,9 +1168,19 @@ function fryVoriLine(v){
     <button class="frybtn quiet" onclick="fryCheckNow(this)">Check now</button></div>`;
 }
 async function fryCheckNow(btn){
+  const was = btn.textContent;
   btn.disabled = true; btn.textContent = 'Checking...';
-  await fryApi('POST', '/check');
-  await fryRefresh();
+  try {
+    const r = await fryApi('POST', '/check', null, 25000);
+    await fryRefresh();
+    // Pressed and nothing came back at all: say that, rather than redrawing
+    // the same line and looking like the button does nothing.
+    if (!r) alert('No answer from the app itself. Check the connection and try again.');
+  } finally {
+    // The board is usually redrawn by now and this button with it, but if the
+    // call failed it is the same button and it has to come back.
+    if (btn.isConnected){ btn.disabled = false; btn.textContent = was; }
+  }
 }
 
 // Who did what, in the order it happened. A pile of slips cannot say that, and

@@ -23,6 +23,9 @@ const STORE = () => process.env.VORI_STORE_ID || '5084';
 const GRACE_MS = 3 * 60 * 1000;
 // Rounding between a scale and a register is worth a penny or two, no more.
 const CENTS = 0.02;
+// Somebody is standing at the oil waiting on this, so it gives up quickly and
+// says so rather than leaving a button saying "Checking..." for ever.
+const TIMEOUT_MS = Number(process.env.FRY_VORI_TIMEOUT_MS || 10000);
 
 // The published API docs name the inventory resource and little else, so rather
 // than hard-coding a guess the first call tries the plausible names and the one
@@ -54,7 +57,7 @@ async function listSince(iso) {
     const url = `${BASE}/${p}?storeId=${encodeURIComponent(STORE())}`
       + `&completedAtFrom=${encodeURIComponent(iso)}&take=50`;
     try {
-      const body = await getWithBackoff(url);
+      const body = await getWithBackoff(url, { timeoutMs: TIMEOUT_MS });
       listPath = p;
       lastOk = new Date().toISOString();
       // Vori wraps its lists differently in different places; take whichever
@@ -77,7 +80,8 @@ async function listSince(iso) {
 async function detail(id) {
   const tries = listPath ? [listPath] : PATHS;
   for (const p of tries) {
-    try { return await getWithBackoff(`${BASE}/${p}/${encodeURIComponent(id)}`); }
+    try { return await getWithBackoff(`${BASE}/${p}/${encodeURIComponent(id)}`,
+        { timeoutMs: TIMEOUT_MS }); }
     catch (e) { if (e.status !== 404) throw e; }
   }
   return null;
@@ -122,8 +126,17 @@ export function fryVoriStatus() {
 }
 
 // One pass. Returns what it did, and never throws at its caller.
-export async function matchFryPayments({ probe = false } = {}) {
+// One pass at a time. A slow or hanging call every few seconds would otherwise
+// stack up connections behind it and bury the reason anybody can see.
+let inFlight = null;
+export async function matchFryPayments(opts = {}) {
   if (!voriConfigured()) return { skipped: 'vori not connected' };
+  if (inFlight) return inFlight;
+  inFlight = runMatch(opts).finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function runMatch({ probe = false } = {}) {
   try {
     // A price is the whole of what identifies a ticket now, so one without a
     // price cannot be matched and is left for a person. The board says so.

@@ -20,9 +20,26 @@ function headers() {
   return { Authorization: `Bearer ${process.env.VORI_API_KEY}`, Accept: 'application/json' };
 }
 
-export async function getWithBackoff(url) {
+// A request that is never answered is worse than one that is refused: nothing
+// is logged, nothing is shown, and the caller waits for ever. A reply has to
+// arrive or the attempt has to end.
+const TIMEOUT_MS = Number(process.env.VORI_TIMEOUT_MS || 30000);
+
+export async function getWithBackoff(url, { timeoutMs = TIMEOUT_MS } = {}) {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const res = await fetch(url, { headers: headers() });
+    let res;
+    try {
+      res = await fetch(url, { headers: headers(), signal: AbortSignal.timeout(timeoutMs) });
+    } catch (e) {
+      // Said in words somebody can act on. "The operation was aborted" on its
+      // own has sent people looking in the wrong place.
+      const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+      const err = new Error(e?.name === 'TimeoutError' || e?.name === 'AbortError'
+        ? `${host} did not answer within ${Math.round(timeoutMs / 1000)}s.`
+        : `Could not reach ${host}: ${e?.message || e}`);
+      err.cause = e;
+      throw err;
+    }
     if (res.status !== 429) {
       if (!res.ok) {
         const body = await res.text().catch(() => '');
