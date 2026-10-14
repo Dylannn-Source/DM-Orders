@@ -1,0 +1,41 @@
+{
+  "_note": "Base-unit inventory families. One pool per flavour, counted in single packs. Each Vori product that draws on that pool is listed with how many base units one of it contains: a 30x case is 30 packs, a 5-pack is 5, a single is 1. Product ids are store_products.id, taken from Vori's own sales data for store 5084 -- not barcodes, because the same barcode appears under two product names.",
+  "unit": "pack",
+  "families": [
+    { "name": "Indomie Mi Goreng",
+      "members": [
+        { "vori_product_id": "28848663", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "29199156", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28848873", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie Mi Goreng Hot & Spicy",
+      "members": [
+        { "vori_product_id": "28849027", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "49348205", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28846879", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie Onion Chicken",
+      "members": [
+        { "vori_product_id": "28847444", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "49348202", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28848138", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie Curry Chicken",
+      "members": [
+        { "vori_product_id": "28848424", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "49348198", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28848109", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie Special Chicken",
+      "members": [
+        { "vori_product_id": "28849284", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "49348200", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28848315", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie Vegetable",
+      "members": [
+        { "vori_product_id": "28848932", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "49348210", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28848242", "label": "30x case", "per_unit": 30 } ] },
+    { "name": "Indomie BBQ Chicken",
+      "members": [
+        { "vori_product_id": "28849802", "label": "single",  "per_unit": 1 },
+        { "vori_product_id": "29200390", "label": "5-pack",  "per_unit": 5 },
+        { "vori_product_id": "28847106", "label": "30x case", "per_unit": 30 } ] }
+  ]
+}

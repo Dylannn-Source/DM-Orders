@@ -8,6 +8,10 @@ import {
 } from './auth.js';
 import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vori.js';
 import { startFryWatch, syncFryPayments, fryBoard, fryVoriStatus, fryDiag } from './fry.js';
+import {
+  syncInventoryAll, invBoard, itemHistory, recordCount, recordReceipt,
+  reverseLine, addItem, addLink, removeLink, invCsv, invDiag
+} from './inventory.js';
 import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -43,7 +47,7 @@ app.use(async (req, res, next) => {
 // Anyone signed in can read anything. Changing something needs the area granted,
 // which a manager has by role. Enforced here rather than in the browser: hiding a
 // button is a courtesy, this is the actual rule.
-const AREAS = ['produce', 'meat', 'fish', 'warehouse', 'coldstorage'];
+const AREAS = ['produce', 'meat', 'fish', 'warehouse', 'coldstorage', 'inventory'];
 
 async function areasFor(employee) {
   if (!employee) return [];
@@ -54,7 +58,8 @@ async function areasFor(employee) {
 }
 
 // What each area is called on screen. The stored names never change.
-const AREA_LABELS = { warehouse: 'the offsite warehouse', coldstorage: 'Monkish' };
+const AREA_LABELS = { warehouse: 'the offsite warehouse', coldstorage: 'Monkish',
+                      inventory: 'the stock counts' };
 
 function canWrite(req, res, area) {
   if (req.employee?.role === 'manager') return true;
@@ -233,6 +238,139 @@ app.post('/api/fry/check', async (req, res) => {
 // and the till says another. Never the key itself.
 app.get('/api/fry/diag', async (req, res) => {
   res.json({ ok: true, now: new Date().toISOString(), ...fryDiag() });
+});
+
+// ---- inventory: one count per item, in base units -------------------------
+//
+// The count is the sum of the ledger, never a stored figure, so the screen and
+// the history can never disagree. Sales come off it by themselves; a delivery
+// Vori has not posted, and a physical recount, go on by hand.
+app.get('/api/inv/board', async (req, res) => {
+  try {
+    res.json({ items: await invBoard(), now: new Date().toISOString() });
+  } catch (e) {
+    console.error('inventory board failed', e);
+    res.status(500).json({ error: 'could not load the counts' });
+  }
+});
+
+app.get('/api/inv/item/:id/history', async (req, res) => {
+  try {
+    res.json({ lines: await itemHistory(Number(req.params.id)) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Read the registers now rather than waiting for the sweep.
+app.post('/api/inv/sync', async (req, res) => {
+  if (!canWrite(req, res, 'inventory')) return;
+  try {
+    res.json({ ok: true, ...(await syncInventoryAll()) });
+  } catch (e) {
+    console.error('inventory sync failed', e);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// What was actually on the shelf. The gap against the ledger is the shrink and
+// the miscount, and it is posted as its own line rather than quietly absorbed.
+app.post('/api/inv/count', async (req, res) => {
+  if (!canWrite(req, res, 'inventory')) return;
+  const counted = Number(req.body?.counted);
+  if (!Number.isFinite(counted) || counted < 0) {
+    return res.status(400).json({ error: 'counted must be a number' });
+  }
+  try {
+    const out = await recordCount(Number(req.params?.id ?? req.body.item_id),
+                                 counted, req.employee?.name);
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// A delivery Vori has not posted. Entered in cases, kept in base units.
+app.post('/api/inv/receipt', async (req, res) => {
+  if (!canWrite(req, res, 'inventory')) return;
+  const cases = Number(req.body?.cases);
+  const perCase = Number(req.body?.per_case);
+  if (!Number.isFinite(cases) || !Number.isFinite(perCase) || cases <= 0 || perCase <= 0) {
+    return res.status(400).json({ error: 'cases and per_case must be positive numbers' });
+  }
+  try {
+    const out = await recordReceipt(Number(req.body.item_id), cases * perCase,
+      `${cases} x ${perCase} entered by hand`, req.employee?.name);
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Nothing is deleted. A wrong line is answered with its opposite, so what the
+// count was on a past day stays recoverable.
+app.post('/api/inv/reverse/:id', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    res.json({ ok: true, ...(await reverseLine(Number(req.params.id), req.employee?.name)) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post('/api/inv/item', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const name = String(req.body?.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    res.json({ ok: true, item: await addItem(name, req.body?.unit) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Attaching a Vori product to a pool, with how many base units one of it holds.
+// This is the whole trick: the case is 30 of the thing the single is one of.
+app.post('/api/inv/link', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  const perUnit = Number(req.body?.per_unit);
+  if (!Number.isFinite(perUnit) || perUnit <= 0) {
+    return res.status(400).json({ error: 'per_unit must be a positive number' });
+  }
+  try {
+    res.json({ ok: true, link: await addLink(Number(req.body.item_id),
+      req.body.vori_product_id, perUnit, req.body.label) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post('/api/inv/unlink/:id', async (req, res) => {
+  if (!managerOnly(req, res)) return;
+  try {
+    res.json({ ok: true, ...(await removeLink(Number(req.params.id))) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// The spreadsheet, for when it needs to leave the app.
+app.get('/api/inv/export.csv', async (req, res) => {
+  try {
+    const csv = await invCsv();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition',
+      `attachment; filename="inventory-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// How the link to Vori is wired, for when the count says one thing and the
+// shelf says another. Never the key itself.
+app.get('/api/inv/diag', async (req, res) => {
+  res.json({ ok: true, now: new Date().toISOString(), ...(await invDiag()) });
 });
 
 // ---- time off: vacation and sick hours ------------------------------------

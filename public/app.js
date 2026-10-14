@@ -945,7 +945,7 @@ function handleResetTap(){
 function hideAll(){
   ['listView','summaryView','settingsHub','routeView','parView','seasonalView','vendorView',
    'marketView','orderNameView','addItemView','backupView','employeesView','historyView','warehouseView',
-   'timeoffView','fryView']
+   'timeoffView','fryView','invView']
     .forEach(id => $(id).style.display = 'none');
   document.querySelector('header').style.display = 'none';
 }
@@ -4230,3 +4230,246 @@ async function showHistory(){
 }
 
 boot();
+
+// ---- stock: one count per item, in base units -----------------------------
+//
+// Vori keeps a case, a 5-pack and a single as three products with three
+// separate on-hand numbers, and selling a case never takes 30 packs off the
+// single. So this screen shows one number per thing we stock, in packs, and
+// what it is made of underneath.
+let invData = null;
+let invOpen = null;      // which item's history is showing
+// A form is open in the panel. Putting the form outside invWrap kept the list's
+// redraw off it, but the sweep redraws the panel too, so without this a count
+// being typed is still thrown away a minute in.
+let invFormOpen = false;
+const INV_EVERY = 60000;
+let invTimer = null;
+
+async function invApi(method, path, body, ms){
+  try {
+    const res = await fetch('/api/inv' + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(ms || 30000)
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: out.error || ('HTTP ' + res.status) };
+    return out;
+  } catch (e) { return { error: 'Could not reach the app.' }; }
+}
+
+function showInv(){
+  hideAll();
+  $('invView').style.display = 'block';
+  $('footerBar').style.display = 'none';
+  document.querySelectorAll('#deptBar button').forEach(b =>
+    b.classList.toggle('active', b.dataset.dept === 'inv'));
+  if (!invData) $('invWrap').innerHTML = '<div class="invloading">Adding it up…</div>';
+  invRefresh();
+  clearInterval(invTimer);
+  invTimer = setInterval(() => {
+    if (document.hidden) return;
+    if ($('invView').style.display === 'none') return;
+    invRefresh();
+  }, INV_EVERY);
+}
+
+async function invRefresh(){
+  const d = await invApi('GET', '/board');
+  if (d.error) { if (!invFormOpen) renderInvPanel(d.error); return; }
+  invData = d;
+  renderInv();
+  if (!invFormOpen) renderInvPanel();
+}
+
+const invNum = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+function renderInvPanel(err){
+  const p = $('invPanel');
+  if (!p) return;
+  invFormOpen = false;
+  const when = invData?.now
+    ? new Date(invData.now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : '';
+  p.innerHTML = `
+    <div class="invhead">
+      <div>
+        <div class="invtitle">Stock</div>
+        <div class="invsub">${err ? htmlEsc(err) : `counted in base units &middot; updated ${htmlEsc(when)}`}</div>
+      </div>
+      <div class="invacts">
+        <button class="invbtn" onclick="invSync(this)">Sync from Vori</button>
+        <a class="invbtn ghost" href="/api/inv/export.csv">Export</a>
+      </div>
+    </div>`;
+}
+
+// Reading the registers takes a moment and somebody is watching the button, so
+// it says so rather than looking broken.
+async function invSync(btn){
+  const was = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Reading Vori…';
+  const out = await invApi('POST', '/sync', {}, 120000);
+  btn.disabled = false;
+  btn.textContent = was;
+  if (out.error) { renderInvPanel(out.error); return; }
+  const r = out.receipts;
+  if (r && r.ok === false && r.reason === 'no_invoice_endpoint') {
+    // Sales still came through; only the delivery side could not be found.
+    await invRefresh();
+    renderInvPanel('Sales updated. Deliveries could not be read from Vori — enter them here.');
+    return;
+  }
+  invRefresh();
+}
+
+function renderInv(){
+  const wrap = $('invWrap');
+  if (!wrap) return;
+  const items = invData?.items || [];
+  if (!items.length){
+    wrap.innerHTML = '<div class="invloading">Nothing is being counted yet.</div>';
+    return;
+  }
+  wrap.innerHTML = items.map(it => {
+    const low = it.days_left !== null && it.days_left <= 7;
+    const neg = it.on_hand < 0;
+    return `
+    <div class="invcard${neg ? ' neg' : ''}">
+      <div class="invrow" onclick="invToggle(${it.id})">
+        <div class="invname">
+          ${htmlEsc(it.name)}
+          <div class="invmembers">${it.members.map(m =>
+            `${htmlEsc(m.label || m.product)} = ${m.per_unit}`).join(' &middot; ')}</div>
+        </div>
+        <div class="invqty">
+          <div class="invbig">${invNum(it.on_hand)}</div>
+          <div class="invunit">${htmlEsc(it.unit)}${it.on_hand === 1 ? '' : 's'}</div>
+        </div>
+      </div>
+      <div class="invchips">
+        <span class="invchip">${invNum(it.sold_30)} sold / 30 days</span>
+        ${it.days_left !== null
+          ? `<span class="invchip${low ? ' warn' : ''}">${it.days_left} days left</span>` : ''}
+        ${it.counted_at
+          ? `<span class="invchip quiet">counted ${htmlEsc(invDay(it.counted_at))}</span>`
+          : '<span class="invchip quiet">never counted</span>'}
+      </div>
+      <div class="invbtns">
+        <button class="invbtn small" onclick="invCountForm(${it.id})">Count</button>
+        <button class="invbtn small ghost" onclick="invRecvForm(${it.id})">Delivery</button>
+      </div>
+      ${invOpen === it.id ? `<div class="invhist" id="invHist${it.id}">Loading…</div>` : ''}
+    </div>`;
+  }).join('');
+  if (invOpen) invLoadHistory(invOpen);
+}
+
+const invDay = iso => iso
+  ? new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+
+function invToggle(id){
+  invOpen = invOpen === id ? null : id;
+  renderInv();
+}
+
+async function invLoadHistory(id){
+  const out = await invApi('GET', `/item/${id}/history`);
+  const el = $('invHist' + id);
+  if (!el) return;
+  if (out.error){ el.textContent = out.error; return; }
+  const manager = me && me.role === 'manager';
+  el.innerHTML = (out.lines || []).map(l => `
+    <div class="invline">
+      <span class="invlqty ${l.qty < 0 ? 'out' : 'in'}">${l.qty > 0 ? '+' : ''}${invNum(l.qty)}</span>
+      <span class="invlkind">${htmlEsc(l.kind)}</span>
+      <span class="invlnote">${htmlEsc(l.note || '')}</span>
+      <span class="invlwhen">${htmlEsc(invDay(l.happened_at))}</span>
+      ${manager && l.kind !== 'sale' && l.kind !== 'refund'
+        ? `<button class="invundo" onclick="invReverse(${l.id})">undo</button>` : ''}
+    </div>`).join('') || '<div class="invline quiet">Nothing yet.</div>';
+}
+
+async function invReverse(id){
+  const out = await invApi('POST', `/reverse/${id}`);
+  if (out.error){ renderInvPanel(out.error); return; }
+  invRefresh();
+}
+
+// The forms live in the panel, which no refresh redraws, so a half-typed count
+// is never thrown away by the sixty-second sweep.
+function invItem(id){ return (invData?.items || []).find(i => i.id === id); }
+
+function invCountForm(id){
+  const it = invItem(id);
+  if (!it) return;
+  invFormOpen = true;
+  $('invPanel').innerHTML = `
+    <div class="invform">
+      <div class="invftitle">Count &mdash; ${htmlEsc(it.name)}</div>
+      <div class="invfsub">How many ${htmlEsc(it.unit)}s are there, all in?
+        The app thinks ${invNum(it.on_hand)}.</div>
+      <input type="number" id="invCountVal" inputmode="decimal" min="0" step="any"
+             placeholder="${invNum(it.on_hand)}">
+      <div class="invfbtns">
+        <button class="invbtn" onclick="invCountSave(${id})">Save the count</button>
+        <button class="invbtn ghost" onclick="renderInvPanel()">Cancel</button>
+      </div>
+      <div class="invfnote" id="invFormNote"></div>
+    </div>`;
+  $('invCountVal').focus();
+}
+
+async function invCountSave(id){
+  const v = $('invCountVal').value;
+  if (v === '' || isNaN(Number(v))){
+    $('invFormNote').textContent = 'Type the number you counted.';
+    return;
+  }
+  const out = await invApi('POST', '/count', { item_id: id, counted: Number(v) });
+  if (out.error){ $('invFormNote').textContent = out.error; return; }
+  const gap = out.delta;
+  await invRefresh();
+  renderInvPanel(gap
+    ? `Counted ${invNum(out.counted)}. That is ${invNum(Math.abs(gap))} ${gap < 0 ? 'short of' : 'more than'} the app had.`
+    : `Counted ${invNum(out.counted)} — exactly what the app had.`);
+}
+
+function invRecvForm(id){
+  const it = invItem(id);
+  if (!it) return;
+  invFormOpen = true;
+  const biggest = it.members.reduce((m, x) => Math.max(m, x.per_unit), 1);
+  $('invPanel').innerHTML = `
+    <div class="invform">
+      <div class="invftitle">Delivery &mdash; ${htmlEsc(it.name)}</div>
+      <div class="invfsub">For a delivery Vori has not posted yet.</div>
+      <div class="invfrow">
+        <label>Cases<input type="number" id="invRecvCases" inputmode="numeric" min="1" step="any"></label>
+        <label>${htmlEsc(it.unit)}s per case<input type="number" id="invRecvPer"
+          inputmode="numeric" min="1" step="any" value="${biggest}"></label>
+      </div>
+      <div class="invfbtns">
+        <button class="invbtn" onclick="invRecvSave(${id})">Add it on</button>
+        <button class="invbtn ghost" onclick="renderInvPanel()">Cancel</button>
+      </div>
+      <div class="invfnote" id="invFormNote"></div>
+    </div>`;
+  $('invRecvCases').focus();
+}
+
+async function invRecvSave(id){
+  const cases = Number($('invRecvCases').value);
+  const per = Number($('invRecvPer').value);
+  if (!cases || !per){
+    $('invFormNote').textContent = 'How many cases, and how many in a case?';
+    return;
+  }
+  const out = await invApi('POST', '/receipt', { item_id: id, cases, per_case: per });
+  if (out.error){ $('invFormNote').textContent = out.error; return; }
+  await invRefresh();
+  renderInvPanel(`Added ${invNum(cases * per)} on.`);
+}

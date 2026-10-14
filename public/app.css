@@ -114,7 +114,7 @@ main{padding:10px 12px 4px;}
 .btn-ghost{background:var(--paper-2);color:var(--ink);flex:1;}
 
 #summaryView,#settingsHub,#routeView,#parView,#seasonalView,#vendorView,#historyView,
-#orderNameView,#addItemView,#backupView,#employeesView,#marketView,#timeoffView{
+#orderNameView,#addItemView,#backupView,#employeesView,#marketView,#timeoffView,#invView{
   display:none;padding:14px 14px 100px;}
 .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .backbtn{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);
@@ -876,3 +876,68 @@ body.simple .whhead { padding-bottom:6px; }
   .frysearchrow{flex-wrap:wrap;}
   .fryrefresh{width:100%;padding:13px;}
 }
+
+/* ---- stock: one count per item ---------------------------------------- */
+.invloading{text-align:center;padding:50px 18px;color:var(--ink-soft);
+  font-family:var(--mono);font-size:13px;}
+.invhead{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.invtitle{font-size:20px;font-weight:700;letter-spacing:-0.01em;}
+.invsub{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:3px;
+  max-width:46ch;line-height:1.45;}
+.invacts{display:flex;gap:8px;flex-wrap:wrap;}
+.invbtn{border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font-family:var(--mono);font-size:12px;padding:9px 13px;border-radius:9px;
+  text-decoration:none;display:inline-block;}
+.invbtn:disabled{opacity:0.55;}
+.invbtn.ghost{background:none;color:var(--ink-soft);}
+.invbtn.small{padding:7px 11px;font-size:11px;}
+
+.invcard{border:1px solid var(--line);border-radius:12px;background:var(--card);
+  padding:12px 13px;margin-bottom:10px;}
+.invcard.neg{border-color:#C8553D;}
+.invrow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.invname{font-size:15px;font-weight:600;line-height:1.3;}
+.invmembers{font-family:var(--mono);font-size:10px;color:var(--ink-soft);
+  margin-top:4px;font-weight:400;letter-spacing:0.01em;}
+.invqty{text-align:right;flex:0 0 auto;}
+.invbig{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;
+  line-height:1;letter-spacing:-0.02em;}
+.invcard.neg .invbig{color:#C8553D;}
+.invunit{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-top:2px;}
+
+.invchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.invchip{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:999px;
+  background:var(--chip,#EFEFEA);color:var(--ink-soft);}
+.invchip.warn{background:#F6E3DE;color:#8C3B28;}
+.invchip.quiet{opacity:0.75;}
+.invbtns{display:flex;gap:7px;margin-top:11px;}
+
+.invhist{margin-top:11px;border-top:1px solid var(--line);padding-top:9px;}
+.invline{display:flex;align-items:center;gap:9px;font-family:var(--mono);
+  font-size:11px;padding:4px 0;color:var(--ink-soft);}
+.invline.quiet{opacity:0.7;}
+.invlqty{font-variant-numeric:tabular-nums;min-width:62px;text-align:right;font-weight:600;}
+.invlqty.out{color:#C8553D;}
+.invlqty.in{color:#2E7D52;}
+.invlkind{min-width:54px;}
+.invlnote{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.invlwhen{flex:0 0 auto;opacity:0.8;}
+.invundo{border:none;background:none;color:var(--ink-soft);font-family:var(--mono);
+  font-size:10px;text-decoration:underline;padding:2px 4px;}
+
+.invform{border:1px solid var(--line);border-radius:12px;background:var(--card);
+  padding:14px;margin-bottom:14px;}
+.invftitle{font-size:16px;font-weight:700;}
+.invfsub{font-family:var(--mono);font-size:11px;color:var(--ink-soft);
+  margin:4px 0 11px;line-height:1.45;}
+.invform input{width:100%;font-size:24px;font-family:var(--mono);padding:11px 12px;
+  border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);
+  font-variant-numeric:tabular-nums;}
+.invfrow{display:flex;gap:10px;}
+.invfrow label{flex:1;font-family:var(--mono);font-size:10px;color:var(--ink-soft);
+  display:block;}
+.invfrow input{margin-top:5px;font-size:20px;}
+.invfbtns{display:flex;gap:8px;margin-top:11px;}
+.invfnote{font-family:var(--mono);font-size:11px;color:var(--ink-soft);
+  margin-top:9px;line-height:1.45;}

@@ -31,6 +31,7 @@
   <button data-dept="coldstorage" onclick="showWarehouse('coldstorage')">MONKISH</button>
   <button data-dept="fry" onclick="showFry()">FRY</button>
   <button data-dept="timeoff" onclick="showTimeOff()">TIME OFF</button>
+  <button data-dept="inv" onclick="showInv()">STOCK</button>
 </div>
 
 <header>
@@ -89,6 +90,14 @@
 <div id="timeoffView">
   <div id="timeoffWrap"></div>
 </div>
+
+<div id="invView">
+  <!-- The panel sits outside invWrap for the same reason the fry one does: the
+       list redraws on every sync, and a half-typed count must survive that. -->
+  <div id="invPanel"></div>
+  <div id="invWrap"></div>
+</div>
+
 
 <div id="settingsHub">
   <div class="backrow">

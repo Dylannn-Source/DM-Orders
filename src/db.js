@@ -684,6 +684,103 @@ export async function initDb() {
     }
   }
 
+  // ---- Inventory: one pool per item, counted in base units -----------------
+  //
+  // Vori holds a case, a 5-pack and a single as three unrelated products with
+  // three separate on-hand numbers, and nothing links them. Selling a case can
+  // never take 30 packs off the shelf count, so none of the three is ever right.
+  //
+  // So the pool lives here instead. One row per thing we actually stock, counted
+  // in whatever a single one is -- a pack, a bottle, a bag.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS inv_items (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL UNIQUE,
+      unit       TEXT NOT NULL DEFAULT 'pack',
+      note       TEXT,
+      active     BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+
+  // Every Vori product that draws on a pool, and how many base units one of it
+  // holds: a 30x case is 30, a 5-pack is 5, a single is 1. Keyed on the Vori
+  // product id rather than the barcode -- the same barcode turns up under two
+  // product names ("Indomie Mi Goreng" and "Indomie Mi Goreng Noodles"), so a
+  // barcode key would either collide or double-count. A product belongs to one
+  // pool at a time, which the unique index enforces.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS inv_links (
+      id              SERIAL PRIMARY KEY,
+      item_id         INTEGER NOT NULL REFERENCES inv_items(id) ON DELETE CASCADE,
+      vori_product_id TEXT NOT NULL UNIQUE,
+      label           TEXT,
+      per_unit        NUMERIC NOT NULL CHECK (per_unit > 0)
+    )`);
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS inv_links_item ON inv_links (item_id)');
+
+  // The count is never stored -- it is the sum of this ledger, the same way
+  // warehouse_moves and time_off_ledger work. Nothing is ever deleted or
+  // overwritten; a wrong line is answered with an opposite one, so what the
+  // count was on any past day stays recoverable.
+  //
+  // qty is signed and always in base units: a sale is negative, a delivery
+  // positive. source_key makes a sync idempotent -- re-reading the same Vori
+  // line cannot deduct it twice, which matters because the sync re-reads an
+  // overlapping window every time it runs.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS inv_ledger (
+      id          BIGSERIAL PRIMARY KEY,
+      item_id     INTEGER NOT NULL REFERENCES inv_items(id) ON DELETE CASCADE,
+      qty         NUMERIC NOT NULL,
+      kind        TEXT NOT NULL,
+      source_key  TEXT,
+      happened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      note        TEXT,
+      entered_by  TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+  // Plain rather than partial: ON CONFLICT cannot infer a partial index, and it
+  // does not need to here -- Postgres never treats two NULLs as equal, so the
+  // lines entered by hand, which carry no source key, are free to pile up.
+  await pool.query('DROP INDEX IF EXISTS inv_ledger_source');
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS inv_ledger_src ON inv_ledger (source_key)');
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS inv_ledger_item ON inv_ledger (item_id, happened_at DESC)');
+
+  // The noodles are what prompted this, so they are what it starts with. Seeded
+  // once: after that the pools are whatever the store has made them, and a
+  // redeploy must not reach back in and change them.
+  {
+    const { rows: seeded } = await pool.query(
+      `SELECT 1 FROM app_config WHERE key = 'inv_families_seeded'`);
+    if (!seeded[0]) {
+      const seed = JSON.parse(
+        fs.readFileSync(path.join(__dirname, '..', 'inv_families.json'), 'utf8'));
+      let fams = 0, links = 0;
+      for (const f of seed.families) {
+        const { rows: made } = await pool.query(
+          `INSERT INTO inv_items (name, unit) VALUES ($1,$2)
+           ON CONFLICT (name) DO NOTHING RETURNING id`,
+          [f.name, f.unit || seed.unit || 'pack']);
+        if (!made[0]) continue;
+        fams++;
+        for (const m of f.members) {
+          const r = await pool.query(
+            `INSERT INTO inv_links (item_id, vori_product_id, label, per_unit)
+             VALUES ($1,$2,$3,$4) ON CONFLICT (vori_product_id) DO NOTHING`,
+            [made[0].id, String(m.vori_product_id), m.label || null, m.per_unit]);
+          links += r.rowCount;
+        }
+      }
+      await pool.query(
+        `INSERT INTO app_config (key, value) VALUES ('inv_families_seeded','1')
+         ON CONFLICT (key) DO NOTHING`);
+      if (fams) console.log(`Inventory: ${fams} items seeded, ${links} Vori products linked.`);
+    }
+  }
+
   await seedEmptyDepartments();
 }
 
