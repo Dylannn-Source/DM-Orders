@@ -49,6 +49,13 @@ export async function linkMap() {
       { itemId: r.item_id, perUnit: Number(r.per_unit), name: r.name,
         unit: r.unit, label: r.label });
   }
+  // The biggest pack size we know for each pool. An invoice line billed by the
+  // case does not say how big the case is, so this is what converts it.
+  const biggest = new Map();
+  for (const v of m.values()) {
+    biggest.set(v.itemId, Math.max(biggest.get(v.itemId) || 1, v.perUnit));
+  }
+  for (const v of m.values()) v.itemCaseSize = biggest.get(v.itemId);
   return m;
 }
 
@@ -174,20 +181,32 @@ export async function syncInventoryReceipts({ sinceIso = null } = {}) {
                                       ?? l.product?.id ?? ''));
         if (!link) continue;
         seen++;
-        // The invoice is billed in cases, and carries its own case size. Trust
-        // the invoice's case size over the product's: it is what the vendor
-        // actually shipped on that delivery.
         const cases = num(l.shippedQuantity) ?? num(l.shipped_quantity)
                    ?? num(l.receivedQuantity) ?? num(l.received_quantity)
                    ?? num(l.billedQuantity) ?? num(l.billed_quantity);
-        const caseSize = num(l.caseSize) ?? num(l.case_size) ?? link.perUnit;
+        // How many base units one of those is. The reconciliation view carries
+        // the invoice's own case size, and that is the best answer when it is
+        // there: it is what the vendor actually shipped that day.
+        //
+        // The plain invoice endpoint does not carry it -- it gives a quantity
+        // and a unit and nothing else. So when it says CASE, fall back to the
+        // biggest pack size on the pool rather than to the matched product's:
+        // Vori matches a vendor's case line to the single-pack product, and
+        // taking that product's multiplier would book 40 cases as 40 packs.
+        const unit = String(l.shippedUnitOfMeasure || l.shipped_unit_of_measure
+                            || l.billedUnitOfMeasure || l.billed_unit_of_measure || '')
+                     .toUpperCase();
+        const caseSize = num(l.caseSize) ?? num(l.case_size)
+                      ?? (unit.startsWith('CASE') || unit === 'CS'
+                            ? link.itemCaseSize : link.perUnit);
         if (!cases || !caseSize) continue;
         const r = await pool.query(
           `INSERT INTO inv_ledger (item_id, qty, kind, source_key, happened_at, note)
            VALUES ($1,$2,'receipt',$3,$4,$5) ON CONFLICT (source_key) DO NOTHING`,
           [link.itemId, cases * caseSize, `recv:${l.id ?? `${inv.id}:${l.lineNumber ?? seen}`}`,
            inv.billingDate || inv.billing_date || inv.createdAt || new Date().toISOString(),
-           `${cases} x ${caseSize} (invoice ${inv.invoiceNumber || inv.invoice_number || inv.id})`]);
+           `${cases} x ${caseSize}${unit ? ' ' + unit : ''}`
+             + ` (invoice ${inv.invoiceNumber || inv.invoice_number || inv.id})`]);
         posted += r.rowCount;
       }
     }
