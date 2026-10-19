@@ -19,6 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { initDb, pool } from '../src/db.js';
+import { norm, fold, proposal } from '../src/brandname.js';
 
 const argv = process.argv.slice(2);
 const flag = n => {
@@ -33,6 +34,9 @@ const READ_KEY = process.env.VORI_API_KEY || process.env.VORI_WRITE_KEY;
 const WRITE_KEY = process.env.VORI_WRITE_KEY || process.env.VORI_API_KEY;
 const OUT = path.resolve('out');
 const APPLY = has('--apply');
+// --plain puts the brand at the very front even when the name leads with a
+// pack size. The default keeps the size in front and slots the brand behind it.
+const OPTS = { sizeAware: !has('--plain') };
 // Vori allows 20 a second. A rename is not urgent and a catalogue is not worth
 // rushing, so this sits well under it.
 const GAP_MS = Number(process.env.BRAND_GAP_MS || 150);
@@ -82,23 +86,6 @@ async function allProducts() {
   }
   process.stdout.write('\n');
   return out;
-}
-
-// Trim and fold, because the catalogue holds "Badia" and "BADIA" as different
-// brands, and "Indomie" with a trailing space as a third.
-const norm = s => String(s || '').trim().replace(/\s+/g, ' ');
-const fold = s => norm(s).toLowerCase();
-
-function proposal(prod, brand) {
-  const name = norm(prod.name);
-  const b = norm(brand);
-  if (!name) return { action: 'skip', why: 'no name' };
-  // Already says it -- prefixing would give "Indomie Indomie Mi Goreng".
-  if (fold(name).startsWith(fold(b))) return { action: 'skip', why: 'already starts with the brand' };
-  if (fold(name).includes(fold(b))) return { action: 'skip', why: 'brand already in the name' };
-  const next = `${b} ${name}`;
-  if (next.length > 255) return { action: 'skip', why: 'would pass 255 characters' };
-  return { action: 'rename', next };
 }
 
 const csvCell = v => {
@@ -177,7 +164,7 @@ if (has('--list')) {
     if (!tally.has(key)) tally.set(key, { brand: b, total: 0, rename: 0 });
     const t = tally.get(key);
     t.total++;
-    if (proposal(p, b).action === 'rename') t.rename++;
+    if (proposal(p, b, OPTS).action === 'rename') t.rename++;
   }
   const rows = [...tally.values()].sort((a, b) => b.rename - a.rename);
   console.log('\nbrand                            products   would change');
@@ -196,7 +183,7 @@ if (!mine.length) {
   process.exit(1);
 }
 
-const plan = mine.map(p => ({ p, ...proposal(p, BRAND) }));
+const plan = mine.map(p => ({ p, ...proposal(p, BRAND, OPTS) }));
 const renames = plan.filter(x => x.action === 'rename');
 
 fs.mkdirSync(OUT, { recursive: true });
