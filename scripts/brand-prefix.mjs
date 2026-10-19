@@ -12,8 +12,10 @@
 // can open and read. A run that writes also saves the original names, to a
 // file and to the database -- that snapshot is the only way back.
 //
-// Writing needs VORI_WRITE_KEY, a separate key with write scope. VORI_API_KEY
-// stays read-only and is never used to change anything.
+// Writing uses VORI_WRITE_KEY when one is set, and otherwise VORI_API_KEY,
+// which carries banner admin. That is deliberate: the store has one key and it
+// can write. What stands between a typo and five thousand renamed products is
+// not the key, then, but --apply and the snapshot, so neither is optional.
 import fs from 'node:fs';
 import path from 'node:path';
 import { initDb, pool } from '../src/db.js';
@@ -28,7 +30,7 @@ const has = n => argv.includes(n);
 const BASE = process.env.VORI_API_BASE || 'https://api.vori.com/v1';
 const STORE = process.env.VORI_STORE_ID || '5084';
 const READ_KEY = process.env.VORI_API_KEY || process.env.VORI_WRITE_KEY;
-const WRITE_KEY = process.env.VORI_WRITE_KEY;
+const WRITE_KEY = process.env.VORI_WRITE_KEY || process.env.VORI_API_KEY;
 const OUT = path.resolve('out');
 const APPLY = has('--apply');
 // Vori allows 20 a second. A rename is not urgent and a catalogue is not worth
@@ -138,7 +140,7 @@ async function listSnapshots() {
 }
 
 async function revert(file) {
-  if (!WRITE_KEY) throw new Error('VORI_WRITE_KEY is not set');
+  if (!WRITE_KEY) throw new Error('No Vori key set (VORI_API_KEY or VORI_WRITE_KEY)');
   const snap = await loadSnapshot(file);
   console.log(`Putting ${snap.items.length} names back as they were.`);
   let done = 0;
@@ -225,7 +227,7 @@ if (!APPLY) {
   process.exit(0);
 }
 if (!WRITE_KEY) {
-  console.error('\nVORI_WRITE_KEY is not set. VORI_API_KEY is read-only and will not be used to write.');
+  console.error('\nNo Vori key set — expected VORI_API_KEY or VORI_WRITE_KEY.');
   process.exit(1);
 }
 if (!renames.length) { console.log('\nNothing to do.'); process.exit(0); }
