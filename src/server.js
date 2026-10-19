@@ -10,7 +10,7 @@ import { syncInventory, voriStatus, searchProducts, voriConfigured } from './vor
 import { startFryWatch, syncFryPayments, fryBoard, fryVoriStatus, fryDiag } from './fry.js';
 import {
   syncInventoryAll, invBoard, itemHistory, recordCount, recordReceipt,
-  reverseLine, addItem, addLink, removeLink, invCsv, invDiag
+  reverseLine, addItem, addLink, removeLink, invCsv, invDiag, applyVoriOnHand
 } from './inventory.js';
 import { syncSheet, sheetStatus, sheetsConfigured, noteSheetError } from './sheets.js';
 
@@ -287,6 +287,18 @@ app.post('/api/inv/count', async (req, res) => {
     res.json({ ok: true, ...out });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Take Vori's own figure as the count. Vori's API serves no invoices, so this
+// is how a delivery that was scanned into Vori reaches the pool: Vori put the
+// units on one member of the family, and the multipliers put them back.
+app.post('/api/inv/vori/:id', async (req, res) => {
+  if (!canWrite(req, res, 'inventory')) return;
+  try {
+    res.json({ ok: true, ...(await applyVoriOnHand(Number(req.params.id), req.employee?.name)) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

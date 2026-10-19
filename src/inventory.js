@@ -32,8 +32,7 @@ const qs = o => Object.entries(o)
 
 const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
 
-let last = { salesAt: null, receiptsAt: null, error: null, pages: 0,
-             invoicePath: null, invoiceTried: [] };
+let last = { salesAt: null, error: null, pages: 0 };
 let running = false;
 
 // ---- what belongs to which pool ------------------------------------------
@@ -138,83 +137,65 @@ export async function syncInventorySales({ sinceIso = null } = {}) {
 }
 
 // ---- deliveries in --------------------------------------------------------
-
-// Which endpoint serves invoices is not something the published guide settles,
-// so rather than guess silently this tries the likely ones once and records
-// what answered. Whatever it finds is reported by /api/inv/diag, and can be
-// pinned with VORI_INVOICES_PATH so it never has to look again.
-const INVOICE_PATHS = ['invoices', 'store-invoices', 'vendor-invoices', 'invoice-line-items'];
-let invoicePath = process.env.VORI_INVOICES_PATH || null;
-
-export async function syncInventoryReceipts({ sinceIso = null } = {}) {
-  if (!voriConfigured()) return { ok: false, reason: 'no_key' };
-  const links = await linkMap();
-  if (!links.size) return { ok: true, posted: 0, reason: 'nothing_linked' };
-
-  const since = sinceIso || await watermark('inv_recv_through', OVERLAP_DAYS);
-  const tried = [];
-
-  if (!invoicePath) {
-    for (const p of INVOICE_PATHS) {
-      try {
-        await getPage(p, { limit: '1', store_id: STORE() });
-        invoicePath = p;
-        break;
-      } catch (e) {
-        tried.push(`${p}: ${e.status || e.message}`);
-        if (e.status && e.status !== 404 && e.status !== 400) break;
-      }
-    }
+//
+// Vori's public API has no invoice endpoint. The whole surface is 35 paths and
+// not one of them touches invoices, receiving or files -- invoices get into
+// Vori as scanned documents and never come back out that way. The invoice tools
+// in Vori's MCP server are not on the public API, so there is nothing to poll.
+//
+// What the API does serve is on-hand per product, which the app already mirrors
+// into vori_inventory every half hour. Vori's own count already has the invoice
+// receipts in it: when a delivery is applied, the units land on whichever
+// product the vendor's line matched. They land on the WRONG member of the
+// family -- a case of noodles is received against the single-pack product --
+// but summing the family with its multipliers puts them back where they belong.
+//
+// So Vori's view of a pool is its members' on-hand, each times its multiplier.
+// For Mi Goreng that is 2,850 received against the single, less 240 singles,
+// 72 cases and 6 five-packs sold: 420 packs, which is the real number.
+export async function voriOnHand() {
+  const { rows } = await pool.query(`
+    SELECT l.item_id,
+           SUM(vi.on_hand * l.per_unit)                      AS units,
+           COUNT(vi.product_id)                              AS members_seen,
+           COUNT(l.id)                                       AS members,
+           MAX(vi.synced_at)                                 AS synced_at
+      FROM inv_links l
+      LEFT JOIN vori_inventory vi ON vi.product_id = l.vori_product_id
+     GROUP BY l.item_id`);
+  const m = new Map();
+  for (const r of rows) {
+    m.set(r.item_id, {
+      units: r.units === null ? null : Math.round(Number(r.units) * 100) / 100,
+      // A pool only half covered by the mirror is not a figure to act on.
+      partial: Number(r.members_seen) < Number(r.members),
+      members_seen: Number(r.members_seen), members: Number(r.members),
+      synced_at: r.synced_at
+    });
   }
-  last = { ...last, invoicePath, invoiceTried: tried };
-  if (!invoicePath) {
-    return { ok: false, reason: 'no_invoice_endpoint', tried };
+  return m;
+}
+
+// Take Vori's figure as the count. Posted as an ordinary line so it sits in the
+// history next to the hand counts and can be reversed like any of them.
+export async function applyVoriOnHand(itemId, who) {
+  const v = (await voriOnHand()).get(Number(itemId));
+  if (!v || v.units === null) throw new Error('Vori has no on-hand for this item yet');
+  if (v.partial) {
+    throw new Error(
+      `Vori only has ${v.members_seen} of ${v.members} pack sizes for this item. `
+      + 'Run the Vori product sync first.');
   }
-
-  let posted = 0, seen = 0;
-  const pages = await pageAll(invoicePath, {
-    'billing_date[gte]': since.slice(0, 10), store_id: STORE()
-  }, async rows => {
-    for (const inv of rows) {
-      for (const l of (inv.lineItems || inv.line_items || [])) {
-        const link = links.get(String(l.storeProductId ?? l.store_product_id
-                                      ?? l.product?.id ?? ''));
-        if (!link) continue;
-        seen++;
-        const cases = num(l.shippedQuantity) ?? num(l.shipped_quantity)
-                   ?? num(l.receivedQuantity) ?? num(l.received_quantity)
-                   ?? num(l.billedQuantity) ?? num(l.billed_quantity);
-        // How many base units one of those is. The reconciliation view carries
-        // the invoice's own case size, and that is the best answer when it is
-        // there: it is what the vendor actually shipped that day.
-        //
-        // The plain invoice endpoint does not carry it -- it gives a quantity
-        // and a unit and nothing else. So when it says CASE, fall back to the
-        // biggest pack size on the pool rather than to the matched product's:
-        // Vori matches a vendor's case line to the single-pack product, and
-        // taking that product's multiplier would book 40 cases as 40 packs.
-        const unit = String(l.shippedUnitOfMeasure || l.shipped_unit_of_measure
-                            || l.billedUnitOfMeasure || l.billed_unit_of_measure || '')
-                     .toUpperCase();
-        const caseSize = num(l.caseSize) ?? num(l.case_size)
-                      ?? (unit.startsWith('CASE') || unit === 'CS'
-                            ? link.itemCaseSize : link.perUnit);
-        if (!cases || !caseSize) continue;
-        const r = await pool.query(
-          `INSERT INTO inv_ledger (item_id, qty, kind, source_key, happened_at, note)
-           VALUES ($1,$2,'receipt',$3,$4,$5) ON CONFLICT (source_key) DO NOTHING`,
-          [link.itemId, cases * caseSize, `recv:${l.id ?? `${inv.id}:${l.lineNumber ?? seen}`}`,
-           inv.billingDate || inv.billing_date || inv.createdAt || new Date().toISOString(),
-           `${cases} x ${caseSize}${unit ? ' ' + unit : ''}`
-             + ` (invoice ${inv.invoiceNumber || inv.invoice_number || inv.id})`]);
-        posted += r.rowCount;
-      }
-    }
-  });
-
-  await setWatermark('inv_recv_through', new Date().toISOString());
-  last = { ...last, receiptsAt: new Date().toISOString() };
-  return { ok: true, seen, posted, pages, path: invoicePath };
+  const { rows } = await pool.query(
+    'SELECT COALESCE(SUM(qty),0) AS bal FROM inv_ledger WHERE item_id = $1', [itemId]);
+  const before = Number(rows[0].bal);
+  const delta = Math.round((v.units - before) * 10000) / 10000;
+  await pool.query(
+    `INSERT INTO inv_ledger (item_id, qty, kind, note, entered_by)
+     VALUES ($1,$2,'vori',$3,$4)`,
+    [itemId, delta, `Vori says ${v.units} (was ${Math.round(before * 100) / 100})`,
+     who || null]);
+  return { before, units: v.units, delta };
 }
 
 export async function syncInventoryAll(opts = {}) {
@@ -222,13 +203,8 @@ export async function syncInventoryAll(opts = {}) {
   running = true;
   try {
     const sales = await syncInventorySales(opts);
-    let receipts = null;
-    try {
-      receipts = await syncInventoryReceipts(opts);
-    } catch (e) {
-      receipts = { ok: false, reason: e.message };
-    }
-    return { ok: true, sales, receipts };
+    last = { ...last, error: null };
+    return { ok: true, sales };
   } catch (e) {
     last = { ...last, error: e.message };
     throw e;
@@ -275,7 +251,10 @@ export async function invBoard() {
       { product: l.vori_product_id, label: l.label, per_unit: Number(l.per_unit) });
   }
 
+  const vori = await voriOnHand();
+
   return rows.map(r => {
+    const v = vori.get(r.id) || {};
     const onHand = Number(r.on_hand);
     const sold30 = Number(r.sold_30);
     const perDay = sold30 / 30;
@@ -286,6 +265,13 @@ export async function invBoard() {
       // Already short means no days left, not negative days left.
       days_left: perDay > 0 ? Math.max(0, Math.round(onHand / perDay)) : null,
       counted_at: r.counted_at, received_at: r.received_at,
+      // What Vori's own numbers add up to for this pool, and how far our
+      // ledger has drifted from it. Shown rather than applied: the two
+      // disagreeing is information, not an error to paper over.
+      vori_on_hand: v.units ?? null,
+      vori_partial: !!v.partial,
+      vori_gap: v.units === null || v.units === undefined
+        ? null : Math.round((onHand - v.units) * 100) / 100,
       members: byItem.get(r.id) || []
     };
   });
@@ -377,12 +363,14 @@ const csvCell = v => {
 
 export async function invCsv() {
   const board = await invBoard();
-  const head = ['Item', 'Unit', 'On hand', 'Sold last 30 days', 'Days left',
+  const head = ['Item', 'Unit', 'On hand', 'Vori says', 'Difference',
+                'Sold last 30 days', 'Days left',
                 'Last counted', 'Last delivery', 'Pack sizes'];
   const lines = [head.join(',')];
   for (const r of board) {
     lines.push([
-      r.name, r.unit, r.on_hand, r.sold_30, r.days_left ?? '',
+      r.name, r.unit, r.on_hand, r.vori_on_hand ?? '', r.vori_gap ?? '',
+      r.sold_30, r.days_left ?? '',
       day(r.counted_at), day(r.received_at),
       r.members.map(m => `${m.label || m.product}=${m.per_unit}`).join(' ')
     ].map(csvCell).join(','));
@@ -402,10 +390,10 @@ export async function invDiag() {
     items: Number(counts[0].items),
     links: Number(counts[0].links),
     ledger_lines: Number(counts[0].ledger_lines),
-    invoice_path: invoicePath,
-    invoice_paths_tried: last.invoiceTried,
+    // Vori's public API serves no invoices; deliveries reach a pool through
+    // Vori's own on-hand mirror, or by hand.
+    invoices_on_api: false,
     last_sales_sync: last.salesAt,
-    last_receipt_sync: last.receiptsAt,
     last_error: last.error,
     running
   };

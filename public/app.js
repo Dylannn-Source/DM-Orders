@@ -4316,13 +4316,6 @@ async function invSync(btn){
   btn.disabled = false;
   btn.textContent = was;
   if (out.error) { renderInvPanel(out.error); return; }
-  const r = out.receipts;
-  if (r && r.ok === false && r.reason === 'no_invoice_endpoint') {
-    // Sales still came through; only the delivery side could not be found.
-    await invRefresh();
-    renderInvPanel('Sales updated. Deliveries could not be read from Vori — enter them here.');
-    return;
-  }
   invRefresh();
 }
 
@@ -4357,10 +4350,16 @@ function renderInv(){
         ${it.counted_at
           ? `<span class="invchip quiet">counted ${htmlEsc(invDay(it.counted_at))}</span>`
           : '<span class="invchip quiet">never counted</span>'}
+        ${it.vori_on_hand === null ? ''
+          : `<span class="invchip${it.vori_gap ? ' warn' : ''}">Vori says ${invNum(it.vori_on_hand)}`
+            + `${it.vori_partial ? ' (partial)' : ''}</span>`}
       </div>
       <div class="invbtns">
         <button class="invbtn small" onclick="invCountForm(${it.id})">Count</button>
         <button class="invbtn small ghost" onclick="invRecvForm(${it.id})">Delivery</button>
+        ${it.vori_on_hand !== null && it.vori_gap && !it.vori_partial
+          ? `<button class="invbtn small ghost" onclick="invUseVori(${it.id})">Use Vori's</button>`
+          : ''}
       </div>
       ${invOpen === it.id ? `<div class="invhist" id="invHist${it.id}">Loading…</div>` : ''}
     </div>`;
@@ -4472,4 +4471,13 @@ async function invRecvSave(id){
   if (out.error){ $('invFormNote').textContent = out.error; return; }
   await invRefresh();
   renderInvPanel(`Added ${invNum(cases * per)} on.`);
+}
+
+// Vori's API serves no invoices, so a scanned delivery reaches a pool this way:
+// Vori's own on-hand for each pack size, each times its multiplier.
+async function invUseVori(id){
+  const out = await invApi('POST', `/vori/${id}`);
+  if (out.error){ renderInvPanel(out.error); return; }
+  await invRefresh();
+  renderInvPanel(`Set to Vori's ${invNum(out.units)} (${out.delta > 0 ? '+' : ''}${invNum(out.delta)}).`);
 }
