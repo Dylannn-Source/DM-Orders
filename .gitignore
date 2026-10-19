@@ -1,3 +1,6 @@
 node_modules/
 .env
 .DS_Store
+
+# Rename previews and snapshots (the durable copy lives in the database)
+out/
