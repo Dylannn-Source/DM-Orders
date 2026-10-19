@@ -1,0 +1,14 @@
+{
+  "what": "Five Goya products renamed by hand through the Vori MCP, as a trial, to see whether the brand reaches Instacart and the receipt before the rest of the catalogue is touched.",
+  "brand": "Goya",
+  "store": "5084",
+  "at": "2026-10-19",
+  "undo": "node scripts/brand-prefix.mjs --revert scripts/brand-trial-goya.json",
+  "items": [
+    { "id": "28847747", "was": "16 Bean Soup Mix", "to": "Goya 16 Bean Soup Mix" },
+    { "id": "28849854", "was": "Adobo Coriander & Annatto", "to": "Goya Adobo Coriander & Annatto" },
+    { "id": "75941805", "was": "24x17oz Coconut Water", "to": "Goya 24x17oz Coconut Water" },
+    { "id": "28847991", "was": "10lbs Golden Canilla Parboiled Rice", "to": "Goya 10lbs Golden Canilla Parboiled Rice" },
+    { "id": "80091038", "was": "12x Extra Fine Corn Meal", "to": "Goya 12x Extra Fine Corn Meal" }
+  ]
+}
